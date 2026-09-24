@@ -1,0 +1,8 @@
+{
+  "appId": "th.boondee.app",
+  "appName": "บุญดี",
+  "webDir": "dist",
+  "backgroundColor": "#2b2340",
+  "android": { "allowMixedContent": false },
+  "ios": { "contentInset": "always" }
+}

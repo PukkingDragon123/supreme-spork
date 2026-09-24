@@ -1,0 +1,423 @@
+/* Boondee UI kit: warm paper panels with pixel-notched borders. */
+
+:root {
+  --ink: #3a2838;
+  --ink-soft: #6b4d5e;
+  --paper: #fff6e4;
+  --paper-2: #ffedcc;
+  --paper-3: #f6dcae;
+  --edge: #e3bd82;
+  --gold: #ffd54f;
+  --gold-d: #e9a53a;
+  --gold-l: #fff3a6;
+  --saffron: #f58f35;
+  --saffron-d: #d0661f;
+  --lotus: #ff9fc0;
+  --lotus-d: #e8709e;
+  --lotus-l: #ffe1ea;
+  --leaf: #6cc36a;
+  --leaf-d: #43905a;
+  --sky: #a4dcff;
+  --sky-d: #5a8de0;
+  --night: #2c2f63;
+  --red: #e8514a;
+  --px: 3px;
+  --font: 'Mitr', 'Noto Sans Thai', 'Leelawadee UI', 'Thonburi', system-ui, sans-serif;
+  --num: 'Pixelify Sans', 'Mitr', system-ui, sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #2b2340;
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.45;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  height: 100%;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+}
+
+input,
+textarea {
+  font-family: inherit;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+img.px,
+.pixel-canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.num {
+  font-family: var(--num);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- app frame ---------- */
+
+.app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  background: #2b2340;
+}
+
+.phone {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  overflow: hidden;
+  background: #86c95f;
+}
+
+.stage-host {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* ---------- pixel panels ---------- */
+
+.panel {
+  position: relative;
+  background: var(--paper);
+  margin: var(--px);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--ink),
+    0 var(--px) 0 0 var(--ink),
+    calc(var(--px) * -1) 0 0 0 var(--ink),
+    var(--px) 0 0 0 var(--ink),
+    inset 0 calc(var(--px) * -1) 0 0 var(--paper-3),
+    inset 0 var(--px) 0 0 #ffffff;
+}
+
+.panel.soft {
+  background: var(--paper-2);
+}
+
+.panel.dark {
+  background: #3d3157;
+  color: #fff1d6;
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--ink),
+    0 var(--px) 0 0 var(--ink),
+    calc(var(--px) * -1) 0 0 0 var(--ink),
+    var(--px) 0 0 0 var(--ink),
+    inset 0 calc(var(--px) * -1) 0 0 #2b2340,
+    inset 0 var(--px) 0 0 #574874;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  background: var(--paper);
+  font-size: 12px;
+  box-shadow:
+    0 -2px 0 0 var(--ink),
+    0 2px 0 0 var(--ink),
+    -2px 0 0 0 var(--ink),
+    2px 0 0 0 var(--ink);
+  margin: 2px;
+  white-space: nowrap;
+}
+
+.chip.gold {
+  background: var(--gold-l);
+}
+.chip.pink {
+  background: var(--lotus-l);
+}
+.chip.green {
+  background: #d7f2cf;
+}
+.chip.blue {
+  background: #d4ecff;
+}
+
+/* ---------- buttons ---------- */
+
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 14px 9px;
+  margin: var(--px);
+  border: 0;
+  background: var(--gold);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--ink),
+    0 var(--px) 0 0 var(--ink),
+    calc(var(--px) * -1) 0 0 0 var(--ink),
+    var(--px) 0 0 0 var(--ink),
+    inset 0 calc(var(--px) * -1) 0 0 var(--gold-d),
+    inset 0 var(--px) 0 0 var(--gold-l);
+  transition: transform 60ms;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--ink),
+    0 var(--px) 0 0 var(--ink),
+    calc(var(--px) * -1) 0 0 0 var(--ink),
+    var(--px) 0 0 0 var(--ink),
+    inset 0 calc(var(--px) * -1) 0 0 var(--gold),
+    inset 0 var(--px) 0 0 var(--gold-d);
+}
+
+.btn:focus-visible {
+  outline: 3px dashed var(--sky-d);
+  outline-offset: 5px;
+}
+
+.btn:disabled {
+  filter: grayscale(0.7);
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btn.pink {
+  background: var(--lotus);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--ink),
+    0 var(--px) 0 0 var(--ink),
+    calc(var(--px) * -1) 0 0 0 var(--ink),
+    var(--px) 0 0 0 var(--ink),
+    inset 0 calc(var(--px) * -1) 0 0 var(--lotus-d),
+    inset 0 var(--px) 0 0 var(--lotus-l);
+}
+
+.btn.green {
+  background: var(--leaf);
+  color: #fffaf0;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--ink),
+    0 var(--px) 0 0 var(--ink),
+    calc(var(--px) * -1) 0 0 0 var(--ink),
+    var(--px) 0 0 0 var(--ink),
+    inset 0 calc(var(--px) * -1) 0 0 var(--leaf-d),
+    inset 0 var(--px) 0 0 #b4e486;
+}
+
+.btn.blue {
+  background: #7fc4ff;
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--ink),
+    0 var(--px) 0 0 var(--ink),
+    calc(var(--px) * -1) 0 0 0 var(--ink),
+    var(--px) 0 0 0 var(--ink),
+    inset 0 calc(var(--px) * -1) 0 0 var(--sky-d),
+    inset 0 var(--px) 0 0 #d4ecff;
+}
+
+.btn.paper {
+  background: var(--paper);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--ink),
+    0 var(--px) 0 0 var(--ink),
+    calc(var(--px) * -1) 0 0 0 var(--ink),
+    var(--px) 0 0 0 var(--ink),
+    inset 0 calc(var(--px) * -1) 0 0 var(--paper-3),
+    inset 0 var(--px) 0 0 #ffffff;
+}
+
+.btn.small {
+  min-height: 32px;
+  padding: 3px 10px 6px;
+  font-size: 13px;
+}
+
+.btn.big {
+  min-height: 52px;
+  font-size: 18px;
+  padding: 8px 22px 12px;
+}
+
+.btn.block {
+  display: flex;
+  width: calc(100% - var(--px) * 2);
+}
+
+.icon-btn {
+  min-width: 40px;
+  padding: 4px 6px 7px;
+}
+
+/* ---------- common layout ---------- */
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.muted {
+  color: var(--ink-soft);
+}
+
+.small {
+  font-size: 12px;
+}
+
+.center {
+  text-align: center;
+}
+
+.title {
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.subtitle {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.bar {
+  position: relative;
+  height: 12px;
+  background: #5a4a66;
+  box-shadow:
+    0 -2px 0 0 var(--ink),
+    0 2px 0 0 var(--ink),
+    -2px 0 0 0 var(--ink),
+    2px 0 0 0 var(--ink);
+  overflow: hidden;
+}
+
+.bar > span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(var(--gold-l) 0 3px, var(--gold) 3px 9px, var(--gold-d) 9px);
+  transition: width 400ms;
+}
+
+.bar.pink > span {
+  background: linear-gradient(var(--lotus-l) 0 3px, var(--lotus) 3px 9px, var(--lotus-d) 9px);
+}
+
+.bar.green > span {
+  background: linear-gradient(#c8f0cf 0 3px, var(--leaf) 3px 9px, var(--leaf-d) 9px);
+}
+
+.scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.scroll::-webkit-scrollbar-thumb {
+  background: var(--edge);
+}
+
+@keyframes pop-in {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 1ms !important;
+  transition-duration: 1ms !important;
+}
