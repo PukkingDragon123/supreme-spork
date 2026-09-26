@@ -5,7 +5,7 @@
 import { createCanvas } from '../engine/pixel'
 import { cached, outlineCanvas, paintRows, type Sprite } from '../engine/sprite'
 import { HAIR_COLORS, P, SKIN_TONES } from './palette'
-import { OUTFIT_BY_ID, type BottomArt, type Pattern, type TopArt } from '../game/data/outfits'
+import { OUTFIT_BY_ID, type BottomArt, type Pattern, type ShoeArt, type TopArt } from '../game/data/outfits'
 
 export type BodyType = 'm' | 'f'
 
@@ -44,6 +44,7 @@ export const DEFAULT_LOOK: AvatarLook = {
   head: null,
   neck: null,
   hand: null,
+  shoes: null,
 }
 
 // ---------------------------------------------------------------------------
@@ -458,7 +459,425 @@ const HAIR: Record<string, HairSet> = {
       ],
     },
   },
+
+  twoblock: {
+    front: {
+      y: -1,
+      rows: [
+        '.....dddddd.....',
+        '....dhhHHhhd....',
+        '...dhhHHhhhhd...',
+        '..dhhHhhhhhhhd..',
+        '..dhhhhhhhhhhd..',
+        '..dhhhhhhhhhhd..',
+        '..dhhhhhhhhhhd..',
+        '..kdhhdhhdhhdk..',
+        '..kxhxxhxxhxxk..',
+        '..k..........k..',
+      ],
+    },
+    back: {
+      y: -1,
+      rows: [
+        '.....dddddd.....',
+        '....dhhHHhhd....',
+        '...dhhHHhhhhd...',
+        '..dhhhhhhhhhhd..',
+        '..dhhhhhhhhhhd..',
+        '..dhhhhhhhhhhd..',
+        '..dhhhhhhhhhhd..',
+        '..dhhhhhhhhhhd..',
+        '..dddddddddddd..',
+        '..kkkkkkkkkkkk..',
+        '..kkkkkkkkkkkk..',
+        '...kkkkkkkkkk...',
+      ],
+    },
+    side: {
+      y: -1,
+      rows: [
+        '.....dddddd.....',
+        '....dhhHHhhd....',
+        '...dhhHHhhhhd...',
+        '..dhhhhhhhhhhhd.',
+        '..dhhhhhhhhhhhd.',
+        '..dhhhhhhhhhhhd.',
+        '..dhhhhhhhhhhd..',
+        '..dhhhhhhhhhxd..',
+        '..kkkkkk..xx....',
+        '..kkkkk.........',
+        '...kk...........',
+      ],
+    },
+  },
+  curtain: {
+    front: {
+      y: 0,
+      rows: [
+        '................',
+        '.....dhhhhd.....',
+        '...dhhHHhhhhd...',
+        '..dhhHHhhhhhhd..',
+        '.dhhHhhhhhhhhhd.',
+        '.dhhhhhddhhhhhd.',
+        '.dhhhhx..xhhhhd.',
+        '.dhhhx....xhhhd.',
+        '.dhhx......xhhd.',
+        '.dh..........hd.',
+        '.dh..........hd.',
+      ],
+    },
+    back: {
+      y: 0,
+      rows: [
+        '................',
+        '.....dhhhhd.....',
+        '...dhhHHhhhhd...',
+        '..dhhHHhhhhhhd..',
+        '.dhhhhhhhhhhhhd.',
+        '.dhhhhhhhhhhhhd.',
+        '.dhhhhhhhhhhhhd.',
+        '.dhhhhhhhhhhhhd.',
+        '.dhhhhdhhhhhhhd.',
+        '.dhhhhhhhhdhhhd.',
+        '..ddhhhhhhhhdd..',
+        '....dddddddd....',
+      ],
+    },
+    side: {
+      y: 0,
+      rows: [
+        '................',
+        '.....dhhhhd.....',
+        '...dhhHHhhhhd...',
+        '..dhhHHhhhhhhd..',
+        '.dhhHhhhhhhhhhd.',
+        '.dhhhhhhhhhhhhd.',
+        '.dhhhhhhhhhxhhd.',
+        '.dhhhhhhhhx..hd.',
+        '.dhhhhhhh.......',
+        '.dhhhhhhd.......',
+        '..dhhhhd........',
+      ],
+    },
+  },
+  buzz: {
+    front: {
+      y: 1,
+      rows: ['.....dddddd.....', '...ddhhhhhhdd...', '..dhhHHhhhhhhd..', '..dhhhhhhhhhhd..', '..dkkkkkkkkkkd..', '..k..........k..'],
+    },
+    back: {
+      y: 1,
+      rows: [
+        '.....dddddd.....',
+        '...ddhhhhhhdd...',
+        '..dhhHHhhhhhhd..',
+        '..dhhhhhhhhhhd..',
+        '..dhhhhhhhhhhd..',
+        '..dhhhhhhhhhhd..',
+        '..dkkkkkkkkkkd..',
+        '..kkkkkkkkkkkk..',
+        '...kkkkkkkkkk...',
+      ],
+    },
+    side: {
+      y: 1,
+      rows: ['.....dddddd.....', '...ddhhhhhhdd...', '..dhhHHhhhhhhd..', '..dhhhhhhhhhhd..', '..dhhhhhhhkkkd..', '..dhhhhhk.......', '..dkkkk.........', '...kk...........'],
+    },
+  },
+  ponytail: {
+    front: {
+      y: 0,
+      rows: [
+        '................',
+        '.....dhhhhd.....',
+        '...dhhHHhhhhd...',
+        '..dhhHHhhhhhhd..',
+        '.dhhHhhhhhhhhhdd',
+        '.dhhhhhhhhhhhhdh',
+        '.dhhhhhhhhxxhhdh',
+        '.dhhxxxxx...xhdh',
+        '.dhx..........dh',
+        '.dh............d',
+      ],
+    },
+    back: {
+      y: 0,
+      rows: [
+        '................',
+        '.....dhhhhd.....',
+        '...dhhHHhhhhd...',
+        '..dhhHHhhhhhhd..',
+        '.dhhhhhrrhhhhhd.',
+        '.dhhhhdhhdhhhhd.',
+        '.dhhhhdhhdhhhhd.',
+        '..ddhdhhhhdhdd..',
+        '.....dhHhhd.....',
+        '.....dhhhhd.....',
+        '.....dhhhhd.....',
+        '......dhhd......',
+        '......dhhd......',
+        '.......dd.......',
+      ],
+    },
+    side: {
+      y: 0,
+      rows: [
+        '................',
+        '.....dhhhhd.....',
+        '...dhhHHhhhhd...',
+        '..dhhHHhhhhhhd..',
+        'drhhhhhhhhhhhhd.',
+        'hdhhhhhhhhhhhhd.',
+        'hdhhhhhhhhxhhhd.',
+        'hddhhhhhh.......',
+        'dhhdhhhhd.......',
+        '.dhhdhhd........',
+        '.dhhd...........',
+        '..dhd...........',
+        '...d............',
+      ],
+    },
+  },
+  wavy: {
+    front: {
+      y: 0,
+      rows: [
+        '................',
+        '.....dhhhhd.....',
+        '...dhhHHhhhhd...',
+        '..dhhHHhhhhhhd..',
+        '.dhhHhhhhhhhhhd.',
+        '.dhhhdhhhhhhhhd.',
+        '.dhhx..xxhhhhhd.',
+        '.dhh.......xhhd.',
+        'dhh.........hhd.',
+        '.dhh........dhhd',
+        'dhhd........dhd.',
+        '.dhhd......dhhd.',
+        'dhhd........dhhd',
+      ],
+    },
+    behind: {
+      y: 13,
+      rows: ['.dhhd......dhhd.', 'dhhd........dhhd', '.dhhd......dhhd.', 'dhhd........dhhd', '.dhhd......dhhd.', '..dd........dd..'],
+    },
+    back: {
+      y: 0,
+      rows: [
+        '................',
+        '.....dhhhhd.....',
+        '...dhhHHhhhhd...',
+        '..dhhHHhhhhhhd..',
+        '.dhhHhhhhhhhhhd.',
+        '.dhhhhhhhhhhhhd.',
+        '.dhhdhhhhhdhhhd.',
+        'dhhhhdhhhhhdhhhd',
+        '.dhhhhdhhhhhdhd.',
+        'dhhhdhhhhhdhhhhd',
+        '.dhhhhdhhhhhdhd.',
+        'dhhhdhhhhhdhhhhd',
+        '.dhhhhdhhhhhdhd.',
+        '..dhhhhhhhhhhd..',
+        '.dhhhhhhhhhhhhd.',
+        '..dhhdhhhhdhhd..',
+        '...dhhhhhhhhd...',
+        '....dd.dd.dd....',
+      ],
+    },
+    side: {
+      y: 0,
+      rows: [
+        '................',
+        '.....dhhhhd.....',
+        '...dhhHHhhhhd...',
+        '..dhhHHhhhhhhd..',
+        '.dhhHhhhhhhhhhd.',
+        '.dhhhhhhhhhhhhd.',
+        '.dhhhhhhhhxhhhd.',
+        'dhhhhhhhh.......',
+        '.dhhhhhhd.......',
+        'dhhhhhhd........',
+        '.dhhhhhd........',
+        'dhhhhhd.........',
+        '.dhhhhd.........',
+        'dhhhhd..........',
+        '.dhhd...........',
+        '..dd............',
+      ],
+    },
+  },
+  schoolgirl: {
+    front: {
+      y: 0,
+      rows: [
+        '................',
+        '.....dhhhhd.....',
+        '...dhhHHhhhhd...',
+        '..dhhHHhhhhhhd..',
+        '.dhhHhhhhhhhhhd.',
+        '.dhhhhhhhhhhhhd.',
+        '.dhrqhhhhhhhhhd.',
+        '.dhhxhxxhxxhxhd.',
+        '.dhh........hhd.',
+        '.dhh........hhd.',
+        '.ddd........ddd.',
+      ],
+    },
+    back: {
+      y: 0,
+      rows: [
+        '................',
+        '.....dhhhhd.....',
+        '...dhhHHhhhhd...',
+        '..dhhHHhhhhhhd..',
+        '.dhhHhhhhhhhhhd.',
+        '.dhhhhhhhhhhhhd.',
+        '.dhhhhhhhhhhhhd.',
+        '.dhhhhhhhhhhhhd.',
+        '.dhhhhdhhhhdhhd.',
+        '.dhhhhhhhhhhhhd.',
+        '.dddddddddddddd.',
+      ],
+    },
+    side: {
+      y: 0,
+      rows: [
+        '................',
+        '.....dhhhhd.....',
+        '...dhhHHhhhhd...',
+        '..dhhHHhhhhhhd..',
+        '.dhhHhhhhhhhhhd.',
+        '.dhhhhhhhhhhhhd.',
+        '.dhhhhhhhrqhhhd.',
+        '.dhhhhhhhhxhhhd.',
+        '.dhhhhhhh.......',
+        '.dhhhhhhd.......',
+        '.ddddddd........',
+      ],
+    },
+  },
+  braid: {
+    front: {
+      y: 0,
+      rows: [
+        '................',
+        '.....dhhhhd.....',
+        '...dhhHHhhhhd...',
+        '..dhhHHddhhhhd..',
+        '.dhhHhd..dhhhhd.',
+        '.dhhhd....dhhhd.',
+        '.dhhx......xhhd.',
+        '.dhx........xhd.',
+        '.dh..........hd.',
+        '.............dhd',
+        '.............hHd',
+        '.............dhd',
+        '.............hHd',
+        '.............drd',
+        '..............h.',
+      ],
+    },
+    back: {
+      y: 0,
+      rows: [
+        '................',
+        '.....dhhhhd.....',
+        '...dhhHHhhhhd...',
+        '..dhhHHhhhhhhd..',
+        '.dhhhhhhhhhhhhd.',
+        '.dhhhhhdhhhhhhd.',
+        '.dhhhhhdhhhhhhd.',
+        '.dhhhhhdhhhhhhd.',
+        '..ddhhhhhhhhdd..',
+        '.....ddhHddd....',
+        '......dhhd......',
+        '......dHhd......',
+        '......dhhd......',
+        '......dHhd......',
+        '......drrd......',
+        '.......hh.......',
+      ],
+    },
+    side: {
+      y: 0,
+      rows: [
+        '................',
+        '.....dhhhhd.....',
+        '...dhhHHhhhhd...',
+        '..dhhHHhhhhhhd..',
+        '.dhhHhhhhhhhhhd.',
+        '.dhhhhhhhhhhhhd.',
+        '.dhhhhhhhhxhhhd.',
+        '.dhhhhhhh.......',
+        '.dhhhhhhd.......',
+        '..dhhhhd........',
+        '..dHhd..........',
+        '..dhhd..........',
+        '..dHhd..........',
+        '..drrd..........',
+        '...hh...........',
+      ],
+    },
+  },
+  curly: {
+    front: {
+      y: -1,
+      rows: [
+        '....d.dd.dd.d...',
+        '...dhhhhhhhhhd..',
+        '..dhhHhhHhhHhhd.',
+        '.dhhhhhhhhhhhhhd',
+        'dhhHhhHhhHhhHhhd',
+        'dhhhhhhhhhhhhhhd',
+        'dhhdhhdhhdhhdhhd',
+        'dhhhxxhxxhxxhhhd',
+        'dhhh........hhhd',
+        '.dhh........hhd.',
+        'dhhd........dhhd',
+        '.dd..........dd.',
+      ],
+    },
+    back: {
+      y: -1,
+      rows: [
+        '....d.dd.dd.d...',
+        '...dhhhhhhhhhd..',
+        '..dhhHhhHhhHhhd.',
+        '.dhhhhhhhhhhhhhd',
+        'dhhHhhHhhHhhHhhd',
+        'dhhhhhhhhhhhhhhd',
+        'dhhdhhdhhdhhdhhd',
+        'dhHhhHhhHhhHhhhd',
+        'dhhhhhhhhhhhhhhd',
+        'dhhdhhdhhdhhdhhd',
+        '.dhhhhhhhhhhhhd.',
+        'dhhhhhhhhhhhhhhd',
+        '.dhdhhdhhdhhdhd.',
+        '..dd.dd.dd.dd...',
+      ],
+    },
+    side: {
+      y: -1,
+      rows: [
+        '....d.dd.dd.d...',
+        '...dhhhhhhhhhd..',
+        '..dhhHhhHhhHhhd.',
+        '.dhhhhhhhhhhhhhd',
+        'dhhHhhHhhHhhHhhd',
+        'dhhhhhhhhhhhhhhd',
+        'dhhdhhdhhdhxhhhd',
+        'dhhhhhhhhx..xhd.',
+        'dhhhhhhhh.......',
+        '.dhhhhhhd.......',
+        'dhhhhhhd........',
+        '.dd.dd..........',
+      ],
+    },
+  },
 }
+
+const HAIR_RIBBON: Record<string, string> = { ponytail: '#ff7eaa', schoolgirl: '#ff9fc0', braid: '#e8514a' }
 
 // ---------------------------------------------------------------------------
 // Torso. T = top, t = top shade, C = collar, A = upper arm, a = forearm,
@@ -647,6 +1066,59 @@ const ACC: Record<string, AccArt> = {
     },
     pal: { s: '#b8343f', b: '#7e2436', r: '#e8514a', g: '#ffd54f' },
   },
+  clips: {
+    front: { y: 5, rows: ['..........pm....', '...........y....'] },
+    side: { y: 5, rows: ['......pm........'] },
+    back: { y: 5, rows: ['....mp..........'] },
+    pal: { p: '#ff9fc0', m: '#7fd3b5', y: '#ffd54f' },
+  },
+  ribbon: {
+    front: { y: 0, rows: ['..........r.r...', '...........R....', '..........r.r...'] },
+    side: { y: 1, rows: ['.r.r............', '..R.............', '.r.r............'] },
+    back: { y: 3, rows: ['.....rr.rr......', '......rRr.......', '.....rr.rr......'] },
+    pal: { r: '#e8514a', R: '#b8343f' },
+  },
+  sunglasses: {
+    front: { y: 7, rows: ['...kkkk..kkkk...', '...kbbkkkkbbk...', '...kkkk..kkkk...'] },
+    side: { y: 7, rows: ['.........kkkk...', '.....kkkkkbbk...', '.........kkkk...'] },
+    pal: { k: '#2e2840', b: '#6a6aa0' },
+  },
+  cap: {
+    front: { y: -1, rows: ['.....cccccc.....', '...cccccccccc...', '..ccccpccccccc..', '..cccccccccccc..', '.vvvvvvvvvvvvvv.'] },
+    side: { y: -1, rows: ['.....cccccc.....', '...cccccccccc...', '..cccccccccccc..', '..cccccccccccc..', '..cccccccccvvvvv'] },
+    back: { y: -1, rows: ['.....cccccc.....', '...cccccccccc...', '..cccccccccccc..', '..cccccccccccc..', '..ccccc..ccccc..'] },
+    pal: { c: '#34467e', v: '#1f2a52', p: '#ff9fc0' },
+  },
+  headphones: {
+    front: { y: 1, rows: ['....kkkkkkkk....', '...k........k...', '..k..........k..', '..k..........k..', '..k..........k..', '..k..........k..', '.pp..........pp.', '.kk..........kk.', '.kk..........kk.'] },
+    side: { y: 1, rows: ['....kkkkkkkk....', '...k........k...', '..k.........k...', '..k.........k...', '..k.........k...', '..k.........k...', '......pp........', '......kk........', '......kk........'] },
+    back: { y: 1, rows: ['....kkkkkkkk....', '...k........k...', '..k..........k..', '..k..........k..', '..k..........k..', '..k..........k..', '.kk..........kk.', '.kk..........kk.', '.kk..........kk.'] },
+    pal: { k: '#4a3f55', p: '#ff9fc0' },
+  },
+  waistsash: {
+    front: { y: 19, rows: ['....rbrbrbrb....', '..........rb....', '..........b.....'] },
+    side: { y: 19, rows: ['.....rbrbrb.....', '....rb..........'] },
+    back: { y: 19, rows: ['....rbrbrbrb....', '.....rb.........'] },
+    pal: { r: '#e8514a', b: '#3d63b5' },
+  },
+  amulet: {
+    front: { y: 13, rows: ['......y..y......', '.......yy.......', '.......go.......'] },
+    side: { y: 13, rows: ['.........y......', '..........g.....'] },
+    back: { y: 13, rows: ['......yyyy......'] },
+    pal: { y: '#e9b949', g: '#ffd54f', o: '#b8742a' },
+  },
+  lotusbud: {
+    front: { y: 14, rows: ['.............p..', '............pPp.', '.............g..', '.............g..'] },
+    side: { y: 15, rows: ['............p...', '...........pPp..', '............g...'] },
+    back: { y: 14, rows: ['..p.............', '.pPp............', '..g.............', '..g.............'] },
+    pal: { p: '#e8709e', P: '#ffc4d8', g: '#43905a' },
+  },
+  chayen: {
+    front: { y: 14, rows: ['.............r..', '............www.', '............ooo.', '............oOo.', '.............o..'] },
+    side: { y: 14, rows: ['............r...', '...........www..', '...........ooo..', '...........oOo..'] },
+    back: { y: 14, rows: ['..r.............', '.www............', '.ooo............', '.oOo............'] },
+    pal: { r: '#e8514a', w: '#fff3e6', o: '#f58f35', O: '#ffbb66' },
+  },
   umbrella: {
     front: { y: 15, rows: ['............fp..', '...........fppf.', '............ww..', '............w...'] },
     side: { y: 15, rows: ['...........fp...', '..........fppf..', '...........ww...', '...........w....'] },
@@ -679,6 +1151,15 @@ function patternHit(p: Pattern | undefined, x: number, y: number): 0 | 1 | 2 {
       return y % 2 === 0 && x % 2 === 0 ? 1 : 0
     case 'check':
       return (x + y) % 2 === 0 ? 1 : 0
+    case 'hawaii':
+      if ((x * 2 + y * 3) % 7 === 0) return 1
+      if ((x * 2 + y * 3) % 7 === 3) return 2
+      return 0
+    case 'silk':
+      return (x + y) % 4 === 0 ? 1 : 0
+    case 'denim':
+    case 'knit':
+      return 0
     default:
       return 0
   }
@@ -689,7 +1170,9 @@ interface Resolved {
   hair: (typeof HAIR_COLORS)[number]
   top: TopArt
   bottom: BottomArt
+  shoes: ShoeArt | null
   barefoot: boolean
+  view: View
 }
 
 function resolve(look: AvatarLook, barefoot: boolean): Resolved {
@@ -700,27 +1183,57 @@ function resolve(look: AvatarLook, barefoot: boolean): Resolved {
     hair: HAIR_COLORS[look.hairColor] ?? HAIR_COLORS[0],
     top,
     bottom,
+    shoes: look.shoes ? OUTFIT_BY_ID[look.shoes]?.shoes ?? null : null,
     barefoot,
+    view: 'front',
   }
 }
 
 const SHOE = '#6e4a35'
+
+function mixHex(a: string, b: string, t: number): string {
+  const pa = parseInt(a.slice(1), 16)
+  const pb = parseInt(b.slice(1), 16)
+  const ch = (sh: number) => {
+    const x = (pa >> sh) & 255
+    const y = (pb >> sh) & 255
+    return Math.round(x + (y - x) * t)
+  }
+  return '#' + [ch(16), ch(8), ch(0)].map((v) => v.toString(16).padStart(2, '0')).join('')
+}
 
 function topColor(r: Resolved, code: string, x: number, y: number): string | null {
   const t = r.top
   switch (code) {
     case 'T':
     case 't': {
+      const j = t.jacket
+      if (j && (r.view === 'back' || r.view === 'side' || x <= 6 || x >= 9)) return code === 'T' ? j.main : j.shade
       const hit = patternHit(t.pattern, x, y)
       if (hit === 1 && t.patternColor) return t.patternColor
       if (hit === 2 && t.patternColor2) return t.patternColor2
       return code === 'T' ? t.main : t.shade
     }
     case 'C':
-      return t.extra === 'buttons' ? t.main : t.trim && t.pattern !== 'plaid' ? r.skin.b : r.skin.b
+      switch (t.collar) {
+        case 'shirt':
+        case 'polo':
+        case 'camp':
+        case 'bua':
+          return t.collarColor ?? mixHex(t.main, '#ffffff', 0.5)
+        case 'mandarin':
+          return t.collarColor ?? t.main
+        case 'jersey':
+          return t.trim ?? r.skin.b
+        case 'hood':
+          return t.shade
+      }
+      return t.extra === 'buttons' ? t.main : r.skin.b
     case 'A':
-      return t.sleeve === 'none' ? r.skin.b : t.main
+      if (t.jacket) return t.jacket.sleeve ?? t.jacket.main
+      return t.sleeve === 'none' ? r.skin.b : t.cuff && t.sleeve === 'short' && y >= 15 ? t.cuff : t.main
     case 'a':
+      if (t.jacket) return t.jacket.sleeve ?? t.jacket.main
       return t.sleeve === 'long' ? t.main : r.skin.b
     case 'H':
       return r.skin.b
@@ -737,17 +1250,23 @@ function legColor(r: Resolved, code: string, x: number, y: number): string | nul
     return hit && b.patternColor ? b.patternColor : base
   }
   const shade = x >= 8
+  const sh = r.shoes
+  const sock = !r.barefoot && sh?.sock && (sh.sockH ?? 1) >= 2 ? sh.sock : null
   switch (code) {
     case 'W':
+      if (b.belt && y === 19) return x === 7 || x === 8 ? b.buckle ?? b.belt : b.belt
       return pat(b.main)
     case 'L':
-      if (b.kind === 'pants' || b.kind === 'loose' || b.kind === 'jong') return pat(shade ? b.shade : b.main)
+      if (b.kind === 'pants' || b.kind === 'loose' || b.kind === 'jong' || b.kind === 'shorts') return pat(shade ? b.shade : b.main)
       return r.skin.b
     case 'K':
-      if (b.kind === 'pants' || b.kind === 'loose') return pat(shade ? b.shade : b.main)
-      return r.skin.b
+      if (b.kind === 'pants' || (b.kind === 'loose' && b.length !== 'midi')) return pat(shade ? b.shade : b.main)
+      return sock ?? r.skin.b
     case 'F':
-      return r.barefoot ? r.skin.d : SHOE
+      if (r.barefoot) return r.skin.d
+      if (!sh) return SHOE
+      if (sh.kind === 'flipflop' || sh.kind === 'sandal') return x % 2 ? sh.main : r.skin.b
+      return sh.main
   }
   return null
 }
@@ -788,6 +1307,10 @@ function hairColorFn(r: Resolved, ribbon = '#e8514a') {
         return r.skin.d
       case 'r':
         return ribbon
+      case 'q':
+        return '#7fd3b5'
+      case 'k':
+        return mixHex(r.hair.b, r.skin.b, 0.35)
       case 'w':
         return '#fffaf0'
       case 'g':
@@ -817,6 +1340,48 @@ function headColorFn(r: Resolved) {
   }
 }
 
+/**
+ * Eye-style / body-preset tweaks on the 2×2 eyes of the small head (rows 7–9).
+ * `cols` are the left columns of each eye.
+ */
+function faceRows(rows: string[], face: number, gender: BodyType, cols: number[]): string[] {
+  const out = rows.slice()
+  const set = (y: number, x: number, ch: string) => {
+    out[y] = out[y].slice(0, x) + ch + out[y].slice(x + 1)
+  }
+  for (const c of cols) {
+    const outer = c < 8 ? c - 1 : c + 2
+    switch (face) {
+      case 1: // smile arcs
+        set(8, c, 's')
+        set(8, c + 1, 's')
+        break
+      case 2: // sleepy: heavy lid, no shine
+        set(8, c, 'E')
+        set(8, c + 1, 'E')
+        set(7, c, 'd')
+        set(7, c + 1, 'd')
+        break
+      case 3: // sharp
+        set(8, c, 'E')
+        set(8, c + 1, 'E')
+        set(9, c, c < 8 ? 's' : 'E')
+        set(9, c + 1, c < 8 ? 'E' : 's')
+        break
+      case 4: // cat-eye lash
+        set(7, outer, 'E')
+        break
+      case 5: // big eyes
+        set(7, c, 'E')
+        set(7, c + 1, 'E')
+        set(8, c, 'e')
+        break
+    }
+    if (gender === 'f' && face !== 4 && face !== 1) set(8, outer, 'E')
+  }
+  return out
+}
+
 /** Skirt / sarong overlays for front, back and side views. */
 function paintBottomOverlay(ctx: CanvasRenderingContext2D, r: Resolved, view: View, legsY: number) {
   const b = r.bottom
@@ -828,10 +1393,11 @@ function paintBottomOverlay(ctx: CanvasRenderingContext2D, r: Resolved, view: Vi
     ctx.fillStyle = c
     ctx.fillRect(x, y + HEADROOM, 1, 1)
   }
-  if (b.kind === 'skirt') {
-    const rows = view === 'side' ? [[5, 10], [5, 11]] : [[5, 10], [4, 11]]
+  if (b.kind === 'skirt' || b.kind === 'pleated') {
+    const short = b.length === 'mini' || b.length === 'short' || b.length === 'knee'
+    const rows = (view === 'side' ? [[5, 10], [5, 11]] : [[5, 10], [4, 11]]).slice(0, short ? 1 : 2)
     rows.forEach(([a, z], j) => {
-      for (let x = a; x <= z; x++) put(x, legsY + 1 + j, col(x, legsY + 1 + j, x >= 9 ? b.shade : b.main))
+      for (let x = a; x <= z; x++) put(x, legsY + 1 + j, col(x, legsY + 1 + j, x >= 9 || (b.kind === 'pleated' && x % 2 === 1) ? b.shade : b.main))
     })
   } else if (b.kind === 'sarong') {
     for (let j = 1; j <= 2; j++) {
@@ -859,7 +1425,72 @@ function paintBottomOverlay(ctx: CanvasRenderingContext2D, r: Resolved, view: Vi
   }
 }
 
+/** Details from the richer TopArt params (school shirts, ties, jerseys...). */
+function paintTopDetails(ctx: CanvasRenderingContext2D, r: Resolved, view: View, pose: Pose) {
+  const t = r.top
+  const put = (x: number, y: number, col: string | undefined) => {
+    if (!col) return
+    ctx.fillStyle = col
+    ctx.fillRect(x, y + HEADROOM, 1, 1)
+  }
+  const Y = 13
+  if (view === 'front' && pose !== 'wai') {
+    if (t.tie === 'tie') {
+      put(7, Y, t.tieColor)
+      put(7, Y + 1, t.tieColor)
+      put(7, Y + 2, t.tieColor)
+      put(7, Y + 3, t.tieColor2 ?? t.tieColor)
+    } else if (t.tie === 'bow') {
+      put(6, Y + 1, t.tieColor)
+      put(7, Y + 1, t.tieColor2 ?? t.tieColor)
+      put(8, Y + 1, t.tieColor)
+    } else if (t.tie === 'scarf') {
+      put(6, Y, t.tieColor)
+      put(9, Y, t.tieColor)
+      put(7, Y + 1, t.tieColor)
+      put(8, Y + 1, t.tieColor2 ?? t.tieColor)
+    }
+    if (t.emblem === 'school') put(t.emblemSide === 'l' ? 6 : 9, Y + 2, t.emblemColor ?? '#3d63b5')
+    else if (t.emblem === 'crest') put(9, Y + 2, t.emblemColor)
+    if (t.pocket === 'chest') put(9, Y + 3, t.shade)
+    if (t.pin) put(6, Y + 2, t.pin)
+    if (t.graphic) {
+      put(7, Y + 2, t.graphicColor)
+      put(8, Y + 2, t.graphicColor2 ?? t.graphicColor)
+    }
+    if (t.jacket) {
+      put(7, Y + 1, t.main)
+      put(8, Y + 1, t.main)
+      if (t.jacket.emblem === 'letter') put(6, Y + 2, t.jacket.emblemColor)
+    }
+    if (t.collar === 'jersey' || t.collar === 'v') put(7, Y + 1, t.trim ?? t.shade)
+    if (t.pocket === 'kangaroo') for (let x = 6; x <= 9; x++) put(x, Y + 4, t.shade)
+  } else if (view === 'back') {
+    if (t.number) {
+      put(7, Y + 2, t.numberColor)
+      put(8, Y + 2, t.numberColor)
+      put(7, Y + 3, t.numberColor)
+      put(8, Y + 4, t.numberColor)
+    }
+    if (t.jacket?.emblem === 'naga') {
+      put(6, Y + 2, t.jacket.emblemColor)
+      put(7, Y + 3, t.jacket.emblemColor)
+      put(8, Y + 2, t.jacket.emblemColor2)
+      put(9, Y + 3, t.jacket.emblemColor)
+    }
+    if (t.collar === 'shirt' || t.collar === 'polo' || t.collar === 'bua' || t.collar === 'mandarin') {
+      for (let x = 6; x <= 9; x++) put(x, Y, t.collarColor ?? mixHex(t.main, '#ffffff', 0.5))
+    }
+    if (t.collar === 'hood' && t.extra !== 'hood') for (let x = 6; x <= 9; x++) put(x, Y + 1, t.shade)
+  } else if (view === 'side') {
+    if (t.tie === 'tie') put(10, Y + 1, t.tieColor)
+    if (t.emblem === 'school' || t.emblem === 'crest') put(9, Y + 2, t.emblemColor)
+    if (t.jacket) put(10, Y + 2, t.main)
+  }
+}
+
 function paintTopExtras(ctx: CanvasRenderingContext2D, r: Resolved, view: View, pose: Pose) {
+  paintTopDetails(ctx, r, view, pose)
   const t = r.top
   if (!t.extra) return
   const c = t.extraColor ?? P.gold
@@ -957,11 +1588,12 @@ export interface AvatarRenderOptions {
 /** Compose an avatar frame (unoutlined 16×27 canvas). */
 export function composeAvatar(look: AvatarLook, view: View, pose: Pose, opts: AvatarRenderOptions = {}): HTMLCanvasElement {
   const r = resolve(look, opts.barefoot ?? false)
+  r.view = view
   const c = createCanvas(FRAME_W, FRAME_H)
   const ctx = c.getContext('2d')!
   const hairItem = OUTFIT_BY_ID[look.hair]
   const hair = HAIR[hairItem?.hair ?? 'bob'] ?? HAIR.bob
-  const hcol = hairColorFn(r)
+  const hcol = hairColorFn(r, HAIR_RIBBON[hairItem?.hair ?? ''] ?? '#e8514a')
   const head = headColorFn(r)
   const tcol = (k: string, x: number, y: number) => topColor(r, k, x, y)
   const lcol = (k: string, x: number, y: number) => legColor(r, k, x, y)
@@ -1020,7 +1652,9 @@ export function composeAvatar(look: AvatarLook, view: View, pose: Pose, opts: Av
   if (view === 'back') paintAcc(ctx, look.neck, view, dy)
 
   // Head.
-  const headRows = view === 'front' ? (pose === 'happy' || pose === 'wai' ? HEAD_FRONT_CLOSED : HEAD_FRONT) : view === 'side' ? HEAD_SIDE : HEAD_BACK
+  const closed = pose === 'happy' || pose === 'wai'
+  let headRows = view === 'front' ? (closed ? HEAD_FRONT_CLOSED : HEAD_FRONT) : view === 'side' ? HEAD_SIDE : HEAD_BACK
+  if (!closed && view !== 'back') headRows = faceRows(headRows, look.face ?? 0, look.gender, view === 'front' ? [4, 10] : [10])
   paint(ctx, headRows, dy, head)
 
   // Long hair behind in side view is part of the side map.

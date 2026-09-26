@@ -314,8 +314,8 @@ function BodyEditor({ look, onChange }: { look: AvatarLook; onChange: () => void
       <div>
         <PT text="ดวงตา" size={13} weight={600} {...TONE_TEXT.ink} />
         <div class="slot-grid" style={{ marginTop: '4px' }}>
-          {FACE_STYLES.map((name, i) => (
-            <FaceSlot key={i} look={look} face={i} name={name} on={(look.face ?? 0) === i} onClick={() => set({ face: i })} />
+          {FACE_STYLES.map((f, i) => (
+            <FaceSlot key={i} look={look} face={f.id} name={f.name} on={(look.face ?? 0) === f.id} onClick={() => set({ face: f.id })} />
           ))}
         </div>
       </div>

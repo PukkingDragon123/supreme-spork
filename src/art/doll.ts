@@ -1,43 +1,2883 @@
-// TEMP stand-in (replaced by the HD doll renderer).
-import { avatarPortrait, avatarSprite, DEFAULT_LOOK, type AvatarLook } from './avatar'
-import { createCanvas } from '../engine/pixel'
-import { cached, type Sprite } from '../engine/sprite'
-import { lookKey } from './avatar'
+// HD "doll" avatar: a 32×50 chibi (34×52 with outline) used by the dress-up
+// screen, the HUD portrait and the prayer scene. The small 16×27 sprite in
+// avatar.ts is still used for walking around the world.
+//
+// Everything is procedural. Parts are painted back-to-front into a pixel
+// buffer as *layers*; when a layer is committed, its edge pixels that touch
+// something already painted become a darker "line" colour, so overlapping
+// parts (arm over torso, fringe over face...) separate cleanly. The whole
+// silhouette then gets a 1px ink outline.
+
+import { createCanvas, mix } from '../engine/pixel'
+import { cached, outlineCanvas, type Sprite } from '../engine/sprite'
+import { HAIR_COLORS, P, SKIN_TONES } from './palette'
+import { OUTFIT_BY_ID, type BottomArt, type Pattern, type ShoeArt, type TopArt } from '../game/data/outfits'
+import { lookKey, type AvatarLook } from './avatar'
 
 export type DollPose = 'stand' | 'wave' | 'wai' | 'happy' | 'think' | 'kneel' | 'kneelWai' | 'bow' | 'sit'
 export type DollView = 'front' | 'back'
-export const DOLL_W = 34
-export const DOLL_H = 50
-export const FACE_STYLES = ['ตากลมวิ้ง', 'ยิ้มตาหยี', 'ตาสงบ', 'ตาคม']
 
-const MAP: Record<DollPose, Parameters<typeof avatarSprite>[2]> = {
-  stand: 'stand',
-  wave: 'happy',
-  wai: 'wai',
-  happy: 'happy',
-  think: 'stand',
-  kneel: 'kneel',
-  kneelWai: 'wai',
-  bow: 'bow',
-  sit: 'sit',
+const IW = 32
+const IH = 50
+/** Frame width including the 1px outline. */
+export const DOLL_W = IW + 2
+/** Frame height including the 1px outline. Feet/knees rest on the bottom row. */
+export const DOLL_H = IH + 2
+
+/** Eye styles, indexed by AvatarLook.face. */
+export const FACE_STYLES = [
+  { id: 0, name: 'ตากลมวิบวับ' },
+  { id: 1, name: 'ตายิ้มหยี' },
+  { id: 2, name: 'ตาปรือชิล ๆ' },
+  { id: 3, name: 'ตาคมเท่' },
+  { id: 4, name: 'ตาแมวขนตางอน' },
+  { id: 5, name: 'ตาโตใสแป๋ว' },
+] as const
+
+export const DOLL_POSES: DollPose[] = ['stand', 'wave', 'wai', 'happy', 'think', 'kneel', 'kneelWai', 'bow', 'sit']
+
+// ---------------------------------------------------------------------------
+// Colours
+
+const INK = P.ink
+const WHITE = '#ffffff'
+const EYE_K = '#2a1a2c'
+const EYE_P = '#4a2a48'
+const EYE_I = '#b8657f'
+const MOUTH = '#a8435a'
+const TONGUE = '#ff8f9c'
+
+interface Mat {
+  l: string
+  b: string
+  s: string
+  d: string
 }
 
-export function dollSprite(look: AvatarLook, pose: DollPose, opts: { view?: DollView; blink?: boolean; flip?: boolean; barefoot?: boolean } = {}): Sprite {
-  const view = opts.view ?? 'front'
-  return cached(`dollstub:${lookKey(look)}:${pose}:${view}:${opts.flip ? 1 : 0}`, () => {
-    const s = avatarSprite(look, view, MAP[pose], { barefoot: opts.barefoot, flip: opts.flip })
-    const c = createCanvas(s.w * 2, s.h * 2)
-    const x = c.getContext('2d')!
-    x.imageSmoothingEnabled = false
-    x.drawImage(s.canvas, 0, 0, s.w * 2, s.h * 2)
-    return { canvas: c, w: s.w * 2, h: s.h * 2 }
+function mat(b: string, s?: string, l?: string): Mat {
+  const sh = s ?? mix(b, INK, 0.22)
+  return { l: l ?? mix(b, '#ffffff', 0.35), b, s: sh, d: mix(sh, INK, 0.5) }
+}
+
+// ---------------------------------------------------------------------------
+// Raster
+
+const N4: [number, number][] = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+]
+
+const TAG = { none: 0, skin: 1, face: 2, hair: 3, cloth: 4, eye: 5, deco: 6 }
+
+const inb = (x: number, y: number) => x >= 0 && y >= 0 && x < IW && y < IH
+
+class Buf {
+  c: (string | null)[] = new Array(IW * IH).fill(null)
+  t = new Uint8Array(IW * IH)
+  put(x: number, y: number, col: string | null | undefined, tag = TAG.deco) {
+    x = Math.floor(x)
+    y = Math.floor(y)
+    if (!col || !inb(x, y)) return
+    const i = y * IW + x
+    this.c[i] = col
+    this.t[i] = tag
+  }
+  get(x: number, y: number) {
+    return inb(x, y) ? this.c[y * IW + x] : null
+  }
+  tag(x: number, y: number) {
+    return inb(x, y) ? this.t[y * IW + x] : 0
+  }
+  canvas(): HTMLCanvasElement {
+    const cv = createCanvas(IW, IH)
+    const ctx = cv.getContext('2d')!
+    for (let i = 0; i < IW * IH; i++) {
+      const c = this.c[i]
+      if (!c) continue
+      ctx.fillStyle = c
+      ctx.fillRect(i % IW, Math.floor(i / IW), 1, 1)
+    }
+    return cv
+  }
+}
+
+class Layer {
+  m = new Map<number, string>()
+  put(x: number, y: number, c: string | null | undefined) {
+    x = Math.floor(x)
+    y = Math.floor(y)
+    if (!c || !inb(x, y)) return
+    this.m.set(y * IW + x, c)
+  }
+  has(x: number, y: number) {
+    return inb(x, y) && this.m.has(y * IW + x)
+  }
+  get(x: number, y: number) {
+    return inb(x, y) ? this.m.get(y * IW + x) : undefined
+  }
+  del(x: number, y: number) {
+    if (inb(x, y)) this.m.delete(y * IW + x)
+  }
+  shift(dx: number, dy: number): Layer {
+    const L = new Layer()
+    for (const [i, c] of this.m) L.put((i % IW) + dx, Math.floor(i / IW) + dy, c)
+    return L
+  }
+}
+
+/** Paint a layer; edge pixels touching earlier paint become `line`. */
+function commit(b: Buf, L: Layer, line: string | null, tag: number) {
+  const out: [number, string][] = []
+  for (const [i, c] of L.m) {
+    let col = c
+    if (line) {
+      const x = i % IW
+      const y = (i - x) / IW
+      for (const [dx, dy] of N4) {
+        const nx = x + dx
+        const ny = y + dy
+        if (!inb(nx, ny)) continue
+        const ni = ny * IW + nx
+        if (!L.m.has(ni) && b.c[ni] !== null) {
+          col = line
+          break
+        }
+      }
+    }
+    out.push([i, col])
+  }
+  for (const [i, col] of out) {
+    b.c[i] = col
+    b.t[i] = tag
+  }
+}
+
+/** Build a layer from region-coded rows. */
+function rowsLayer(rows: string[], ox: number, oy: number, pal: (ch: string, x: number, y: number) => string | null | undefined, L = new Layer()): Layer {
+  for (let j = 0; j < rows.length; j++) {
+    const row = rows[j]
+    for (let i = 0; i < row.length; i++) {
+      const ch = row[i]
+      if (ch === '.' || ch === ' ') continue
+      L.put(ox + i, oy + j, pal(ch, ox + i, oy + j))
+    }
+  }
+  return L
+}
+
+// ---------------------------------------------------------------------------
+// Patterns (absolute pixel coordinates so they don't swim between poses)
+
+const ELEPHANT = ['.###..', '#####.', '##.##.', '#..#..']
+const FLOWER = ['.1.', '121', '.1.']
+const HIBISCUS = ['.11..', '1111.', '11211', '.111.', '..3..']
+
+function patHD(p: Pattern | undefined, x: number, y: number): 0 | 1 | 2 | 3 {
+  switch (p) {
+    case 'dots':
+      return y % 4 === 1 && (x + (Math.floor(y / 4) % 2) * 2) % 4 === 1 ? 1 : 0
+    case 'stripes':
+      return y % 3 === 0 ? 1 : 0
+    case 'plaid': {
+      const a = x % 4 === 1
+      const c = y % 4 === 1
+      return a && c ? 2 : a || c ? 1 : 0
+    }
+    case 'check':
+      return (Math.floor(x / 2) + Math.floor(y / 2)) % 2 === 0 ? 1 : 0
+    case 'lace':
+      return (y % 3 === 0 && x % 2 === 0) || (y % 3 === 1 && x % 4 === 1) ? 1 : 0
+    case 'thai': {
+      const u = (x + y) % 6
+      const v = (((x - y) % 6) + 6) % 6
+      if (u === 3 && v === 3) return 2
+      return u === 0 || v === 0 ? 1 : 0
+    }
+    case 'floral': {
+      const ty = Math.floor(y / 5)
+      const tx = (x + (ty % 2) * 3) % 6
+      const ry = y % 5
+      if (ry < 3 && tx < 3) {
+        const ch = FLOWER[ry][tx]
+        return ch === '1' ? 1 : ch === '2' ? 2 : 0
+      }
+      return 0
+    }
+    case 'hawaii': {
+      const ty = Math.floor(y / 7)
+      const tx = (x + (ty % 2) * 4) % 8
+      const ry = y % 7
+      if (ry < 5 && tx < 5) {
+        const ch = HIBISCUS[ry][tx]
+        return ch === '1' ? 1 : ch === '2' ? 0 : ch === '3' ? 2 : 0
+      }
+      return tx === 6 && ry === 5 ? 2 : 0
+    }
+    case 'elephant': {
+      const ty = Math.floor(y / 6)
+      const tx = (x + (ty % 2) * 4) % 8
+      const ry = y % 6
+      if (ry < 4 && tx < 6) return ELEPHANT[ry][tx] === '#' ? 1 : 0
+      return 0
+    }
+    case 'silk':
+      return (x + y * 2) % 9 === 0 || (x + y * 2) % 9 === 1 ? 1 : 0
+    case 'denim':
+      return (x + y) % 3 === 0 ? 1 : 0
+    case 'knit':
+      return (x + (y % 2)) % 2 === 0 && y % 2 === 0 ? 1 : 0
+    default:
+      return 0
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Resolved look
+
+interface Res {
+  g: 'm' | 'f'
+  face: number
+  sk: Mat
+  blush: string
+  hr: Mat & { shine: string; stub: string; stub2: string }
+  top: TopArt
+  bottom: BottomArt
+  shoes: ShoeArt | null
+  hair: string
+  head: string | null
+  neck: string | null
+  hand: string | null
+  bare: boolean
+}
+
+function resolve(look: AvatarLook, bare: boolean): Res {
+  const tone = SKIN_TONES[look.skin] ?? SKIN_TONES[1]
+  const hc = HAIR_COLORS[look.hairColor] ?? HAIR_COLORS[0]
+  const sk: Mat = { l: tone.l, b: tone.b, s: mix(tone.b, tone.d, 0.6), d: mix(tone.d, INK, 0.4) }
+  const acc = (id: string | null | undefined) => (id ? OUTFIT_BY_ID[id]?.acc ?? null : null)
+  return {
+    g: look.gender === 'm' ? 'm' : 'f',
+    face: look.face ?? 0,
+    sk,
+    blush: mix(tone.b, P.blush, 0.6),
+    hr: {
+      l: hc.l,
+      b: hc.b,
+      s: mix(hc.b, hc.d, 0.55),
+      d: mix(hc.d, INK, 0.35),
+      shine: mix(hc.l, '#ffffff', 0.55),
+      stub: mix(hc.b, tone.b, 0.22),
+      stub2: mix(hc.b, tone.b, 0.4),
+    },
+    top: OUTFIT_BY_ID[look.top]?.top ?? OUTFIT_BY_ID.top_white.top!,
+    bottom: OUTFIT_BY_ID[look.bottom]?.bottom ?? OUTFIT_BY_ID.bot_khaki.bottom!,
+    shoes: look.shoes ? OUTFIT_BY_ID[look.shoes]?.shoes ?? null : null,
+    hair: OUTFIT_BY_ID[look.hair]?.hair ?? 'bob',
+    head: acc(look.head),
+    neck: acc(look.neck),
+    hand: acc(look.hand),
+    bare,
+  }
+}
+
+const DEFAULT_SHOE: ShoeArt = { kind: 'shoe', main: '#8a5a3c', shade: '#6e4a35', sole: '#4a3128', accent: '#b07a52' }
+
+// ---------------------------------------------------------------------------
+// Head & face. Stand coordinates: skull rows 6..23, columns 6..25.
+
+const HEAD_TOP = 6
+const FACE_SPANS: Record<'m' | 'f', [number, number][]> = {
+  f: [[11, 20], [9, 22], [8, 23], [7, 24], [7, 24], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [7, 24], [8, 23], [9, 22], [10, 21], [12, 19]],
+  m: [[11, 20], [9, 22], [8, 23], [7, 24], [7, 24], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [7, 24], [8, 23], [9, 22], [11, 20]],
+}
+
+function drawHead(b: Buf, r: Res, dy: number, view: DollView) {
+  // ears (behind the face edge)
+  const ear = new Layer()
+  for (const [x0, s] of [
+    [4, 1],
+    [27, -1],
+  ] as const) {
+    const xi = x0
+    const xo = x0 + s
+    ear.put(xo, 15 + dy, r.sk.b)
+    ear.put(xi, 16 + dy, r.sk.b)
+    ear.put(xo, 16 + dy, view === 'front' ? r.sk.s : r.sk.b)
+    ear.put(xi, 17 + dy, r.sk.b)
+    ear.put(xo, 17 + dy, view === 'front' ? r.sk.s : r.sk.b)
+    ear.put(xo, 18 + dy, r.sk.b)
+  }
+  commit(b, ear, r.sk.d, TAG.skin)
+  const L = new Layer()
+  const spans = FACE_SPANS[r.g]
+  spans.forEach(([x0, x1], j) => {
+    const y = HEAD_TOP + j + dy
+    for (let x = x0; x <= x1; x++) {
+      let c = r.sk.b
+      if (view === 'front') {
+        if (x === x1 && j >= 8) c = r.sk.s
+        if (j === spans.length - 1) c = r.sk.s
+      } else if (x >= x1 - 1 && j >= 6) c = r.sk.s
+      L.put(x, y, c)
+    }
+  })
+  commit(b, L, r.sk.d, view === 'front' ? TAG.face : TAG.skin)
+}
+
+// Eye maps for the viewer-left eye (top-left at x=10,y=15). k dark, p pupil,
+// i iris light, w white shine, l lash.
+interface EyeMap {
+  rows: string[]
+  ox?: number
+  oy?: number
+  /** Keep shine pixels at the same relative spot in both eyes. */
+  keep?: boolean
+  lash?: [number, number]
+}
+
+const EYES: EyeMap[] = [
+  // 0 round sparkly
+  { rows: ['.kk.', 'kwpk', 'kwpk', 'kppk', 'kiik', '.kk.'], keep: true, lash: [-1, 1] },
+  // 1 gentle smile arcs
+  { rows: ['....', '.kk.', 'k..k', 'k..k', '....'], oy: 1, lash: [-1, 1] },
+  // 2 calm / sleepy: heavy lid, half-visible iris
+  { rows: ['....', 'ssss', 'kkkk', 'kwpk', 'kiik', '.kk.'], lash: [-1, 2] },
+  // 3 sharp cool: slanted upper lid
+  { rows: ['k....', 'kkkkk', '.wppk', '.ppik', '..kk.'], ox: -1, oy: 1 },
+  // 4 cat-eye with lashes
+  { rows: ['l....', 'lkkkk', '.kwpk', '.kppk', '.kiik', '..kk.'], ox: -1 },
+  // 5 big glassy eyes with double shine
+  { rows: ['.kkk.', 'kwwpk', 'kwppk', 'kpppk', 'kiiwk', '.kkk.'], ox: -1, keep: true, lash: [-1, 1] },
+]
+
+const EYE_CLOSED: EyeMap = { rows: ['....', '....', 'k..k', '.kk.'], oy: 2 }
+const EYE_HAPPY: EyeMap = { rows: ['....', '.kk.', 'k..k', '....'], oy: 1 }
+const EYE_BLINK: EyeMap = { rows: ['....', '....', '....', 'kkkk'], oy: 1 }
+
+type Expr = 'smile' | 'open' | 'serene' | 'happy' | 'think'
+
+function drawEye(b: Buf, e: EyeMap, left: boolean, dy: number, g: 'm' | 'f', lashOk: boolean, lid: string) {
+  const w = e.rows[0].length
+  const baseX = 10 + (e.ox ?? 0)
+  const oy = 15 + (e.oy ?? 0) + dy
+  const col = (ch: string) =>
+    ch === 'k' ? EYE_K : ch === 'p' ? EYE_P : ch === 'i' ? EYE_I : ch === 'w' ? WHITE : ch === 'l' ? INK : ch === 's' ? lid : null
+  for (let j = 0; j < e.rows.length; j++) {
+    for (let i = 0; i < w; i++) {
+      let ch = e.rows[j][i]
+      if (!left) {
+        ch = e.rows[j][w - 1 - i]
+        if (e.keep) {
+          const orig = e.rows[j][i]
+          if (ch === 'w' && orig !== 'w') ch = 'p'
+          if (orig === 'w' && ch !== '.') ch = 'w'
+        }
+      }
+      if (ch === '.') continue
+      // viewer-left eye at x=10.., right eye mirrored around 15.5
+      const x = left ? baseX + i : 31 - (baseX + w - 1) + i
+      b.put(x, oy + j, col(ch), TAG.eye)
+    }
+  }
+  if (g === 'f' && lashOk && e.lash) {
+    const [lx, ly] = e.lash
+    const x = left ? baseX + lx : 31 - (baseX + lx)
+    b.put(x, oy + ly, INK, TAG.eye)
+  }
+}
+
+function drawFace(b: Buf, r: Res, dy: number, expr: Expr, blink: boolean) {
+  // brows (usually hidden under the fringe)
+  const bc = r.hr.d
+  if (r.g === 'm') {
+    for (const x of [10, 11, 12, 13]) {
+      b.put(x, 13 + dy, bc)
+      b.put(31 - x, 13 + dy, bc)
+    }
+  } else {
+    b.put(10, 14 + dy, bc)
+    b.put(11, 13 + dy, bc)
+    b.put(12, 13 + dy, bc)
+    b.put(21, 14 + dy, bc)
+    b.put(20, 13 + dy, bc)
+    b.put(19, 13 + dy, bc)
+  }
+  if (expr === 'think') {
+    b.put(19, 12 + dy, bc)
+    b.put(20, 12 + dy, bc)
+  }
+  let e: EyeMap = EYES[r.face] ?? EYES[0]
+  let lash = true
+  if (expr === 'happy') {
+    e = EYE_HAPPY
+    lash = false
+  } else if (expr === 'serene') {
+    e = EYE_CLOSED
+    lash = false
+  } else if (blink) {
+    e = EYE_BLINK
+    lash = false
+  }
+  drawEye(b, e, true, dy, r.g, lash, r.sk.s)
+  drawEye(b, e, false, dy, r.g, lash, r.sk.s)
+  // blush
+  for (const x of [7, 8, 9]) {
+    b.put(x, 21 + dy, r.blush, TAG.face)
+    b.put(31 - x, 21 + dy, r.blush, TAG.face)
+  }
+  b.put(8, 20 + dy, mix(r.sk.b, P.blush, 0.35), TAG.face)
+  b.put(23, 20 + dy, mix(r.sk.b, P.blush, 0.35), TAG.face)
+  // cheek shine
+  b.put(7, 19 + dy, r.sk.l, TAG.face)
+  // mouth
+  const m = (x: number, y: number, c = MOUTH) => b.put(x, y + dy, c, TAG.eye)
+  switch (expr) {
+    case 'open':
+    case 'happy':
+      m(14, 22)
+      m(15, 22)
+      m(16, 22)
+      m(17, 22)
+      m(15, 23, TONGUE)
+      m(16, 23, TONGUE)
+      break
+    case 'think':
+      m(16, 22)
+      m(17, 22)
+      break
+    case 'serene':
+      m(15, 22)
+      m(16, 22)
+      break
+    default:
+      m(14, 21, mix(MOUTH, r.sk.b, 0.45))
+      m(15, 22)
+      m(16, 22)
+      m(17, 21, mix(MOUTH, r.sk.b, 0.45))
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Hair. Maps are in stand coordinates (32 columns). Codes: # auto-shaded,
+// H light, S shine, s shade, d dark strand, b base, k stubble, r ribbon,
+// q accent, w white, g green, 1/2 clip colours.
+
+interface HairPart {
+  y: number
+  rows: string[]
+}
+
+interface HairDef {
+  /** Drawn behind the body in front view. */
+  behind?: HairPart[]
+  front: HairPart[]
+  back: HairPart[]
+  accent?: string
+  accent2?: string
+  /** Ears visible in front view (short styles). */
+  ears?: boolean
+}
+
+const CROWN = [
+  '...........##########...........',
+  '.........##############.........',
+  '.......##################.......',
+  '......####################......',
+  '.....######################.....',
+]
+const CROWN_W = [
+  '...........##########...........',
+  '.........##############.........',
+  '.......##################.......',
+  '......####################......',
+  '.....######################.....',
+  '....########################....',
+]
+
+const HAIR: Record<string, HairDef> = {
+  bob: {
+    behind: [{ y: 18, rows: ['....########################....', '....########################....', '.....######################.....', '......####################......', '.......##################.......'] }],
+    front: [
+      {
+        y: 3,
+        rows: [
+          ...CROWN_W,
+          '....########################....',
+          '....########################....',
+          '....##########d#############....',
+          '....#####d#########d########....',
+          '....####d###d#####d###d#####....',
+          '....####.##..##..##..##.####....',
+          '....####................####....',
+          '....####................####....',
+          '....#s##................##s#....',
+          '....#s##................##s#....',
+          '....#ss#................#ss#....',
+          '.....#ss................ss#.....',
+          '......#s................s#......',
+        ],
+      },
+    ],
+    back: [
+      {
+        y: 3,
+        rows: [
+          ...CROWN_W,
+          '....########################....',
+          '....########################....',
+          '....########################....',
+          '....########################....',
+          '....########################....',
+          '....########################....',
+          '....#####d#######d######d###....',
+          '....####d#####d#####d####d##....',
+          '....###d####d######d####d###....',
+          '....###d####d#####d#####d###....',
+          '....##s####s######s####s####....',
+          '....#s####s######s#####s####....',
+          '.....s####s######s#####s###.....',
+          '......ssssssssssssssssssss......',
+        ],
+      },
+    ],
+  },
+  short: {
+    ears: true,
+    front: [
+      {
+        y: 2,
+        rows: [
+          '..............##..##............',
+          ...CROWN,
+          '.....######################.....',
+          '.....######################.....',
+          '.....######################.....',
+          '.....##d#########d#########.....',
+          '.....##..##d######d########.....',
+          '.....##.....#####d#########.....',
+          '.....#.........###d#######......',
+          '.....#.............######.......',
+          '....................##s.........',
+        ],
+      },
+    ],
+    back: [
+      {
+        y: 2,
+        rows: [
+          '..............##..##............',
+          ...CROWN,
+          '.....######################.....',
+          '.....######################.....',
+          '.....######################.....',
+          '.....######################.....',
+          '.....######################.....',
+          '.....######d######d########.....',
+          '.....#####d#####d#####d####.....',
+          '.....####d####d######d#####.....',
+          '.....###s####s#####s####s##.....',
+          '......##s###s#####s####s##......',
+          '.......#ss##s####s###ss##.......',
+          '........ssssssssssssssss........',
+          '..........ssssssssssss..........',
+        ],
+      },
+    ],
+  },
+  long: {
+    behind: [
+      {
+        y: 14,
+        rows: [
+          '....########################....',
+          '....########################....',
+          '...##########################...',
+          '...##########################...',
+          '...##########################...',
+          '...##########################...',
+          '...##########################...',
+          '...##########################...',
+          '...##########################...',
+          '...##########################...',
+          '...##########################...',
+          '...##########################...',
+          '...##########################...',
+          '...##########################...',
+          '....########################....',
+          '....########################....',
+          '....########################....',
+          '....########################....',
+          '.....######################.....',
+          '.....##.####.####.####.####.....',
+          '......#..##...##...##...##......',
+        ],
+      },
+    ],
+    front: [
+      {
+        y: 3,
+        rows: [
+          ...CROWN_W,
+          '....########################....',
+          '....########################....',
+          '....##########d#############....',
+          '....#####d#########d########....',
+          '....####d###d#####d###d#####....',
+          '....####.##..##..##..##.####....',
+          '....####................####....',
+          '....####................####....',
+          '....#s##................##s#....',
+          '....#s##................##s#....',
+          '....#s##................##s#....',
+          '....#ss#................#ss#....',
+          '....#ss##..............##ss#....',
+          '.....#ss#..............#ss#.....',
+          '.....#ss##............##ss#.....',
+          '......#ss##..........##ss#......',
+          '......#ss##..........##ss#......',
+          '.......#ss#..........#ss#.......',
+          '.......#ss#..........#ss#.......',
+          '.......#ss#..........#ss#.......',
+          '........#s#..........#s#........',
+          '........#s............s#........',
+          '.........s............s.........',
+        ],
+      },
+    ],
+    back: [
+      {
+        y: 3,
+        rows: [
+          ...CROWN_W,
+          '....########################....',
+          '....########################....',
+          '....########################....',
+          '....########################....',
+          '....########################....',
+          '....########################....',
+          '....#####d#######d######d###....',
+          '....####d#####d#####d####d##....',
+          '....###d####d######d####d###....',
+          '....###d####d#####d#####d###....',
+          '....###d####d#####d#####d###....',
+          '.....##d####d#####d#####d##.....',
+          '......#d####d#####d#####d#......',
+          '.......#####d#####d######.......',
+          '.......#####d#####d######.......',
+          '.......##s##d##s##d##s###.......',
+          '.......##s##d##s##d##s###.......',
+          '.......##s##s##s##s##s###.......',
+          '.......##s##s##s##s##s###.......',
+          '.......#ss#ss#ss#ss#ss#s#.......',
+          '.......#ss#ss#ss#ss#ss#s#.......',
+          '........ss.ss.ss.ss.ss.s........',
+        ],
+      },
+    ],
+  },
+  bun: {
+    accent: '#e8514a',
+    front: [
+      {
+        y: 0,
+        rows: [
+          '............########............',
+          '...........##H#######...........',
+          '...........##########...........',
+          '...........rrrrrrrrrr...........',
+          '.........##############.........',
+          '.......##################.......',
+          '......####################......',
+          '.....######################.....',
+          '.....######################.....',
+          '.....#########d############.....',
+          '.....#####d#######d########.....',
+          '.....######################.....',
+          '.....###.##..##..##..##.###.....',
+          '.....##..................##.....',
+          '.....#s..................s#.....',
+          '.....#s..................s#.....',
+          '.....#s..................s#.....',
+          '......s..................s......',
+        ],
+      },
+    ],
+    back: [
+      { y: 0, rows: [
+          '............########............',
+          '...........##H#######...........',
+          '...........##########...........',
+          '...........rrrrrrrrrr...........',
+          '.........##############.........',
+          '.......##################.......',
+          '......####################......',
+          '.....######d######d########.....',
+          '.....######d######d########.....',
+          '.....#####d########d#######.....',
+          '.....######################.....',
+          '.....######################.....',
+          '.....######################.....',
+          '.....######################.....',
+          '......####################......',
+          '.......##################.......',
+          '.........##############.........',
+        ] },
+    ],
+  },
+  twin: {
+    accent: '#e8514a',
+    front: [
+      {
+        y: 3,
+        rows: [
+          ...CROWN,
+          '##...######################...##',
+          '###..######################..###',
+          '.##r########################r##.',
+          '..#r########################r#..',
+          '....##########d#############....',
+          '....####d###d#####d###d#####....',
+          '....####.##..##..##..##.####....',
+          '....####................####....',
+          '....#s##................##s#....',
+          '....#ss#................#ss#....',
+          '.....#s..................s#.....',
+        ],
+      },
+    ],
+    back: [
+      { y: 3, rows: [
+          ...CROWN,
+          '##...######################...##',
+          '###..######################..###',
+          '.##r########################r##.',
+          '..#r########################r#..',
+          '....######d#######d#########....',
+          '....#####d#######d##########....',
+          '....########################....',
+          '....########################....',
+          '.....######################.....',
+          '.......##################.......',
+        ] },
+    ],
+  },
+  jook: {
+    ears: true,
+    front: [
+      {
+        y: 0,
+        rows: [
+          '..............####..............',
+          '.............##H###.............',
+          '............wgwwgwwg............',
+          '.............######.............',
+          '..............####..............',
+          '..............####..............',
+          '...........kkkkkkkkkk...........',
+          '.........kkkkkkkkkkkkkk.........',
+          '........kkkkkkkkkkkkkkkk........',
+          '.......kkkkkkkkkkkkkkkkkk.......',
+          '.......kkkkkkkkkkkkkkkkkk.......',
+          '......kkkkk..........kkkkk......',
+          '......kk................kk......',
+        ],
+      },
+    ],
+    back: [
+      {
+        y: 0,
+        rows: [
+          '..............####..............',
+          '.............##H###.............',
+          '............wgwwgwwg............',
+          '.............######.............',
+          '..............####..............',
+          '..............####..............',
+          '...........kkkkkkkkkk...........',
+          '.........kkkkkkkkkkkkkk.........',
+          '........kkkkkkkkkkkkkkkk........',
+          '.......kkkkkkkkkkkkkkkkkk.......',
+          '.......kkkkkkkkkkkkkkkkkk.......',
+          '......kkkkkkkkkkkkkkkkkkkk......',
+          '......kkkkkkkkkkkkkkkkkkkk......',
+          '......kkkkkkkkkkkkkkkkkkkk......',
+          '......kkkkkkkkkkkkkkkkkkkk......',
+          '......kkkkkkkkkkkkkkkkkkkk......',
+          '.......kkkkkkkkkkkkkkkkkk.......',
+          '........kkkkkkkkkkkkkkkk........',
+        ],
+      },
+    ],
+  },
+  twoblock: {
+    ears: true,
+    front: [
+      {
+        y: 1,
+        rows: [
+          '............########............',
+          '..........############..........',
+          '........################........',
+          '.......##################.......',
+          '......####################......',
+          '.....######################.....',
+          '.....######################.....',
+          '.....######################.....',
+          '.....######################.....',
+          '.....#####d#######d########.....',
+          '.....####d###d##d###d######.....',
+          '......k###d##d####d##d###k......',
+          '......k.##.####..####.##.k......',
+          '......k..#..##....##..#..k......',
+          '......k..................k......',
+        ],
+      },
+    ],
+    back: [
+      {
+        y: 1,
+        rows: [
+          '............########............',
+          '..........############..........',
+          '........################........',
+          '.......##################.......',
+          '......####################......',
+          '.....######################.....',
+          '.....######################.....',
+          '.....######d######d########.....',
+          '.....#####d######d######d##.....',
+          '.....####d######d######d###.....',
+          '.....###s######s######s####.....',
+          '.....##s######s######s#####.....',
+          '.....ssssssssssssssssssssss.....',
+          '......kkkkkkkkkkkkkkkkkkkk......',
+          '......kkkkkkkkkkkkkkkkkkkk......',
+          '......kkkkkkkkkkkkkkkkkkkk......',
+          '......kkkkkkkkkkkkkkkkkkkk......',
+          '.......kkkkkkkkkkkkkkkkkk.......',
+          '.........kkkkkkkkkkkkkk.........',
+        ],
+      },
+    ],
+  },
+  curtain: {
+    front: [
+      {
+        y: 3,
+        rows: [
+          ...CROWN,
+          '.....##########dd##########.....',
+          '.....#########d..d#########.....',
+          '.....########d....d########.....',
+          '.....#######d......d#######.....',
+          '.....######d........d######.....',
+          '.....#####d..........d#####.....',
+          '.....####d............d####.....',
+          '.....###d..............d###.....',
+          '.....#s#................#s#.....',
+          '.....#s#................#s#.....',
+          '.....#ss................ss#.....',
+          '......ss................ss......',
+        ],
+      },
+    ],
+    back: [
+      {
+        y: 3,
+        rows: [
+          ...CROWN,
+          '.....#############d########.....',
+          '.....######################.....',
+          '.....######d######d########.....',
+          '.....#####d######d######d##.....',
+          '.....####d######d######d###.....',
+          '.....####d######d######d###.....',
+          '.....###s######s######s####.....',
+          '.....##s######s######s#####.....',
+          '.....#s######s######s######.....',
+          '.....#s######s######s######.....',
+          '......ss####s######s#####s......',
+          '.......sssssssssssssssssss......',
+          '.........ssssssssssssss.........',
+        ],
+      },
+    ],
+  },
+  buzz: {
+    ears: true,
+    front: [
+      {
+        y: 5,
+        rows: [
+          '..........############..........',
+          '........################........',
+          '.......##################.......',
+          '......####################......',
+          '......####################......',
+          '......####################......',
+          '......#kk.k..k.kk.k..k.kk#......',
+          '......kk................kk......',
+        ],
+      },
+    ],
+    back: [
+      {
+        y: 5,
+        rows: [
+          '..........############..........',
+          '........################........',
+          '.......##################.......',
+          '......####################......',
+          '......####################......',
+          '......####################......',
+          '......####################......',
+          '......####################......',
+          '......####################......',
+          '......kkkkkkkkkkkkkkkkkkkk......',
+          '......kkkkkkkkkkkkkkkkkkkk......',
+          '......kkkkkkkkkkkkkkkkkkkk......',
+          '.......kkkkkkkkkkkkkkkkkk.......',
+          '........kkkkkkkkkkkkkkkk........',
+        ],
+      },
+    ],
+  },
+  ponytail: {
+    accent: '#ff7eaa',
+    ears: false,
+    behind: [
+      {
+        y: 6,
+        rows: [
+          '..........................###...',
+          '...........................###..',
+          '...........................####.',
+          '............................###.',
+          '............................###.',
+          '............................###.',
+          '...........................####.',
+          '...........................###..',
+          '..........................####..',
+          '..........................###...',
+          '.........................####...',
+          '.........................###....',
+          '........................###.....',
+          '........................##......',
+          '.......................##.......',
+        ],
+      },
+    ],
+    front: [
+      {
+        y: 3,
+        rows: [
+          ...CROWN,
+          '.....######################.....',
+          '.....######################.....',
+          '.....######################.....',
+          '.....#########d############.....',
+          '.....#######d#####d##...###.....',
+          '.....######d####d......##s#.....',
+          '.....####d###d...........#s.....',
+          '.....###d##..............s......',
+          '.....##d#.......................',
+          '.....#s.........................',
+          '.....#s.........................',
+          '.....#s.........................',
+          '......s.........................',
+        ],
+      },
+    ],
+    back: [
+      { y: 3, rows: [
+          ...CROWN,
+          '.....######################.....',
+          '.....######################.....',
+          '.....######################.....',
+          '.....######################.....',
+          '.....######################.....',
+          '.....######################.....',
+          '......####################......',
+          '.......##################.......',
+          '.........##############.........',
+        ] },
+      { y: 10, rows: [
+          '..............rrrr..............',
+          '.............######.............',
+          '............########............',
+          '............########............',
+          '............########............',
+          '............########............',
+          '............########............',
+          '............########............',
+          '............########............',
+          '............########............',
+          '............########............',
+          '............########............',
+          '............########............',
+          '.............######.............',
+          '.............######.............',
+          '..............####..............',
+          '..............####..............',
+          '...............##...............',
+        ] },
+    ],
+  },
+  wavy: {
+    behind: [
+      {
+        y: 13,
+        rows: [
+          '...##########################...',
+          '..############################..',
+          '..############################..',
+          '.##############################.',
+          '.##############################.',
+          '..############################..',
+          '..############################..',
+          '.##############################.',
+          '.##############################.',
+          '..############################..',
+          '..############################..',
+          '.##############################.',
+          '.##############################.',
+          '..############################..',
+          '..############################..',
+          '...##########################...',
+          '...##########################...',
+          '....#####.#####.#####.######....',
+          '.....###...###...###...####.....',
+        ],
+      },
+    ],
+    front: [
+      {
+        y: 3,
+        rows: [
+          ...CROWN_W,
+          '....########################....',
+          '....######d#################....',
+          '....#######...d#############....',
+          '....######.......d##########....',
+          '....#####..........d########....',
+          '....####..............d#####....',
+          '...####.................####....',
+          '...####.................#####...',
+          '....####................#####...',
+          '....####...............#####....',
+          '...####................####.....',
+          '...#####...............#####....',
+          '....#####.............#####.....',
+          '....#####..............#####....',
+          '.....####.............#####.....',
+          '......####...........####.......',
+          '.....####.............####......',
+          '.....####.............####......',
+          '......####...........####.......',
+          '.......###...........###........',
+          '......###.............###.......',
+          '.......##.............##........',
+        ],
+      },
+    ],
+    back: [
+      {
+        y: 3,
+        rows: [
+          ...CROWN_W,
+          '....########################....',
+          '....######d#################....',
+          '....####d######d######d#####....',
+          '...####d######d######d######....',
+          '...####d#######d######d######...',
+          '....####d#######d######d#####...',
+          '....####d######d######d#####....',
+          '...####d######d######d#####.....',
+          '...####d#######d######d#####....',
+          '....####d#######d######d###.....',
+          '.....####d#####d######d####.....',
+          '......###d####d######d###.......',
+          '.......##d#####d######d##.......',
+          '......###d######d######d##......',
+          '......###s#######s######s#......',
+          '.......##s######s######s##......',
+          '.......###s######s######s##.....',
+          '......###s######s######s##......',
+          '......##s######s######s###......',
+          '.......##s######s######s##......',
+          '........#ss####ss####ss##.......',
+          '........s.sss...sss..sss........',
+        ],
+      },
+    ],
+  },
+  schoolgirl: {
+    accent: '#ff9fc0',
+    accent2: '#7fd3b5',
+    behind: [{ y: 17, rows: ['....########################....', '....########################....', '.....######################.....'] }],
+    front: [
+      {
+        y: 3,
+        rows: [
+          ...CROWN_W,
+          '....########################....',
+          '....########################....',
+          '....#111####################....',
+          '....##222###################....',
+          '....#####.###.####.###.#####....',
+          '....####..#.#..##..#.#..####....',
+          '....####................####....',
+          '....####................####....',
+          '....#s##................##s#....',
+          '....#s##................##s#....',
+          '....#sss................sss#....',
+        ],
+      },
+    ],
+    back: [
+      {
+        y: 3,
+        rows: [
+          ...CROWN_W,
+          '....########################....',
+          '....########################....',
+          '....########################....',
+          '....######d#######d#####d###....',
+          '....#####d######d######d####....',
+          '....####d######d######d#####....',
+          '....###s######s######s######....',
+          '....##s######s######s#######....',
+          '....#s######s######s#######s....',
+          '....#s######s######s#######s....',
+          '....ssssssssssssssssssssssss....',
+        ],
+      },
+    ],
+  },
+  braid: {
+    accent: '#e8514a',
+    ears: false,
+    front: [
+      {
+        y: 3,
+        rows: [
+          ...CROWN,
+          '.....##########dd##########.....',
+          '.....#########d##d#########.....',
+          '.....#######dd....dd#######.....',
+          '.....#####dd........dd#####.....',
+          '.....####d............d####.....',
+          '.....###d..............d###.....',
+          '.....##s................s##.....',
+          '.....#s..................s#.....',
+          '.....#s..................s#.....',
+        ],
+      },
+      {
+        y: 16,
+        rows: [
+          '......................###.......',
+          '......................####......',
+          '.....................#HH#s......',
+          '.....................s##ss......',
+          '......................sss.......',
+          '.....................#HH#s......',
+          '.....................s##ss......',
+          '......................sss.......',
+          '.....................#HH#s......',
+          '.....................s##ss......',
+          '......................sss.......',
+          '.....................#HH#s......',
+          '.....................s##ss......',
+          '......................sss.......',
+          '......................rrr.......',
+          '.....................##H#.......',
+          '.....................#H##s......',
+          '......................#ss.......',
+        ],
+      },
+    ],
+    back: [
+      { y: 3, rows: [
+          ...CROWN,
+          '.....######################.....',
+          '.....######################.....',
+          '.....######################.....',
+          '.....######################.....',
+          '.....######################.....',
+          '......####################......',
+          '.......##################.......',
+          '.........######dd######.........',
+        ] },
+      { y: 15, rows: [
+          '..............####..............',
+          '.............#HH#s..............',
+          '.............s##ss..............',
+          '..............sss...............',
+          '.............#HH#s..............',
+          '.............s##ss..............',
+          '..............sss...............',
+          '.............#HH#s..............',
+          '.............s##ss..............',
+          '..............sss...............',
+          '.............#HH#s..............',
+          '.............s##ss..............',
+          '..............sss...............',
+          '.............#HH#s..............',
+          '.............s##ss..............',
+          '..............sss...............',
+          '..............rrr...............',
+          '.............##H#...............',
+          '.............#H##s..............',
+          '..............#ss...............',
+        ] },
+    ],
+  },
+  curly: {
+    behind: [{ y: 16, rows: [
+          '.##############################.',
+          '.##############################.',
+          '..############################..',
+          '..############################..',
+          '...###.####..######..####.###...',
+          '....#...##....####....##...#....',
+        ] }],
+    front: [{ y: 1, rows: [
+          '.........##..######..##.........',
+          '.......##################.......',
+          '.....######################.....',
+          '....########################....',
+          '...##########################...',
+          '..############################..',
+          '..############################..',
+          '..############################..',
+          '.##############################.',
+          '.##############################.',
+          '.####H###H###H####H###H###H####.',
+          '.###d#H#d#H#d#H##H#d#H#d#H#d###.',
+          '.####.##.#.##.#..#.##.#.##.####.',
+          '.######..#....#..#....#..######.',
+          '.######..................######.',
+          '..#####..................#####..',
+          '.######..................######.',
+          '.#ss###..................###ss#.',
+          '..#sss....................sss#..',
+          '..#ss......................ss#..',
+          '...s........................s...',
+        ] }],
+    back: [{ y: 1, rows: [
+          '.........##..######..##.........',
+          '.......##################.......',
+          '.....######################.....',
+          '....########################....',
+          '...##########################...',
+          '..############################..',
+          '..############################..',
+          '..############################..',
+          '.##############################.',
+          '.##############################.',
+          '.###H###H###H######H###H###H###.',
+          '.##H#d#H#d#H#d#HH#d#H#d#H#d#H##.',
+          '.###d###d###d######d###d###d###.',
+          '.##H#s#H#s#H#s#HH#s#H#s#H#s#H##.',
+          '.###s###s###s######s###s###s###.',
+          '.##s#s#s#s#s#s#ss#s#s#s#s#s#s##.',
+          '..##s###s###s######s###s###s##..',
+          '..#ss#ss#ss#ss#ss#ss#ss#ss#ss#..',
+          '...ssssssssssssssssssssssssss...',
+          '.....ssssssssssssssssssssss.....',
+          '......s..sss..ssss..sss..s......',
+        ] }],
+  },
+
+}
+
+export const DOLL_HAIR_STYLES = Object.keys(HAIR)
+
+function hairColour(r: Res, def: HairDef, ch: string, x: number, t: number, y: number, kind: 'front' | 'back' | 'behind'): string | null {
+  const h = r.hr
+  switch (ch) {
+    case 'H':
+      return h.l
+    case 'S':
+      return h.shine
+    case 's':
+      return h.s
+    case 'd':
+      return h.d
+    case 'b':
+      return h.b
+    case 'k':
+      return (x * 3 + y * 5) % 11 === 0 ? h.stub2 : h.stub
+    case 'r':
+      return def.accent ?? '#e8514a'
+    case 'q':
+      return def.accent2 ?? '#ffd54f'
+    case 'w':
+      return '#fffaf0'
+    case 'g':
+      return '#6cc36a'
+    case '1':
+      return def.accent ?? '#ff9fc0'
+    case '2':
+      return def.accent2 ?? '#7fd3b5'
+  }
+  // '#': auto shading
+  if (kind === 'behind') return x >= 16 ? mix(h.s, h.d, 0.35) : h.s
+  const ringT = kind === 'front' ? 3 : 3
+  if (t === ringT && x >= 7 && x <= 24 && (x + y) % 5 !== 0) {
+    if (x >= 9 && x <= 11) return h.shine
+    return h.l
+  }
+  if (t === ringT - 1 && x >= 10 && x <= 13) return h.l
+  if (x >= 24 && t >= 4) return h.s
+  if (kind === 'back' && y >= 17) return x % 3 === 0 ? h.s : h.b
+  if (kind === 'front' && y >= 17) return h.s
+  return h.b
+}
+
+function hairLayer(r: Res, def: HairDef, part: HairPart, dx: number, dy: number, kind: 'front' | 'back' | 'behind'): Layer {
+  const L = new Layer()
+  const w = Math.max(...part.rows.map((s) => s.length))
+  const top: number[] = []
+  for (let x = 0; x < w; x++) {
+    top[x] = part.rows.findIndex((s) => s[x] !== undefined && s[x] !== '.')
+  }
+  part.rows.forEach((row, j) => {
+    for (let x = 0; x < row.length; x++) {
+      const ch = row[x]
+      if (ch === '.' || ch === ' ') continue
+      const y = part.y + j
+      const c = hairColour(r, def, ch, x, j - top[x], y, kind)
+      L.put(x + dx, y + dy, c)
+    }
+  })
+  return L
+}
+
+function drawHairParts(b: Buf, r: Res, parts: HairPart[] | undefined, dy: number, kind: 'front' | 'back' | 'behind', dx = 0) {
+  if (!parts) return
+  const def = HAIR[r.hair] ?? HAIR.bob
+  for (const p of parts) {
+    const L = hairLayer(r, def, p, dx, dy, kind)
+    commit(b, L, kind === 'behind' ? r.hr.d : r.hr.d, TAG.hair)
+    if (kind === 'front') {
+      // soft shadow cast by the hair onto the face
+      for (const i of L.m.keys()) {
+        const x = i % IW
+        const y = Math.floor(i / IW)
+        if (b.tag(x, y + 1) === TAG.face) b.put(x, y + 1, r.sk.s, TAG.face)
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Bodies
+
+type Pt = [number, number]
+type Hand = 'rest' | 'open' | 'fist' | 'chin' | 'none'
+
+interface ArmDef {
+  s: Pt
+  e: Pt
+  w: Pt
+  /** How much the elbow / wrist follow the gender shoulder offset. */
+  k?: [number, number]
+  hand: Hand
+  z: 'back' | 'front' | 'top'
+}
+
+type LegsKind = 'stand' | 'kneelF' | 'kneelB' | 'sitF' | 'sitB' | 'bow'
+
+interface PoseDef {
+  dy: number
+  L: ArmDef | null
+  R: ArmDef | null
+  legs: LegsKind
+  expr: Expr
+  wai?: 'chest' | null
+  lap?: boolean
+}
+
+const armStand = (dy: number, side: 1 | -1, z: ArmDef['z'] = 'back', hand: Hand = 'rest'): ArmDef => {
+  const cx = side === 1 ? 8.5 : 23.5
+  return { s: [cx, 25 + dy], e: [cx - 0.2 * side, 29.5 + dy], w: [cx - 0.4 * side, 32 + dy], hand, z }
+}
+
+function poseDef(pose: DollPose, view: DollView): PoseDef {
+  if (view === 'back') {
+    switch (pose) {
+      case 'kneel':
+        return {
+          dy: 9,
+          L: { s: [8.5, 34], e: [7.8, 38.5], w: [10.5, 41], hand: 'none', z: 'back' },
+          R: { s: [23.5, 34], e: [24.2, 38.5], w: [21.5, 41], hand: 'none', z: 'back' },
+          legs: 'kneelB',
+          expr: 'serene',
+        }
+      case 'kneelWai':
+      case 'wai':
+        return {
+          dy: pose === 'wai' ? 0 : 9,
+          L: { s: [8.5, 25 + (pose === 'wai' ? 0 : 9)], e: [6.2, 27 + (pose === 'wai' ? 0 : 9)], w: [11, 20 + (pose === 'wai' ? 0 : 9)], k: [0.5, 0], hand: 'none', z: 'back' },
+          R: { s: [23.5, 25 + (pose === 'wai' ? 0 : 9)], e: [25.8, 27 + (pose === 'wai' ? 0 : 9)], w: [21, 20 + (pose === 'wai' ? 0 : 9)], k: [0.5, 0], hand: 'none', z: 'back' },
+          legs: pose === 'wai' ? 'stand' : 'kneelB',
+          expr: 'serene',
+        }
+      case 'sit':
+        return {
+          dy: 10,
+          L: { s: [8.5, 35], e: [8, 39.5], w: [11, 42.5], hand: 'none', z: 'back' },
+          R: { s: [23.5, 35], e: [24, 39.5], w: [21, 42.5], hand: 'none', z: 'back' },
+          legs: 'sitB',
+          expr: 'serene',
+        }
+      case 'bow':
+        return { dy: 0, L: null, R: null, legs: 'bow', expr: 'serene' }
+      default:
+        return { dy: 0, L: armStand(0, 1), R: armStand(0, -1), legs: 'stand', expr: 'smile' }
+    }
+  }
+  switch (pose) {
+    case 'wave':
+      return {
+        dy: 0,
+        L: { s: [8.5, 25], e: [4, 22.5], w: [3.5, 18], k: [0.5, 0.3], hand: 'open', z: 'top' },
+        R: armStand(0, -1),
+        legs: 'stand',
+        expr: 'open',
+      }
+    case 'wai':
+      return {
+        dy: 0,
+        L: { s: [8.5, 25], e: [9, 30.5], w: [13.5, 29.5], k: [0.5, 0], hand: 'none', z: 'front' },
+        R: { s: [23.5, 25], e: [23, 30.5], w: [18.5, 29.5], k: [0.5, 0], hand: 'none', z: 'front' },
+        legs: 'stand',
+        expr: 'serene',
+        wai: 'chest',
+      }
+    case 'happy':
+      return {
+        dy: 0,
+        L: { s: [8.5, 25], e: [5, 23.5], w: [4, 19.5], k: [0.5, 0.3], hand: 'open', z: 'top' },
+        R: { s: [23.5, 25], e: [27, 23.5], w: [28, 19.5], k: [0.5, 0.3], hand: 'open', z: 'top' },
+        legs: 'stand',
+        expr: 'happy',
+      }
+    case 'think':
+      return {
+        dy: 0,
+        L: { s: [8.5, 25], e: [9.5, 30.5], w: [20, 31], k: [0.5, 0], hand: 'rest', z: 'front' },
+        R: { s: [23.5, 25], e: [24, 30.5], w: [20.5, 25.5], k: [0.8, 0], hand: 'chin', z: 'front' },
+        legs: 'stand',
+        expr: 'think',
+      }
+    case 'kneel':
+      return {
+        dy: 9,
+        L: { s: [8.5, 34], e: [8, 38.5], w: [10.5, 42], k: [1, 0.5], hand: 'rest', z: 'front' },
+        R: { s: [23.5, 34], e: [24, 38.5], w: [21.5, 42], k: [1, 0.5], hand: 'rest', z: 'front' },
+        legs: 'kneelF',
+        expr: 'smile',
+      }
+    case 'kneelWai':
+      return {
+        dy: 9,
+        L: { s: [8.5, 34], e: [9, 39.5], w: [13.5, 38.5], k: [0.5, 0], hand: 'none', z: 'front' },
+        R: { s: [23.5, 34], e: [23, 39.5], w: [18.5, 38.5], k: [0.5, 0], hand: 'none', z: 'front' },
+        legs: 'kneelF',
+        expr: 'serene',
+        wai: 'chest',
+      }
+    case 'sit':
+      return {
+        dy: 10,
+        L: { s: [8.5, 35], e: [8.5, 40], w: [13, 43.5], k: [1, 0], hand: 'none', z: 'front' },
+        R: { s: [23.5, 35], e: [23.5, 40], w: [19, 43.5], k: [1, 0], hand: 'none', z: 'front' },
+        legs: 'sitF',
+        expr: 'serene',
+        lap: true,
+      }
+    case 'bow':
+      // Seen from the front a prostration is just the top of the head; use the back composition.
+      return { dy: 0, L: null, R: null, legs: 'bow', expr: 'serene' }
+    default:
+      return { dy: 0, L: armStand(0, 1), R: armStand(0, -1), legs: 'stand', expr: 'smile' }
+  }
+}
+
+// ---- top materials
+
+function topMats(t: TopArt) {
+  const body = mat(t.main, t.shade)
+  const j = t.jacket
+  const jacket = j ? mat(j.main, j.shade) : null
+  const sleeve = j ? mat(j.sleeve ?? j.main, j.sleeveShade ?? j.shade) : body
+  return { body, jacket, sleeve }
+}
+
+function clothCol(m: Mat, p: Pattern | undefined, pc: string | undefined, pc2: string | undefined, x: number, y: number, shade: boolean, light = false): string {
+  const hit = patHD(p, x, y)
+  if (hit === 1 && pc) return shade ? mix(pc, m.s, 0.35) : pc
+  if ((hit === 2 || hit === 3) && (pc2 ?? pc)) return shade ? mix((pc2 ?? pc)!, m.s, 0.35) : (pc2 ?? pc)!
+  return shade ? m.s : light ? m.l : m.b
+}
+
+function hemRow(t: TopArt): number {
+  const h = t.hem ?? 'out'
+  return h === 'tucked' ? 33 : h === 'long' ? 36 : 35
+}
+
+function torsoSpan(r: Res, y: number): [number, number] | null {
+  const t = r.top
+  const f = r.g === 'f'
+  const over = t.fit === 'oversized' ? 1 : 0
+  if (y < 24 || y > hemRow(t)) return null
+  let x0 = f ? 11 : 10
+  let x1 = f ? 20 : 21
+  if (y === 24) {
+    x0 += 1
+    x1 -= 1
+  } else {
+    x0 -= over
+    x1 += over
+  }
+  if (f && t.fit === 'fitted' && (y === 30 || y === 31)) {
+    x0 += 1
+    x1 -= 1
+  }
+  if (y >= 34 && !over) {
+    x0 = Math.min(x0, 10)
+    x1 = Math.max(x1, 21)
+  }
+  return [x0, x1]
+}
+
+// ---- arms
+
+function segInfo(px: number, py: number, a: Pt, c: Pt) {
+  const vx = c[0] - a[0]
+  const vy = c[1] - a[1]
+  const L2 = vx * vx + vy * vy || 1
+  let t = ((px - a[0]) * vx + (py - a[1]) * vy) / L2
+  t = Math.max(0, Math.min(1, t))
+  const qx = a[0] + vx * t
+  const qy = a[1] + vy * t
+  return { d: Math.hypot(px - qx, py - qy), t, ox: px - qx, oy: py - qy }
+}
+
+const HANDS: Record<Exclude<Hand, 'none'>, { rows: string[]; ax: number; ay: number }> = {
+  rest: { rows: ['HHh', 'HHh', '.h.'], ax: -1, ay: 0 },
+  open: { rows: ['H.H.', 'HHHH', 'HHHh', 'HHHh', '.HH.'], ax: -2, ay: -4 },
+  fist: { rows: ['HHh', 'HHh'], ax: -1, ay: -1 },
+  chin: { rows: ['H..', 'HHh', 'HHh', '.h.'], ax: -1, ay: -2 },
+}
+
+function shiftArm(a: ArmDef, r: Res, side: 1 | -1): ArmDef {
+  if (r.g === 'm') return a
+  const [ke, kw] = a.k ?? [1, 1]
+  const sx = side
+  return {
+    ...a,
+    s: [a.s[0] + sx, a.s[1] + 0.5],
+    e: [a.e[0] + sx * ke, a.e[1] + 0.5 * ke],
+    w: [a.w[0] + sx * kw, a.w[1] + 0.5 * kw],
+  }
+}
+
+function drawArm(b: Buf, r: Res, arm: ArmDef, side: 1 | -1) {
+  const a = shiftArm(arm, r, side)
+  const t = r.top
+  const m = topMats(t)
+  const sleeve = m.sleeve
+  const long = t.jacket ? true : t.sleeve === 'long'
+  const cov = t.extra === 'sabai' && side === 1 ? -1 : t.sleeve === 'none' && !t.jacket ? -1 : long ? 1.95 : 0.6
+  const rad = t.fit === 'oversized' ? 1.75 : 1.5
+  const skin = new Layer()
+  const cloth = new Layer()
+  const xs = [a.s[0], a.e[0], a.w[0]]
+  const ys = [a.s[1], a.e[1], a.w[1]]
+  const x0 = Math.floor(Math.min(...xs) - 3)
+  const x1 = Math.ceil(Math.max(...xs) + 3)
+  const y0 = Math.floor(Math.min(...ys) - 3)
+  const y1 = Math.ceil(Math.max(...ys) + 3)
+  const pc = t.jacket ? t.jacket.patternColor : t.patternColor
+  const pat = t.jacket ? t.jacket.pattern : t.pattern
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const px = x + 0.5
+      const py = y + 0.5
+      const u = segInfo(px, py, a.s, a.e)
+      const f = segInfo(px, py, a.e, a.w)
+      const useU = u.d <= f.d
+      const s = useU ? u : f
+      const tt = useU ? u.t : 1 + f.t
+      const rr = useU ? rad : rad - 0.05
+      if (s.d > rr) continue
+      const dot = s.ox * 0.8 + s.oy * 0.6
+      const shade = dot > 0.55
+      const light = dot < -0.9
+      skin.put(x, y, shade ? r.sk.s : r.sk.b)
+      if (tt <= cov) {
+        let c = clothCol(sleeve, pat, pc, undefined, x, y, shade, light)
+        const cuff = t.jacket ? t.jacket.trim && (t.jacket.kind === 'varsity' || t.jacket.kind === 'sukajan') ? t.jacket.trim : undefined : t.cuff
+        if (cuff && tt > cov - 0.28) c = shade ? mix(cuff, INK, 0.2) : cuff
+        cloth.put(x, y, c)
+      }
+    }
+  }
+  if (a.hand !== 'none') {
+    const h = HANDS[a.hand]
+    const hx = Math.floor(a.w[0]) + (side === 1 ? h.ax : -h.ax - h.rows[0].length + 1)
+    const hy = Math.floor(a.w[1]) + h.ay
+    h.rows.forEach((row, j) => {
+      for (let i = 0; i < row.length; i++) {
+        const ch = side === 1 ? row[i] : row[row.length - 1 - i]
+        if (ch === '.') continue
+        skin.put(hx + i, hy + j, ch === 'h' ? r.sk.s : r.sk.b)
+      }
+    })
+  }
+  commit(b, skin, r.sk.d, TAG.skin)
+  commit(b, cloth, sleeve.d, TAG.cloth)
+}
+
+// ---- legs
+
+
+function bottomHem(bt: BottomArt): number {
+  const byLen = { mini: 38, short: 40, knee: 41, midi: 43, long: 45 } as const
+  if (bt.length) return byLen[bt.length]
+  switch (bt.kind) {
+    case 'shorts':
+      return 40
+    case 'pleated':
+      return 41
+    case 'skirt':
+      return 45
+    case 'jong':
+      return 41
+    case 'sarong':
+      return 46
+    default:
+      return 46
+  }
+}
+
+function botCol(r: Res, x: number, y: number, shade: boolean): string {
+  const bt = r.bottom
+  const m = mat(bt.main, bt.shade)
+  return clothCol(m, bt.pattern, bt.patternColor, bt.patternColor, x, y, shade)
+}
+
+const isSkirt = (k: BottomArt['kind']) => k === 'skirt' || k === 'pleated' || k === 'sarong'
+
+function drawShoesStand(b: Buf, r: Res, view: DollView) {
+  const sh = r.shoes ?? DEFAULT_SHOE
+  const bare = r.bare
+  for (const side of [1, -1] as const) {
+    // left foot columns 10..14, right 17..21 (toes point slightly outwards)
+    const X = (i: number) => (side === 1 ? 14 - i : 17 + i) // i=0 inner .. 4 outer
+    const L = new Layer()
+    const skinFoot = () => {
+      for (let i = 0; i <= 3; i++) L.put(X(i), 47, i === 0 ? r.sk.s : r.sk.b)
+      for (let i = 0; i <= 4; i++) L.put(X(i), 48, i === 0 ? r.sk.s : r.sk.b)
+      for (let i = 0; i <= 4; i++) L.put(X(i), 49, view === 'front' && i % 2 === 1 ? r.sk.s : r.sk.b)
+    }
+    if (bare) {
+      skinFoot()
+      commit(b, L, r.sk.d, TAG.skin)
+      continue
+    }
+    const m = mat(sh.main, sh.shade)
+    const sole = sh.sole ?? m.d
+    const acc = sh.accent ?? m.l
+    switch (sh.kind) {
+      case 'flipflop':
+      case 'sandal': {
+        skinFoot()
+        commit(b, L, r.sk.d, TAG.skin)
+        const S = new Layer()
+        for (let i = 0; i <= 4; i++) S.put(X(i), 49, sole)
+        S.put(X(5), 49, sole)
+        commit(b, S, mix(sole, INK, 0.4), TAG.cloth)
+        if (sh.kind === 'flipflop') {
+          b.put(X(2), 48, sh.main)
+          b.put(X(1), 47, sh.main)
+          b.put(X(3), 47, sh.main)
+          b.put(X(2), 49, sh.shade)
+        } else {
+          for (let i = 0; i <= 4; i++) b.put(X(i), 48, i % 2 ? sh.shade : sh.main)
+          for (let i = 1; i <= 3; i++) b.put(X(i), 46, sh.main)
+        }
+        break
+      }
+      default: {
+        const high = sh.kind === 'hightop'
+        const top = high ? 44 : 47
+        for (let y = top; y <= 49; y++) {
+          const w = y === 47 ? 3 : y >= 48 ? 5 : 3
+          for (let i = 0; i <= w; i++) {
+            let c = i === 0 ? m.s : m.b
+            if (y === 49) c = sole
+            if (view === 'front' && y === 47 && i === 2 && (sh.kind === 'shoe' || sh.kind === 'maryjane')) c = m.l
+            if (view === 'front' && y === 48 && i === 3 && (sh.kind === 'shoe' || sh.kind === 'maryjane')) c = acc
+            if ((sh.kind === 'sneaker' || high) && y === 48 && (i === 2 || i === 3)) c = acc
+            if ((sh.kind === 'sneaker' || high) && view === 'front' && y === 47 && i === 1) c = m.l
+            if (high && (y === 44 || y === 45) && i === 3) c = acc
+            L.put(X(i), y, c)
+          }
+        }
+        if (sh.kind === 'maryjane') for (let i = 0; i <= 3; i++) L.put(X(i), 47, i === 0 ? m.d : m.s)
+        commit(b, L, m.d, TAG.cloth)
+      }
+    }
+  }
+}
+
+function drawLegsStand(b: Buf, r: Res, view: DollView) {
+  const bt = r.bottom
+  const hem = bottomHem(bt)
+  // bare legs
+  const skin = new Layer()
+  for (let y = 34; y <= 46; y++) {
+    for (const [a, z] of [
+      [11, 14],
+      [17, 20],
+    ]) {
+      for (let x = a; x <= z; x++) skin.put(x, y, x === z ? r.sk.s : r.sk.b)
+    }
+    if (y <= 37) for (let x = 10; x <= 21; x++) skin.put(x, y, r.sk.b)
+  }
+  commit(b, skin, r.sk.d, TAG.skin)
+  // socks
+  const sh = r.shoes
+  if (!r.bare && sh?.sock) {
+    const S = new Layer()
+    const h = sh.sockH ?? 1
+    for (let y = 47 - h; y <= 46; y++)
+      for (const [a, z] of [
+        [11, 14],
+        [17, 20],
+      ])
+        for (let x = a; x <= z; x++) S.put(x, y, x === z ? mix(sh.sock, INK, 0.12) : sh.sock)
+    commit(b, S, mix(sh.sock, INK, 0.3), TAG.cloth)
+  }
+  drawShoesStand(b, r, view)
+  // garment
+  const m = mat(bt.main, bt.shade)
+  const G = new Layer()
+  if (isSkirt(bt.kind)) {
+    const bottom = bt.kind === 'sarong' ? 46 : hem
+    for (let y = 34; y <= bottom; y++) {
+      const k = y - 34
+      const flare = bt.kind === 'sarong' ? (y >= 44 ? 0 : 0) : bt.kind === 'pleated' ? Math.floor(k / 2) : Math.floor(k / 3)
+      const x0 = 10 - Math.min(flare, bt.kind === 'pleated' ? 3 : 3)
+      const x1 = 21 + Math.min(flare, 3)
+      for (let x = x0; x <= x1; x++) {
+        let shade = x >= x1 - 1
+        if (bt.kind === 'pleated' && y >= 36) {
+          const rel = (x - x0) % 3
+          shade = rel === 2 || x >= x1
+        }
+        let c = botCol(r, x, y, shade)
+        if (bt.kind === 'sarong') {
+          if (y === 35) c = m.s
+          if (bt.hem && y >= 44) c = y === 44 ? mix(bt.hem, INK, 0.25) : (x + y) % 3 === 0 ? mix(bt.hem, '#ffffff', 0.4) : bt.hem
+          if (x === 13 && y >= 36 && y < 44) c = m.s
+        }
+        if (y === bottom && bt.kind !== 'sarong') c = shade ? m.d : m.s
+        G.put(x, y, c)
+      }
+    }
+  } else {
+    // pants-like
+    const loose = bt.kind === 'loose' || bt.kind === 'jong'
+    const legBot = bt.kind === 'jong' ? 41 : hem
+    for (let y = 34; y <= legBot; y++) {
+      const crotch = bt.kind === 'jong' ? 41 : loose ? 39 : bt.kind === 'shorts' ? 37 : 37
+      if (y <= crotch) {
+        const w = loose && y > 36 ? 1 : 0
+        for (let x = 10 - w; x <= 21 + w; x++) G.put(x, y, botCol(r, x, y, x >= 20 + w || x === 15))
+        continue
+      }
+      const spans: [number, number][] =
+        bt.kind === 'shorts'
+          ? [
+              [10, 15],
+              [16, 21],
+            ]
+          : loose
+            ? y >= legBot - 1
+              ? [
+                  [10, 14],
+                  [17, 21],
+                ]
+              : [
+                  [9, 15],
+                  [16, 22],
+                ]
+            : [
+                [10, 14],
+                [17, 21],
+              ]
+      for (const [a, z] of spans) {
+        for (let x = a; x <= z; x++) {
+          let c = botCol(r, x, y, x >= z - (loose ? 1 : 0))
+          if (bt.kind === 'shorts' && (x === 15 || x === 16)) c = m.s
+          if (loose && y === legBot && bt.hem) c = bt.hem
+          if (bt.detail === 'jogger' && y >= legBot - 1) c = y === legBot ? m.s : mix(m.b, INK, 0.08)
+          if (bt.detail === 'fray' && y === legBot) c = (x + y) % 2 ? mix(m.b, '#ffffff', 0.5) : m.l
+          G.put(x, y, c)
+        }
+      }
+    }
+  }
+  commit(b, G, m.d, TAG.cloth)
+  // details
+  const put = (x: number, y: number, c: string) => b.put(x, y, c, TAG.cloth)
+  if (bt.kind === 'pants' || bt.kind === 'shorts') {
+    if (bt.detail === 'crease') {
+      for (let y = 39; y <= 45; y++) {
+        put(12, y, m.l)
+        put(19, y, mix(m.b, '#ffffff', 0.15))
+      }
+    }
+    if (bt.detail === 'denim' || bt.detail === 'fray') {
+      const st = bt.stitch ?? '#e9b25a'
+      put(11, 35, st)
+      put(12, 36, st)
+      put(20, 35, st)
+      put(19, 36, st)
+      put(15, 35, m.s)
+      put(15, 36, m.s)
+      put(16, 36, st)
+      if (bt.detail === 'denim') {
+        put(11, 45, m.l)
+        put(12, 45, m.l)
+        put(18, 45, m.l)
+        put(19, 45, m.l)
+      }
+    }
+    if (bt.detail === 'cargo') {
+      for (const x0 of [9, 19]) {
+        for (let y = 39; y <= 42; y++) for (let x = x0 + 1; x <= x0 + 2; x++) put(x, y, y === 39 ? m.d : m.s)
+        put(x0 + 1, 40, m.b)
+      }
+    }
+    if (bt.detail === 'jogger') {
+      put(15, 35, bt.stripe ?? '#fffaf0')
+      put(16, 36, bt.stripe ?? '#fffaf0')
+      if (bt.stripe) for (let y = 38; y <= 44; y++) put(10, y, bt.stripe)
+    }
+  }
+  if (bt.kind === 'jong') {
+    for (let y = 36; y <= 41; y++) put(15, y, m.d)
+    if (bt.hem) for (let x = 9; x <= 22; x++) put(x, 41, bt.hem)
+  }
+  if (bt.belt) {
+    for (let x = 10; x <= 21; x++) put(x, 34, x >= 20 ? mix(bt.belt, INK, 0.3) : bt.belt)
+    if (bt.buckle) {
+      put(15, 34, bt.buckle)
+      put(16, 34, mix(bt.buckle, INK, 0.25))
+    }
+  } else if (bt.kind === 'loose' || bt.kind === 'sarong' || bt.kind === 'jong') {
+    for (let x = 10; x <= 21; x++) put(x, 34, m.s)
+  }
+}
+
+// Special leg poses. W seat, T thigh, K knee/shin, F foot/sole; lowercase = shade.
+const LEGMAPS: Record<'kneelF' | 'kneelB' | 'sitF' | 'sitB', { y: number; rows: string[] }[]> = {
+  kneelF: [
+    { y: 42, rows: ['..........WWWWWWWWWWWW..........', '.........WWWWWWWWWWWWWW.........'] },
+    { y: 44, rows: ['........TTTTTTT.................', '.......TTTTTTTT.................', '.......TTTTTTTt.................', '.......KKKKKKKk.................', '.......KKKKKKKk.................', '........KKKKKk..................'] },
+    { y: 44, rows: ['................TTTTTTT.........', '................TTTTTTTT........', '................TTTTTTTt........', '................KKKKKKKk........', '................KKKKKKKk........', '.................KKKKKk.........'] },
+  ],
+  kneelB: [
+    { y: 42, rows: ['..........WWWWWWWWWWWW..........', '.........WWWWWWWWWWWWWW.........', '........TWWWWWWWWWWWWWWt........', '........TWWWWWWWWWWWWWWt........', '........TTWWWWWWWWWWWWtt........'] },
+    { y: 46, rows: ['.........FFFFF....FFFFf.........', '.........FFFFF....FFFFf.........', '.........FFFFf....FFFFf.........', '..........fff......fff..........'] },
+  ],
+  sitF: [
+    { y: 43, rows: ['..........WWWWWWWWWWWW..........', '.......TTTTTTTTTTTTTTTTTT.......', '.....TTTTTTTTTTTTTTTTTTTTTT.....', '....TTTTTTTTTTTTTTTTTTTTTTTt....'] },
+    { y: 46, rows: ['....TTTKKKKKKKKKKKKKKKKKKTTt....', '...TTTKKKKKKKKKKKKKKKKKKKKTtt...', '...TTKKKKKKKKKKKKKKKKKKKKKKtt...', '....FFFkkkkkkkkkkkkkkkkkkFFF....'] },
+    { y: 46, rows: ['................KKKKKKKKKk......', '.............KKKKKKKKKKKKk......', '..........KKKKKKKKKKKKKKk.......', '.........kkkkkkkkkkkkkkk........'] },
+  ],
+  sitB: [
+    { y: 43, rows: ['..........WWWWWWWWWWWW..........', '.........WWWWWWWWWWWWWW.........', '......TTTWWWWWWWWWWWWWWTTt......', '....TTTTTWWWWWWWWWWWWWWTTTtt....', '...TTTTTTWWWWWWWWWWWWWWTTTTtt...', '...KKKKKKWWWWWWWWWWWWWWKKKKkk...', '....KKKKKKKKKKKKKKKKKKKKKKkk....'] },
+  ],
+}
+
+function drawLegsSpecial(b: Buf, r: Res, kind: 'kneelF' | 'kneelB' | 'sitF' | 'sitB') {
+  const bt = r.bottom
+  const m = mat(bt.main, bt.shade)
+  const longCover = !(bt.kind === 'shorts' || ((bt.kind === 'skirt' || bt.kind === 'pleated') && bottomHem(bt) <= 41) || bt.kind === 'jong')
+  const sh = r.shoes ?? DEFAULT_SHOE
+  for (const part of LEGMAPS[kind]) {
+    let skinLine = false
+    const L = rowsLayer(part.rows, 0, part.y, (ch, x, y) => {
+      const low = ch === ch.toLowerCase()
+      const C = ch.toUpperCase()
+      if (C === 'W' || C === 'T') return botCol(r, x, y, low)
+      if (C === 'K') {
+        if (longCover) return botCol(r, x, y, low)
+        skinLine = true
+        return low ? r.sk.s : r.sk.b
+      }
+      if (C === 'F') {
+        if (r.bare || kind === 'sitF') {
+          skinLine = true
+          return low ? r.sk.s : mix(r.sk.b, r.sk.l, 0.5)
+        }
+        return low ? mix(sh.sole ?? sh.shade, INK, 0.2) : sh.sole ?? sh.shade
+      }
+      return null
+    })
+    commit(b, L, skinLine && !longCover ? r.sk.d : m.d, TAG.cloth)
+  }
+  if (bt.belt && (kind === 'kneelF' || kind === 'sitF')) {
+    const y = kind === 'kneelF' ? 42 : 43
+    for (let x = 10; x <= 21; x++) b.put(x, y, bt.belt)
+    if (bt.buckle) b.put(15, y, bt.buckle)
+  }
+  if ((kind === 'kneelF' || kind === 'sitF') && !longCover && isSkirt(bt.kind)) {
+    // skirt hem across the thighs
+    const y = kind === 'kneelF' ? 46 : 45
+    for (let x = 7; x <= 24; x++) if (b.tag(x, y) === TAG.cloth) b.put(x, y, m.d)
+  }
+}
+
+// ---- torso
+
+function drawTorso(b: Buf, r: Res, dy: number, view: DollView) {
+  const t = r.top
+  const { body } = topMats(t)
+  const L = new Layer()
+  for (let y = 24; y <= hemRow(t); y++) {
+    const sp = torsoSpan(r, y)
+    if (!sp) continue
+    const [x0, x1] = sp
+    for (let x = x0; x <= x1; x++) {
+      const shade = x >= x1 - 1 || (y === 24 && view === 'front') || y === hemRow(t)
+      const light = view === 'front' && x === x0 + 1 && y >= 25 && y <= 27
+      L.put(x, y + dy, clothCol(body, t.pattern, t.patternColor, t.patternColor2, x, y, shade, light))
+    }
+  }
+  commit(b, L, body.d, TAG.cloth)
+}
+
+const put = (b: Buf, x: number, y: number, c: string | undefined | null) => b.put(x, y, c, TAG.cloth)
+
+// Tiny 3×5 digits for jersey numbers.
+const DIGITS: Record<string, string[]> = {
+  '0': ['###', '#.#', '#.#', '#.#', '###'],
+  '1': ['.#.', '##.', '.#.', '.#.', '###'],
+  '2': ['###', '..#', '###', '#..', '###'],
+  '3': ['###', '..#', '.##', '..#', '###'],
+  '4': ['#.#', '#.#', '###', '..#', '..#'],
+  '5': ['###', '#..', '###', '..#', '###'],
+  '6': ['###', '#..', '###', '#.#', '###'],
+  '7': ['###', '..#', '.#.', '.#.', '.#.'],
+  '8': ['###', '#.#', '###', '#.#', '###'],
+  '9': ['###', '#.#', '###', '..#', '###'],
+}
+
+const GRAPHICS: Record<string, string[]> = {
+  lotus: ['..1..', '.121.', '11211', '.111.', 'g.g.g'],
+  heart: ['11.11', '12111', '11111', '.111.', '..1..'],
+  star: ['..1..', '11211', '.111.', '.1.1.'],
+  elephant: ['.111..', '111111', '1211.1', '1..1..'],
+  // บุญ in pixels
+  boon: ['1.1..1...1.1', '1.1..1.1.111', '111.11.1.1.1', '...1....11.1', '..2.....'],
+}
+
+function drawGraphic(b: Buf, key: string, cx: number, y: number, c1: string, c2: string) {
+  const g = GRAPHICS[key]
+  if (!g) return
+  const w = Math.max(...g.map((s) => s.length))
+  const x0 = Math.round(cx - w / 2)
+  g.forEach((row, j) => {
+    for (let i = 0; i < row.length; i++) {
+      const ch = row[i]
+      if (ch === '.') continue
+      put(b, x0 + i, y + j, ch === '1' ? c1 : ch === '2' ? c2 : ch === 'g' ? c2 : c1)
+    }
   })
 }
 
-export function dollPortrait(look: AvatarLook): Sprite {
-  return avatarPortrait(look)
+const NAGA = ['..11.....', '.1221....', '.11.1..1.', '....11.21', '.1...1111', '121...11.', '.11111...', '..111....']
+
+function drawTopFront(b: Buf, r: Res, dy: number) {
+  const t = r.top
+  const { body, jacket } = topMats(t)
+  const Y = (y: number) => y + dy
+  const f = r.g === 'f'
+  const collar = t.collar ?? 'crew'
+  const cc = t.collarColor ?? (t.trim && collar !== 'shirt' && collar !== 'bua' ? t.trim : mix(body.b, '#ffffff', 0.4))
+  const ccm = mat(cc, mix(cc, body.s, 0.6))
+  const skin = r.sk
+  const hem = hemRow(t)
+
+  // neckline
+  switch (collar) {
+    case 'crew':
+    case 'hood':
+      for (let x = 14; x <= 17; x++) put(b, x, Y(24), skin.s)
+      put(b, 13, Y(24), cc === body.b ? body.s : ccm.s)
+      put(b, 18, Y(24), cc === body.b ? body.s : ccm.s)
+      for (let x = 14; x <= 17; x++) put(b, x, Y(25), t.trim && collar === 'crew' && t.trim !== body.b ? ccm.s : body.s)
+      break
+    case 'v':
+    case 'jersey': {
+      for (let x = 13; x <= 18; x++) put(b, x, Y(24), skin.s)
+      for (let x = 14; x <= 17; x++) put(b, x, Y(25), skin.b)
+      put(b, 15, Y(26), skin.b)
+      put(b, 16, Y(26), skin.b)
+      const tc = collar === 'jersey' ? t.trim ?? cc : body.s
+      put(b, 12, Y(24), tc)
+      put(b, 13, Y(25), tc)
+      put(b, 14, Y(26), tc)
+      put(b, 15, Y(27), tc)
+      put(b, 16, Y(27), tc)
+      put(b, 17, Y(26), tc)
+      put(b, 18, Y(25), tc)
+      put(b, 19, Y(24), tc)
+      if (collar === 'jersey') {
+        put(b, 13, Y(24), cc)
+        put(b, 18, Y(24), cc)
+      }
+      break
+    }
+    case 'shirt':
+    case 'camp':
+    case 'polo': {
+      const open = collar === 'camp' || (collar === 'shirt' && !t.tie)
+      put(b, 15, Y(24), skin.s)
+      put(b, 16, Y(24), skin.s)
+      if (open) {
+        put(b, 15, Y(25), skin.b)
+        put(b, 16, Y(25), skin.b)
+        if (collar === 'camp') {
+          put(b, 15, Y(26), skin.b)
+          put(b, 16, Y(26), skin.b)
+        }
+      }
+      // collar flaps
+      const flap = collar === 'polo' ? [[12, 24], [13, 24], [14, 24], [13, 25], [14, 25]] : [[11, 24], [12, 24], [13, 24], [14, 24], [12, 25], [13, 25], [14, 25], [14, 26]]
+      if (collar === 'camp') flap.push([13, 26], [14, 27])
+      for (const [x, y] of flap) {
+        put(b, x, Y(y), ccm.b)
+        put(b, 31 - x, Y(y), ccm.b)
+      }
+      // flap edges
+      const edge = collar === 'polo' ? [[12, 25], [14, 26]] : [[11, 25], [12, 26], [13, 26], [14, 27]]
+      if (collar !== 'camp') {
+        const ec = mix(body.s, INK, 0.5)
+        for (const [x, y] of edge) {
+          put(b, x, Y(y), ec)
+          put(b, 31 - x, Y(y), ec)
+        }
+      }
+      put(b, 14, Y(24), ccm.l)
+      break
+    }
+    case 'bua': {
+      put(b, 15, Y(24), skin.s)
+      put(b, 16, Y(24), skin.s)
+      const pts: [number, number][] = [
+        [11, 24], [12, 24], [13, 24], [14, 24],
+        [10, 25], [11, 25], [12, 25], [13, 25], [14, 25],
+        [10, 26], [11, 26], [12, 26], [13, 26], [14, 26],
+        [11, 27], [12, 27], [13, 27],
+      ]
+      for (const [x, y] of pts) {
+        put(b, x, Y(y), y === 24 ? ccm.l : ccm.b)
+        put(b, 31 - x, Y(y), y === 24 ? ccm.l : ccm.b)
+      }
+      for (const [x, y] of [[10, 27], [11, 28], [12, 28], [13, 28], [14, 27], [15, 25], [15, 26]] as [number, number][]) {
+        put(b, x, Y(y), body.d)
+        put(b, 31 - x, Y(y), body.d)
+      }
+      break
+    }
+    case 'mandarin':
+      for (let x = 13; x <= 18; x++) put(b, x, Y(24), x === 18 ? ccm.s : ccm.b)
+      put(b, 15, Y(24), ccm.s)
+      break
+    case 'none':
+      break
+  }
+
+  // jacket layered over
+  if (t.jacket && jacket) {
+    const j = t.jacket
+    const J = new Layer()
+    for (let y = 24; y <= Math.max(hem, 35); y++) {
+      const sp = torsoSpan(r, Math.min(y, 35)) ?? [10, 21]
+      const [x0, x1] = [Math.min(sp[0], 10), Math.max(sp[1], 21)]
+      const open = y <= 25 ? 3 : y <= 28 ? 2 : 1
+      for (let x = x0; x <= x1; x++) {
+        if (x >= 15 - open + 1 && x <= 16 + open - 1) continue
+        const shade = x >= x1 - 1 || x === 16 + open
+        let c = clothCol(jacket, j.pattern, j.patternColor, undefined, x, y, shade)
+        if ((j.kind === 'varsity' || j.kind === 'sukajan') && y >= 34) c = y % 2 ? j.trim ?? jacket.l : mix(j.trim ?? jacket.l, INK, 0.2)
+        if (j.kind === 'cardigan' && (x === 15 - open || x === 16 + open)) c = j.trim ?? jacket.l
+        J.put(x, Y(y), c)
+      }
+    }
+    commit(b, J, jacket.d, TAG.cloth)
+    if (j.kind === 'denim') {
+      // collar + chest pockets + buttons
+      for (const x of [11, 12]) {
+        put(b, x, Y(24), jacket.l)
+        put(b, 31 - x, Y(24), jacket.l)
+      }
+      put(b, 12, Y(25), jacket.l)
+      put(b, 19, Y(25), jacket.l)
+      for (const x0 of [10, 18]) {
+        put(b, x0 + 1, Y(28), jacket.d)
+        put(b, x0 + 2, Y(28), jacket.d)
+        put(b, x0 + 1, Y(29), jacket.s)
+        put(b, x0 + 2, Y(29), jacket.s)
+      }
+      put(b, 12, Y(29), '#e9b25a')
+      put(b, 19, Y(29), '#e9b25a')
+    } else if (j.kind === 'cardigan') {
+      for (const y of [28, 30, 32]) put(b, 18, Y(y), mix(j.trim ?? '#ffffff', INK, 0.25))
+    } else if (j.kind === 'varsity' || j.kind === 'sukajan') {
+      for (const x of [12, 13]) {
+        put(b, x, Y(24), j.trim)
+        put(b, 31 - x, Y(24), j.trim)
+      }
+      if (j.emblem === 'letter') {
+        const L = ['###', '#.#', '##.', '#.#', '###']
+        L.forEach((row, jj) => {
+          for (let i = 0; i < 3; i++) if (row[i] === '#') put(b, 10 + i + (f ? 1 : 0), Y(27 + jj), i === 2 ? j.emblemColor2 : j.emblemColor)
+        })
+      } else if (j.emblem === 'naga') {
+        put(b, 19, Y(27), j.emblemColor)
+        put(b, 18, Y(28), j.emblemColor)
+        put(b, 19, Y(29), j.emblemColor2)
+        put(b, 20, Y(28), j.emblemColor2)
+      }
+    }
+  }
+
+  // placket / buttons
+  const btn = t.buttonColor ?? mix(body.b, '#ffffff', 0.5)
+  if (!t.jacket && (t.placket === 'buttons' || t.extra === 'buttons')) {
+    const start = collar === 'camp' ? 27 : collar === 'bua' ? 28 : 25
+    for (let y = start; y <= Math.min(hem - 1, 33); y++) {
+      put(b, 16, Y(y), body.s)
+      if ((y - start) % 2 === 1) put(b, 15, Y(y), btn)
+    }
+    if (t.trim && t.extra === 'buttons' && collar === 'mandarin') for (let y = 25; y < hem; y++) put(b, 16, Y(y), t.trim)
+  } else if (t.placket === 'half') {
+    for (let y = 25; y <= 27; y++) put(b, 16, Y(y), body.s)
+    put(b, 15, Y(25), btn)
+    put(b, 15, Y(27), btn)
+  } else if (t.placket === 'zip') {
+    for (let y = 25; y < hem; y++) put(b, 15, Y(y), body.s)
+  }
+
+  // pockets
+  if (t.pocket === 'chest' || t.pocket === 'chest2') {
+    const xs = t.pocket === 'chest2' ? [f ? 12 : 11, 17] : [17]
+    for (const x0 of xs) {
+      for (let y = 27; y <= 30; y++) for (let x = x0; x <= x0 + 3; x++) {
+        const edge = y === 27 || y === 30 || x === x0 || x === x0 + 3
+        if (edge) put(b, x, Y(y), y === 27 ? body.s : mix(body.b, body.s, 0.6))
+      }
+      if (t.pocket === 'chest2') {
+        for (let x = x0; x <= x0 + 3; x++) put(b, x, Y(27), body.s)
+        put(b, x0 + 1, Y(28), btn)
+      }
+    }
+  } else if (t.pocket === 'lower2') {
+    for (const x0 of [f ? 11 : 10, 18]) {
+      for (let x = x0; x <= x0 + 3; x++) put(b, x, Y(31), body.s)
+      put(b, x0, Y(32), body.s)
+      put(b, x0 + 3, Y(32), body.s)
+    }
+  } else if (t.pocket === 'kangaroo') {
+    for (let x = 12; x <= 19; x++) put(b, x, Y(31), body.s)
+    put(b, 11, Y(32), body.s)
+    put(b, 20, Y(32), body.s)
+    put(b, 11, Y(33), body.s)
+    put(b, 20, Y(33), body.s)
+    for (let x = 12; x <= 19; x++) put(b, x, Y(34), mix(body.b, body.s, 0.5))
+  }
+
+  // school initials & name
+  if (t.emblem === 'school') {
+    const ec = t.emblemColor ?? '#3d63b5'
+    const side = t.emblemSide ?? 'r'
+    if (side === 'r') {
+      put(b, 18, Y(t.pocket ? 28 : 27), ec)
+      put(b, 19, Y(t.pocket ? 28 : 27), ec)
+      put(b, 18, Y(t.pocket ? 29 : 28), ec)
+      if (t.nameTag) for (const x of [11, 12, 14]) put(b, x + (f ? 1 : 0), Y(27), ec)
+    } else {
+      const x0 = f ? 12 : 11
+      put(b, x0, Y(29), ec)
+      put(b, x0 + 1, Y(29), ec)
+      put(b, x0 + 2, Y(28), ec)
+      if (t.nameTag) for (const x of [0, 1, 3]) put(b, x0 + x, Y(31), ec)
+    }
+  } else if (t.emblem === 'crest') {
+    put(b, 18, Y(27), t.emblemColor ?? P.red)
+    put(b, 19, Y(27), '#ffffff')
+    put(b, 18, Y(28), '#ffffff')
+    put(b, 19, Y(28), t.emblemColor ?? P.red)
+    put(b, 18, Y(29), mix(t.emblemColor ?? P.red, INK, 0.3))
+  }
+  if (t.stripe) {
+    // shoulder trim
+    for (const x of [11, 12]) {
+      put(b, x, Y(25), t.stripe)
+      put(b, 31 - x, Y(25), mix(t.stripe, INK, 0.2))
+    }
+  }
+
+  // graphics
+  const gk = t.graphic ?? (t.extra === 'logo' ? 'lotus' : undefined)
+  if (gk && !t.jacket) drawGraphic(b, gk, 16, Y(gk === 'boon' ? 27 : 27), t.graphicColor ?? t.extraColor ?? P.pink, t.graphicColor2 ?? P.leaf)
+
+  // ties
+  if (t.tie === 'tie') {
+    const tc = t.tieColor ?? NAVY_D
+    const ts = t.tieColor2 ?? mix(tc, INK, 0.3)
+    put(b, 15, Y(24), ts)
+    put(b, 16, Y(24), ts)
+    for (let y = 25; y <= 31; y++) {
+      put(b, 15, Y(y), tc)
+      put(b, 16, Y(y), ts)
+    }
+    put(b, 15, Y(32), ts)
+  } else if (t.tie === 'bow') {
+    const tc = t.tieColor ?? NAVY_D
+    const ts = t.tieColor2 ?? mix(tc, INK, 0.3)
+    for (const [x, y, c] of [
+      [15, 25, ts], [16, 25, ts], [13, 24, tc], [14, 25, tc], [17, 25, tc], [18, 24, tc], [13, 25, tc], [18, 25, ts],
+      [14, 26, tc], [14, 27, tc], [13, 28, ts], [17, 26, ts], [17, 27, ts], [18, 28, ts],
+    ] as [number, number, string][]) put(b, x, Y(y), c)
+  } else if (t.tie === 'scarf') {
+    const tc = t.tieColor ?? P.gold
+    const t2 = t.tieColor2 ?? P.red
+    for (let x = 11; x <= 20; x++) put(b, x, Y(24), x % 3 === 0 ? t2 : tc)
+    for (const [x, y] of [[13, 25], [14, 25], [17, 25], [18, 25], [14, 26], [17, 26]] as [number, number][]) put(b, x, Y(y), tc)
+    put(b, 15, Y(26), '#8a5a32')
+    put(b, 16, Y(26), '#6e4a35')
+    put(b, 15, Y(27), tc)
+    put(b, 16, Y(27), t2)
+    put(b, 15, Y(28), tc)
+    put(b, 16, Y(28), tc)
+    put(b, 15, Y(29), t2)
+  }
+  if (t.epaulets) {
+    for (const x of [11, 12]) {
+      put(b, x, Y(24), body.s)
+      put(b, 31 - x, Y(24), body.s)
+    }
+  }
+  if (t.pin) {
+    put(b, f ? 12 : 11, Y(26), t.pin)
+    put(b, f ? 13 : 12, Y(26), mix(t.pin, '#ffffff', 0.4))
+    put(b, f ? 12 : 11, Y(27), mix(t.pin, INK, 0.3))
+  }
+
+  // legacy extras
+  const ec = t.extraColor ?? P.gold
+  if (t.extra === 'sabai') {
+    // bare viewer-left shoulder, gold sash from the right shoulder to the left hip
+    for (let x = 10; x <= 14; x++) put(b, x, Y(24), null)
+    for (let i = 0; i < 10; i++) {
+      const y = 24 + i
+      const xc = 20 - i
+      for (let k = -1; k <= 2; k++) {
+        const x = xc + k
+        if (x < 10 || x > 21) continue
+        put(b, x, Y(y), k === 2 ? mix(ec, INK, 0.3) : (x + y) % 3 === 0 ? '#fff3a6' : ec)
+      }
+    }
+    for (let y = 24; y <= 26; y++) for (let x = 10; x <= 13 - (y - 24); x++) b.put(x, Y(y), skin.b, TAG.skin)
+  } else if (t.extra === 'overalls') {
+    const oc = mat(ec)
+    for (let y = 29; y <= hem; y++) for (let x = 12; x <= 19; x++) put(b, x, Y(y), x >= 18 ? oc.s : oc.b)
+    for (let y = 24; y <= 28; y++) {
+      put(b, 12, Y(y), oc.b)
+      put(b, 19, Y(y), oc.s)
+    }
+    put(b, 12, Y(29), P.gold)
+    put(b, 19, Y(29), P.gold)
+    for (let x = 14; x <= 17; x++) put(b, x, Y(30), oc.s)
+  } else if (t.extra === 'sash') {
+    for (let i = 0; i < 9; i++) put(b, 11 + i, Y(25 + i), ec)
+  }
+  if (collar === 'hood') {
+    const dc = t.trim ?? '#fffaf0'
+    put(b, 14, Y(26), dc)
+    put(b, 14, Y(27), dc)
+    put(b, 17, Y(26), dc)
+    put(b, 17, Y(27), dc)
+    put(b, 14, Y(28), mix(dc, INK, 0.2))
+    put(b, 17, Y(28), mix(dc, INK, 0.2))
+  }
 }
 
+const NAVY_D = '#2a2f55'
+
+function drawTopBack(b: Buf, r: Res, dy: number) {
+  const t = r.top
+  const { body, jacket } = topMats(t)
+  const Y = (y: number) => y + dy
+  const collar = t.collar ?? 'crew'
+  const cc = t.collarColor ?? mix(body.b, '#ffffff', 0.4)
+  const hem = hemRow(t)
+  if (t.jacket && jacket) {
+    const J = new Layer()
+    for (let y = 24; y <= Math.max(hem, 35); y++) {
+      const sp = torsoSpan(r, Math.min(y, 35)) ?? [10, 21]
+      for (let x = Math.min(sp[0], 10); x <= Math.max(sp[1], 21); x++) {
+        let c = clothCol(jacket, t.jacket.pattern, t.jacket.patternColor, undefined, x, y, x >= 20)
+        if ((t.jacket.kind === 'varsity' || t.jacket.kind === 'sukajan') && (y >= 34 || y === 24)) c = t.jacket.trim ?? jacket.l
+        J.put(x, Y(y), c)
+      }
+    }
+    commit(b, J, jacket.d, TAG.cloth)
+    const j = t.jacket
+    if (j.emblem === 'naga') {
+      NAGA.forEach((row, jj) => {
+        for (let i = 0; i < row.length; i++) {
+          const ch = row[i]
+          if (ch === '.') continue
+          put(b, 11 + i, Y(26 + jj), ch === '1' ? j.emblemColor : j.emblemColor2)
+        }
+      })
+    } else if (j.emblem === 'letter') {
+      drawGraphic(b, 'star', 16, Y(27), j.emblemColor ?? '#fff', j.emblemColor2 ?? P.gold)
+    } else if (j.kind === 'denim') {
+      for (let x = 11; x <= 20; x++) put(b, x, Y(28), jacket.s)
+      put(b, 13, Y(29), jacket.s)
+      put(b, 18, Y(29), jacket.s)
+    }
+    return
+  }
+  if (collar === 'shirt' || collar === 'polo' || collar === 'camp' || collar === 'mandarin') {
+    for (let x = 12; x <= 19; x++) put(b, x, Y(24), x >= 18 ? mix(cc, body.s, 0.6) : cc)
+  } else if (collar === 'bua') {
+    for (let y = 24; y <= 27; y++) for (let x = 11 + (y === 27 ? 1 : 0); x <= 20 - (y === 27 ? 1 : 0); x++) put(b, x, Y(y), y === 27 ? body.d : x >= 19 ? mix(cc, body.s, 0.6) : cc)
+    for (let x = 12; x <= 19; x++) put(b, x, Y(28), body.s)
+  } else if (collar === 'hood') {
+    const hc = mat(t.main, t.shade)
+    for (let y = 24; y <= 29; y++) {
+      const w = y === 29 ? 2 : y === 28 ? 3 : 4
+      for (let x = 16 - w; x <= 15 + w; x++) put(b, x, Y(y), y === 29 || x === 15 + w ? hc.d : y === 24 ? hc.l : hc.s)
+    }
+    if (t.extra === 'hood') {
+      const ec = t.extraColor ?? P.brown
+      for (const x of [11, 12]) {
+        put(b, x, Y(25), ec)
+        put(b, x, Y(26), ec)
+        put(b, 31 - x, Y(25), ec)
+        put(b, 31 - x, Y(26), ec)
+      }
+    }
+  } else if (collar === 'jersey') {
+    for (let x = 13; x <= 18; x++) put(b, x, Y(24), t.trim ?? cc)
+  }
+  if (t.tie === 'scarf') {
+    const tc = t.tieColor ?? P.gold
+    for (let y = 24; y <= 28; y++) {
+      const w = 28 - y
+      for (let x = 16 - w; x <= 15 + w; x++) put(b, x, Y(y), (x + y) % 5 === 0 ? t.tieColor2 ?? P.red : tc)
+    }
+  }
+  if (t.number) {
+    const n = t.number
+    const w = n.length * 4 - 1
+    let x = 16 - Math.ceil(w / 2)
+    for (const ch of n) {
+      const d = DIGITS[ch]
+      if (d)
+        d.forEach((row, jj) => {
+          for (let i = 0; i < 3; i++) if (row[i] === '#') put(b, x + i, Y(26 + jj), t.numberColor ?? '#fff')
+        })
+      x += 4
+    }
+  }
+  const ec = t.extraColor ?? P.gold
+  if (t.extra === 'sabai') {
+    for (let y = 24; y <= 33; y++) for (let x = 18; x <= 20; x++) put(b, x, Y(y), x === 20 ? mix(ec, INK, 0.3) : (x + y) % 3 === 0 ? '#fff3a6' : ec)
+  } else if (t.extra === 'overalls') {
+    const oc = mat(ec)
+    for (let i = 0; i < 5; i++) {
+      put(b, 12 + i, Y(24 + i), oc.b)
+      put(b, 19 - i, Y(24 + i), oc.s)
+    }
+    for (let y = 30; y <= hem; y++) for (let x = 11; x <= 20; x++) put(b, x, Y(y), x >= 19 ? oc.s : oc.b)
+  }
+  if (t.extra === 'buttons' || t.emblem === 'school') {
+    // yoke seam
+    for (let x = 12; x <= 19; x++) put(b, x, Y(26), mix(body.b, body.s, 0.5))
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Accessories (head items use the head offset dy)
+
+function drawHeadAcc(b: Buf, _r: Res, key: string | null, view: DollView, dy: number, stage: 'under' | 'over') {
+  if (!key) return
+  const L = new Layer()
+  const p = (x: number, y: number, c: string) => L.put(x, y + dy, c)
+  const done = (line: string) => commit(b, L, line, TAG.deco)
+  const front = view === 'front'
+  switch (key) {
+    case 'glasses':
+    case 'sunglasses': {
+      if (!front || stage !== 'over') return
+      const k = '#4a3246'
+      for (const x0 of [9, 18]) {
+        for (let i = 0; i < 5; i++) {
+          b.put(x0 + i, 14 + dy, k)
+          b.put(x0 + i, 20 + dy, k)
+        }
+        for (let y = 15; y <= 19; y++) {
+          b.put(x0 - 1 + (y === 15 || y === 19 ? 1 : 0), y + dy, k)
+          b.put(x0 + 5 - (y === 15 || y === 19 ? 1 : 0), y + dy, k)
+        }
+        if (key === 'sunglasses') {
+          for (let y = 15; y <= 19; y++) for (let x = x0 + (y === 15 || y === 19 ? 1 : 0); x <= x0 + 4 - (y === 15 || y === 19 ? 1 : 0); x++) b.put(x, y + dy, y <= 16 ? '#4d4466' : '#2e2840')
+          b.put(x0 + 1, 15 + dy, '#9fd0ff')
+        } else b.put(x0 + 1, 15 + dy, '#e6f6ff')
+      }
+      b.put(14, 16 + dy, k)
+      b.put(15, 15 + dy, k)
+      b.put(16, 15 + dy, k)
+      b.put(17, 16 + dy, k)
+      b.put(5, 16 + dy, k)
+      b.put(26, 16 + dy, k)
+      return
+    }
+    case 'jasmine':
+      if (stage !== 'over') return
+      if (front) {
+        p(24, 12, '#fffaf0'); p(25, 12, '#fffaf0'); p(24, 13, '#ffe45e'); p(25, 13, '#fffaf0'); p(26, 13, '#fffaf0'); p(25, 14, '#fffaf0'); p(24, 14, '#6cc36a'); p(23, 15, '#43905a')
+      } else {
+        p(6, 12, '#fffaf0'); p(7, 12, '#fffaf0'); p(7, 13, '#ffe45e'); p(6, 13, '#fffaf0'); p(5, 13, '#fffaf0'); p(6, 14, '#fffaf0'); p(7, 14, '#6cc36a')
+      }
+      return done('#8c8187')
+    case 'frangipani': {
+      if (stage !== 'over') return
+      const x0 = front ? 22 : 5
+      const F = ['.pp.', 'pPyp', 'pyPp', '.pp.']
+      F.forEach((row, j) => { for (let i = 0; i < 4; i++) { const ch = row[i]; if (ch !== '.') p(x0 + i, 8 + j, ch === 'p' ? '#ff9fc0' : ch === 'P' ? '#ffd6e0' : '#fff09a') } })
+      return done('#c24f7e')
+    }
+    case 'clips': {
+      if (stage !== 'over') return
+      const cols = ['#ff9fc0', '#7fd3b5', '#ffd54f']
+      cols.forEach((c, i) => {
+        const x = front ? 20 + i * 2 : 7 + i * 2
+        p(x, 9 + i, c); p(x + 1, 9 + i, c); p(x + 2, 9 + i, mix(c, INK, 0.25))
+      })
+      return
+    }
+    case 'ribbon': {
+      if (stage !== 'over') return
+      const R = ['rr....rr', 'rRr..rRr', 'rrrKKrrr', 'rRr..rRr', 'rr....rr', '...rr...', '..r..r..']
+      const x0 = front ? 19 : 12
+      const y0 = front ? 1 : 8
+      R.forEach((row, j) => { for (let i = 0; i < row.length; i++) { const ch = row[i]; if (ch !== '.') p(x0 + i, y0 + j, ch === 'r' ? '#e8514a' : ch === 'R' ? '#ff8a7a' : '#b8343f') } })
+      return done('#7e2436')
+    }
+    case 'cap': {
+      if (stage !== 'over') return
+      const c = mat('#34467e', '#263461')
+      for (let y = 2; y <= 9; y++) {
+        const w = [6, 8, 9, 10, 10, 11, 11, 11][y - 2]
+        for (let x = 16 - w; x <= 15 + w; x++) p(x, y, x >= 15 + w - 1 ? c.s : y === 3 && x < 14 ? c.l : c.b)
+      }
+      if (front) {
+        for (let x = 4; x <= 27; x++) p(x, 10, x >= 24 ? '#1f2a52' : '#2a3868')
+        for (let x = 6; x <= 25; x++) p(x, 11, '#1b2448')
+        p(14, 6, '#ff9fc0'); p(15, 5, '#ff9fc0'); p(16, 5, '#ff9fc0'); p(17, 6, '#ff9fc0'); p(15, 6, '#ffd6e0'); p(16, 6, '#ffd6e0'); p(15, 7, '#6cc36a'); p(16, 7, '#6cc36a')
+      } else {
+        for (let x = 13; x <= 18; x++) p(x, 9, '#1b2448')
+        p(15, 8, '#e0dce8'); p(16, 8, '#e0dce8')
+      }
+      return done(c.d)
+    }
+    case 'headphones': {
+      if (stage !== 'over') return
+      const k = '#4a3f55'
+      for (let x = 7; x <= 24; x++) {
+        const y = x < 10 || x > 21 ? 4 : 2
+        p(x, y, k); p(x, y + 1, x < 16 ? '#8a7f9a' : '#6a5f7a')
+      }
+      for (const x of [6, 7, 24, 25]) for (let y = 5; y <= 11; y++) if (!((x === 7 || x === 24) && y < 8)) p(x, y, k)
+      for (const x0 of [3, 25]) for (let y = 12; y <= 18; y++) for (let x = x0; x <= x0 + 3; x++) p(x, y, x === x0 + 1 && y >= 13 && y <= 17 ? '#ff9fc0' : y === 12 || y === 18 ? '#6a5f7a' : k)
+      return done('#2a2230')
+    }
+    case 'ngob': {
+      if (stage !== 'over') return
+      const lt = '#f0cf8a', md = '#d9ae66', dk = '#a8733a'
+      for (let y = 0; y <= 6; y++) {
+        const w = [3, 5, 7, 8, 9, 10, 10][y]
+        for (let x = 16 - w; x <= 15 + w; x++) p(x, y, (x + y) % 3 === 0 ? md : x >= 13 + w ? md : lt)
+      }
+      for (let x = 1; x <= 30; x++) p(x, 7, x % 2 ? lt : md)
+      for (let x = 0; x <= 31; x++) p(x, 8, x >= 26 ? dk : md)
+      for (let x = 6; x <= 25; x++) p(x, 6, '#8a5a32')
+      return done(dk)
+    }
+    case 'dogears': {
+      if (stage !== 'over') return
+      for (const x0 of [5, 22]) {
+        const E = ['.bb.', 'bBBb', 'bBBb', 'bBBb', '.bb.']
+        E.forEach((row, j) => { for (let i = 0; i < 4; i++) { const ch = row[i]; if (ch !== '.') p(x0 + i, j + 1, ch === 'b' ? '#9a6a45' : '#e0a868') } })
+      }
+      return done('#6e4a35')
+    }
+    case 'lotus': {
+      if (stage !== 'over') return
+      const Lo = ['......pp......', '...p.pPPp.p...', '..ppPpPPpPpp..', '..pPPPPPPPPp..', '...gggggggg...']
+      Lo.forEach((row, j) => { for (let i = 0; i < row.length; i++) { const ch = row[i]; if (ch !== '.') p(9 + i, j, ch === 'p' ? '#e8709e' : ch === 'P' ? '#ffc4d8' : '#43905a') } })
+      return done('#a8436e')
+    }
+  }
+}
+
+function drawBodyAcc(b: Buf, _r: Res, key: string | null, view: DollView, dy: number) {
+  if (!key) return
+  const L = new Layer()
+  const p = (x: number, y: number, c: string) => L.put(x, y + dy, c)
+  const front = view === 'front'
+  switch (key) {
+    case 'garland': {
+      const pts: [number, number][] = front
+        ? [[11, 24], [12, 25], [12, 26], [13, 27], [14, 28], [15, 28], [16, 28], [17, 28], [18, 27], [19, 26], [19, 25], [20, 24]]
+        : [[11, 24], [12, 24], [13, 25], [14, 25], [15, 25], [16, 25], [17, 25], [18, 25], [19, 24], [20, 24]]
+      pts.forEach(([x, y], i) => p(x, y, i % 2 ? '#ffd23f' : '#f58f35'))
+      if (front) {
+        p(15, 29, '#e8514a'); p(16, 29, '#e8514a'); p(15, 30, '#fffaf0'); p(16, 30, '#6cc36a')
+      }
+      commit(b, L, '#b8742a', TAG.deco)
+      return
+    }
+    case 'scarf': {
+      for (let x = 11; x <= 20; x++) { p(x, 24, (x % 3 === 0) ? '#3d63b5' : '#e8514a'); p(x, 25, (x % 3 === 1) ? '#ffd54f' : '#e8514a') }
+      if (front) for (let y = 26; y <= 31; y++) { p(18, y, y % 3 === 0 ? '#3d63b5' : '#e8514a'); p(19, y, y % 3 === 1 ? '#ffd54f' : '#b8343f') }
+      else for (let y = 26; y <= 28; y++) { p(12, y, '#e8514a'); p(13, y, '#3d63b5') }
+      commit(b, L, '#7e2436', TAG.deco)
+      return
+    }
+    case 'waistsash': {
+      const y0 = 33
+      for (let x = 9; x <= 22; x++) { p(x, y0, (x % 3 === 0) ? '#3d63b5' : '#e8514a'); p(x, y0 + 1, (x % 3 === 1) ? '#ffd54f' : '#b8343f') }
+      const kx = front ? 20 : 11
+      p(kx, y0 + 2, '#e8514a'); p(kx + 1, y0 + 2, '#3d63b5'); p(kx, y0 + 3, '#e8514a'); p(kx + 1, y0 + 4, '#b8343f'); p(kx - 1, y0 + 3, '#3d63b5')
+      commit(b, L, '#7e2436', TAG.deco)
+      return
+    }
+    case 'amulet': {
+      if (!front) {
+        for (let x = 13; x <= 18; x++) p(x, 24, '#e9b949')
+        commit(b, L, null, TAG.deco)
+        return
+      }
+      for (const [x, y] of [[12, 24], [13, 25], [14, 26], [17, 26], [18, 25], [19, 24]] as [number, number][]) p(x, y, '#e9b949')
+      p(15, 27, '#e9b949'); p(16, 27, '#e9b949')
+      p(15, 28, '#ffd54f'); p(16, 28, '#b8742a'); p(15, 29, '#b8742a'); p(16, 29, '#8a5a32')
+      commit(b, L, null, TAG.deco)
+      return
+    }
+    case 'yam': {
+      if (front) {
+        for (let i = 0; i < 9; i++) p(12 + i, 24 + i, '#b8343f')
+        for (let y = 32; y <= 37; y++) for (let x = 20; x <= 25; x++) p(x, y, y === 32 ? '#7e2436' : y === 34 || y === 36 ? '#ffd54f' : x === 25 ? '#b8343f' : '#e8514a')
+        for (const x of [21, 24]) p(x, 38, '#ffd54f')
+      } else {
+        for (let i = 0; i < 9; i++) p(19 - i, 24 + i, '#b8343f')
+        for (let y = 32; y <= 37; y++) for (let x = 6; x <= 11; x++) p(x, y, y === 32 ? '#7e2436' : y === 34 || y === 36 ? '#ffd54f' : '#e8514a')
+      }
+      commit(b, L, '#7e2436', TAG.deco)
+      return
+    }
+  }
+}
+
+/** Hand-held items drawn near the viewer-right hand (x≈23, y≈33). */
+function drawHandItem(b: Buf, key: string | null, view: DollView, hx: number, hy: number, stage: 'behind' | 'over') {
+  if (!key) return
+  const L = new Layer()
+  const p = (x: number, y: number, c: string) => L.put(hx + x, hy + y, c)
+  switch (key) {
+    case 'umbrella': {
+      if (stage !== 'over') return
+      // furled Bo Sang paper parasol held like a cane
+      const P1 = ['.w.', '.p.', '.p.', 'pPp', 'pPp', 'pPq', 'pPq', 'yyy', 'pPq', 'pPq', 'pPq', '.q.', '.h.', '.h.', '.h.', '.h.', 'hh.']
+      P1.forEach((row, j) => {
+        for (let i = 0; i < 3; i++) {
+          const ch = row[i]
+          if (ch === '.') continue
+          p(2 + i, j - 16, ch === 'w' ? '#fff3a6' : ch === 'p' ? '#ff9fc0' : ch === 'P' ? '#ffd6e0' : ch === 'q' ? '#e8709e' : ch === 'y' ? '#ffd54f' : '#9a6a45')
+        }
+      })
+      commit(b, L, '#a8436e', TAG.deco)
+      return
+    }
+    case 'lotusbud': {
+      if (stage !== 'over') return
+      const Bd = ['.p.', 'pPp', 'pPp', 'ppp', '.g.', '.g.', '.g.']
+      Bd.forEach((row, j) => { for (let i = 0; i < 3; i++) { const ch = row[i]; if (ch !== '.') p(i - 1, j - 6, ch === 'p' ? '#e8709e' : ch === 'P' ? '#ffc4d8' : '#43905a') } })
+      commit(b, L, '#8e3a5e', TAG.deco)
+      return
+    }
+    case 'chayen': {
+      if (stage !== 'over') return
+      const C = ['..s..', '..s..', '.www.', 'wwwww', 'ooooo', 'OoooO', 'oOOoo', '.ooo.', '.bbb.']
+      C.forEach((row, j) => { for (let i = 0; i < 5; i++) { const ch = row[i]; if (ch !== '.') p(i - 1, j - 7, ch === 's' ? '#e8514a' : ch === 'w' ? '#fff3e6' : ch === 'o' ? '#f58f35' : ch === 'O' ? '#ffbb66' : '#6e4a35') } })
+      commit(b, L, '#8a4a2a', TAG.deco)
+      return
+    }
+  }
+  void view
+}
+
+// ---------------------------------------------------------------------------
+// Bow (กราบ) seen from behind – special composition
+
+const BOW_ARMS = [
+  '.....HH..................HH.....',
+  '....HHHh................HHHh....',
+  '....AAAa................AAAa....',
+  '....AAAa................AAAa....',
+  '....AAAa................AAAa....',
+  '....AAAa................AAAa....',
+  '....AAAa................AAAa....',
+  '.....AAa................AAa.....',
+]
+const BOW_SEAT = [
+  '.........WWWWWWWWWWWWWw.........',
+  '........WWWWWWWWWWWWWWww........',
+  '........WWWWWWWWWWWWWWww........',
+  '........WWWWWWWWWWWWWWww........',
+  '.........WWWWWWWWWWWWww.........',
+  '..........WWWWWWWWWWww..........',
+]
+
+function drawBow(b: Buf, r: Res) {
+  const t = r.top
+  const { body, sleeve } = topMats(t)
+  const sh = r.shoes ?? DEFAULT_SHOE
+  const def = HAIR[r.hair] ?? HAIR.bob
+  // head crown (furthest away, peeking beyond the shoulders)
+  const tall = r.hair === 'bun' || r.hair === 'jook' || r.hair === 'ponytail' || r.hair === 'twin'
+  const crownRows = ['............########............', '..........############..........', '.........##############.........', '........################........', '........################........', '........################........']
+  if (r.hair === 'bun' || r.hair === 'jook') crownRows.unshift('.............######.............', '..............####..............')
+  if (r.hair === 'curly') crownRows.unshift('..........##..####..##..........')
+  const code = r.hair === 'jook' || r.hair === 'buzz' ? 'k' : '#'
+  const rows = crownRows.map((row, j) => ((r.hair === 'jook' && j < 2) ? row : row.replace(/#/g, code)))
+  const crownY = 29 - rows.length + (tall ? 0 : 0)
+  commit(b, hairLayer(r, def, { y: crownY, rows }, 0, 0, 'back'), r.hr.d, TAG.hair)
+  if (r.hair === 'bun') for (let x = 13; x <= 18; x++) b.put(x, crownY + 2, def.accent ?? P.red, TAG.hair)
+  // forearms flat on the floor either side of the head
+  const armCov = t.jacket || t.sleeve === 'long'
+  commit(b, rowsLayer(BOW_ARMS, 0, 27, (ch, x, y) => {
+    if (ch === 'H' || ch === 'h') return ch === 'h' ? r.sk.s : r.sk.b
+    return armCov ? clothCol(sleeve, t.pattern, t.patternColor, t.patternColor2, x, y, ch === 'a') : ch === 'a' ? r.sk.s : r.sk.b
+  }), armCov ? sleeve.d : r.sk.d, TAG.cloth)
+  // rounded back
+  const bodyM = t.jacket ? mat(t.jacket.main, t.jacket.shade) : body
+  const Bk = new Layer()
+  for (let y = 28; y <= 42; y++) {
+    const dy = (y + 0.5 - 35.5) / 7.2
+    if (Math.abs(dy) > 1) continue
+    const half = 9.6 * Math.sqrt(1 - dy * dy)
+    for (let x = Math.round(15.5 - half); x < Math.round(15.5 + half); x++) {
+      const nx = (x + 0.5 - 15.5) / 9.6
+      const shade = nx + dy * 0.6 > 0.45
+      const light = nx + dy < -0.75
+      Bk.put(x, y, clothCol(bodyM, t.jacket ? t.jacket.pattern : t.pattern, t.jacket ? t.jacket.patternColor : t.patternColor, t.patternColor2, x, y, shade, light))
+    }
+  }
+  commit(b, Bk, bodyM.d, TAG.cloth)
+  // spine / seam
+  for (let y = 30; y <= 40; y++) if (y % 2) put(b, 16, y, mix(bodyM.b, bodyM.s, 0.5))
+  if (t.number) {
+    let x = 16 - Math.ceil((t.number.length * 4 - 1) / 2)
+    for (const ch of t.number) {
+      const d = DIGITS[ch]
+      if (d) d.forEach((row, jj) => { for (let i = 0; i < 3; i++) if (row[i] === '#') put(b, x + i, 32 + jj, t.numberColor ?? '#fff') })
+      x += 4
+    }
+  }
+  if (t.jacket?.emblem === 'naga') {
+    NAGA.forEach((row, jj) => { for (let i = 0; i < row.length; i++) { const ch = row[i]; if (ch !== '.') put(b, 11 + i, 31 + jj, ch === '1' ? t.jacket!.emblemColor : t.jacket!.emblemColor2) } })
+  }
+  if (t.extra === 'sabai') for (let y = 29; y <= 40; y++) { put(b, 19, y, t.extraColor ?? P.gold); put(b, 20, y, mix(t.extraColor ?? P.gold, INK, 0.3)) }
+  // long hair spilling forward over the shoulders / a tail on the back
+  if (r.hair === 'ponytail' || r.hair === 'braid') {
+    const Lh = new Layer()
+    for (let y = 28; y <= 34; y++) for (let x = 14; x <= 17; x++) Lh.put(x, y, x === 14 ? r.hr.l : x === 17 ? r.hr.s : (y % 3 === 0 && r.hair === 'braid') ? r.hr.s : r.hr.b)
+    commit(b, Lh, r.hr.d, TAG.hair)
+  }
+  // seat on the heels, then the soles (closest to us)
+  const bm = mat(r.bottom.main, r.bottom.shade)
+  commit(b, rowsLayer(BOW_SEAT, 0, 40, (ch, x, y) => botCol(r, x, y, ch === 'w')), bm.d, TAG.cloth)
+  const F = rowsLayer(['.........FFFFF....FFFFf.........', '.........FFFFF....FFFFf.........', '.........FFFFf....FFFFf.........', '..........fff......fff..........'], 0, 46, (ch) => {
+    const low = ch === 'f'
+    if (r.bare) return low ? r.sk.s : mix(r.sk.b, r.sk.l, 0.5)
+    return low ? mix(sh.sole ?? sh.shade, INK, 0.2) : sh.sole ?? sh.shade
+  })
+  commit(b, F, r.bare ? r.sk.d : mix(sh.sole ?? sh.shade, INK, 0.5), TAG.cloth)
+}
+
+// ---------------------------------------------------------------------------
+// Composition
+
+function compose(look: AvatarLook, pose: DollPose, view: DollView, blink: boolean, bare: boolean): Buf {
+  const r = resolve(look, bare)
+  const b = new Buf()
+  if (pose === 'bow') {
+    drawBow(b, r)
+    return b
+  }
+  const pd = poseDef(pose, view)
+  const dy = pd.dy
+  const hair = HAIR[r.hair] ?? HAIR.bob
+  const handFree = view === 'front' && pd.R?.hand === 'rest' && pd.legs === 'stand'
+  const handPos: [number, number] = [r.g === 'f' ? 22 : 23, 33]
+
+  if (view === 'front') {
+    // hair & hood behind the body
+    drawHairParts(b, r, hair.behind, dy, 'behind')
+    if (handFree && r.hand === 'umbrella') drawHandItem(b, r.hand, view, handPos[0], handPos[1], 'behind')
+    if (r.top.collar === 'hood') {
+      const hc = mat(r.top.main, r.top.shade)
+      const Hd = new Layer()
+      for (let y = 21; y <= 24; y++) for (let x = 9; x <= 22; x++) if (!(y === 21 && (x < 11 || x > 20))) Hd.put(x, y + dy, x >= 20 ? hc.s : hc.b)
+      if (r.top.extra === 'hood') {
+        for (const x of [8, 9, 22, 23]) for (let y = 19; y <= 22; y++) Hd.put(x, y + dy, r.top.extraColor ?? P.brown)
+      }
+      commit(b, Hd, hc.d, TAG.cloth)
+    }
+  } else if (r.hand === 'umbrella' && pd.legs === 'stand') {
+    drawHandItem(b, r.hand, view, 9, 33, 'behind')
+  }
+
+  // legs
+  if (pd.legs === 'stand') drawLegsStand(b, r, view)
+  else drawLegsSpecial(b, r, pd.legs as 'kneelF' | 'kneelB' | 'sitF' | 'sitB')
+
+  const arms: [ArmDef | null, 1 | -1][] = [
+    [pd.L, 1],
+    [pd.R, -1],
+  ]
+  for (const [a, s] of arms) if (a && a.z === 'back') drawArm(b, r, a, s)
+
+  // neck
+  const N = new Layer()
+  const [n0, n1] = r.g === 'f' ? [14, 17] : [13, 18]
+  for (let y = 22; y <= 25; y++) for (let x = n0; x <= n1; x++) N.put(x, y + dy, r.sk.s)
+  commit(b, N, r.sk.d, TAG.skin)
+
+  drawTorso(b, r, dy, view)
+  if (view === 'front') drawTopFront(b, r, dy)
+  else drawTopBack(b, r, dy)
+  const waistAcc = r.neck === 'waistsash'
+  if (waistAcc) drawBodyAcc(b, r, r.neck, view, dy)
+  if (r.hand === 'yam') drawBodyAcc(b, r, 'yam', view, dy)
+
+  for (const [a, s] of arms) if (a && a.z === 'front') drawArm(b, r, a, s)
+  if (view === 'front' && pd.wai) drawWaiHands(b, r, dy)
+  if (view === 'front' && pd.lap) drawLapHands(b, r, dy)
+  if (!waistAcc) drawBodyAcc(b, r, r.neck, view, dy)
+
+  // head
+  drawHead(b, r, dy, view)
+  if (view === 'front') {
+    drawFace(b, r, dy, pd.expr, blink)
+    drawHeadAcc(b, r, r.head, view, dy, 'under')
+    drawHairParts(b, r, hair.front, dy, 'front')
+    if (!hair.ears) {
+      // (ears are covered by the side locks for most styles)
+    }
+  } else {
+    drawHairParts(b, r, hair.back, dy, 'back')
+  }
+  drawHeadAcc(b, r, r.head, view, dy, 'over')
+
+  for (const [a, s] of arms) if (a && a.z === 'top') drawArm(b, r, a, s)
+  if (handFree && r.hand && r.hand !== 'yam') drawHandItem(b, r.hand, view, handPos[0], handPos[1], 'over')
+  return b
+}
+
+function drawWaiHands(b: Buf, r: Res, dy: number) {
+  const rows = ['.HH.', 'HHHh', 'HHHh', 'HHhh', 'HHhh', 'HHhh']
+  const L = rowsLayer(rows, 14, 24 + dy, (ch) => (ch === 'h' ? r.sk.s : r.sk.b))
+  commit(b, L, r.sk.d, TAG.skin)
+  b.put(15, 26 + dy, r.sk.s, TAG.skin)
+  b.put(15, 27 + dy, r.sk.s, TAG.skin)
+}
+
+function drawLapHands(b: Buf, r: Res, dy: number) {
+  const rows = ['.HHHHHH.', 'HHHHHHHh', '.hhhhhh.']
+  commit(b, rowsLayer(rows, 12, 32 + dy, (ch) => (ch === 'h' ? r.sk.s : r.sk.b)), r.sk.d, TAG.skin)
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+
+export interface DollOptions {
+  view?: DollView
+  blink?: boolean
+  flip?: boolean
+  barefoot?: boolean
+}
+
+/** Outlined, cached HD doll frame (DOLL_W × DOLL_H). */
+export function dollSprite(look: AvatarLook, pose: DollPose, opts: DollOptions = {}): Sprite {
+  const view = opts.view ?? (pose === 'bow' ? 'back' : 'front')
+  const key = `doll:${lookKey(look)}:${pose}:${view}:${opts.blink ? 1 : 0}:${opts.flip ? 1 : 0}:${opts.barefoot ? 1 : 0}`
+  return cached(key, () => {
+    const buf = compose(look, pose, view, !!opts.blink, !!opts.barefoot)
+    const s = outlineCanvas(buf.canvas(), INK)
+    if (!opts.flip) return s
+    const f = createCanvas(s.w, s.h)
+    const ctx = f.getContext('2d')!
+    ctx.translate(s.w, 0)
+    ctx.scale(-1, 1)
+    ctx.drawImage(s.canvas, 0, 0)
+    return { canvas: f, w: s.w, h: s.h }
+  })
+}
+
+/** Head-and-shoulders crop of the front standing doll for round portraits. */
+export function dollPortrait(look: AvatarLook, size = 28): Sprite {
+  const key = `dollp:${lookKey(look)}:${size}`
+  return cached(key, () => {
+    const full = dollSprite(look, 'stand')
+    const ctx0 = full.canvas.getContext('2d')!
+    const data = ctx0.getImageData(0, 0, full.w, full.h).data
+    let topRow = 0
+    outer: for (let y = 0; y < full.h; y++) for (let x = 6; x < full.w - 6; x++) if (data[(y * full.w + x) * 4 + 3] > 20) { topRow = y; break outer }
+    // keep the chin + a little collar in frame
+    const sy = Math.max(0, Math.min(topRow, 31 - size))
+    const sx = Math.round(full.w / 2 - size / 2)
+    const c = createCanvas(size, size)
+    const ctx = c.getContext('2d')!
+    ctx.drawImage(full.canvas, sx, sy, size, size, 0, 0, size, size)
+    return { canvas: c, w: size, h: size }
+  })
+}
+
+/** A nice default look for each body preset. */
 export function dollDefaultLook(gender: 'm' | 'f'): AvatarLook {
-  return gender === 'm' ? { ...DEFAULT_LOOK, gender, hair: 'hair_short' } : { ...DEFAULT_LOOK, gender }
+  return gender === 'm'
+    ? { gender: 'm', skin: 1, face: 0, hairColor: 0, hair: 'hair_twoblock', top: 'top_school_m', bottom: 'bot_school_navy', shoes: 'shoes_school', head: null, neck: null, hand: null }
+    : { gender: 'f', skin: 1, face: 0, hairColor: 0, hair: 'hair_schoolgirl', top: 'top_school_f', bottom: 'bot_school_skirt', shoes: 'shoes_school', head: null, neck: null, hand: null }
 }
