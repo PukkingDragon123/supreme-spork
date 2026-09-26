@@ -1303,3 +1303,68 @@ body,
   border-image: var(--sk-bubble) 4 fill / 6px repeat;
   animation: pop-in 200ms ease-out;
 }
+
+/* ---------- pet & fashion shop ---------- */
+
+.pet-hero {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+}
+
+.pet-grid,
+.fashion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.fashion-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pet-card,
+.fashion-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 2px;
+  text-align: center;
+  min-width: 0;
+}
+
+.pet-rarity {
+  align-self: flex-start;
+  padding: 0 6px;
+  color: #fff;
+  font-weight: 600;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.pet-img {
+  width: 72px;
+  height: 72px;
+  animation: bob 2.2s ease-in-out infinite;
+}
+
+.pet-name {
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.pet-desc {
+  line-height: 1.25;
+  min-height: 2.5em;
+}
+
+.fashion-card img {
+  background: #e6cc98;
+  box-shadow: inset 0 2px 0 #c7a468;
+}
+
+.fashion-name {
+  line-height: 1.2;
+  min-height: 2.4em;
+}

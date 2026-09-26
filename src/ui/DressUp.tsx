@@ -13,6 +13,7 @@ import { DAY_COLORS, HAIR_COLORS, SKIN_TONES } from '../art/palette'
 import { lookKey, type AvatarLook } from '../art/avatar'
 import { DOLL_H, FACE_STYLES, dollSprite, type DollPose } from '../art/doll'
 import { drawRoomStill } from '../scenes/house'
+import { petSprite } from '../art/pets'
 import { buyHairColor, buyOutfit, equip, luckyColorActive, ownsOutfit, setLook } from '../game/actions'
 import { currentPhase } from '../scenes/sky'
 import { toast } from '../game/events'
@@ -44,7 +45,7 @@ const STYLES: { id: Style; label: string }[] = [
 
 type OutfitX = OutfitItem & { category?: string; gender?: 'm' | 'f' }
 
-function applyItem(look: AvatarLook, o: OutfitItem | null, slot: Slot | 'shoes'): AvatarLook {
+export function applyItem(look: AvatarLook, o: OutfitItem | null, slot: Slot | 'shoes'): AvatarLook {
   const l = { ...look }
   if (slot === 'hair' && o) l.hair = o.id
   else if (slot === 'top' && o) l.top = o.id
@@ -57,7 +58,7 @@ function applyItem(look: AvatarLook, o: OutfitItem | null, slot: Slot | 'shoes')
 }
 
 /** Crop of the doll that shows off one slot (head for hair, torso for tops…). */
-function thumbFor(look: AvatarLook, slot: string): string {
+export function thumbFor(look: AvatarLook, slot: string): string {
   const s = dollSprite(look, 'stand')
   const H = s.h
   const [y0, y1] =
@@ -123,7 +124,13 @@ class DressScene implements Scene {
     const bob = this.pose === 'happy' ? -Math.round(Math.abs(Math.sin(this.poseT * 9)) * 3) : 0
     g.ctx.fillStyle = 'rgba(40,20,10,0.25)'
     g.ellipse(Math.round(w / 2), baseY, Math.round(s.w * 0.36), 2, 'rgba(40,20,10,0.25)')
-    g.draw(s.canvas, Math.round(w / 2 - s.w / 2), baseY - s.h + 1 + bob)
+    const pet = game.value.pet
+    const dollX = pet ? Math.round(w / 2 - s.w / 2 - 10) : Math.round(w / 2 - s.w / 2)
+    g.draw(s.canvas, dollX, baseY - s.h + 1 + bob)
+    if (pet) {
+      const ps = petSprite(pet, 'down', this.pose === 'happy' ? 'happy' : 'idle', Math.floor(this.t * 2), { scale: 2 })
+      g.draw(ps.canvas, Math.round(dollX + s.w - 4), baseY - ps.h + 1)
+    }
     this.particles.render(g)
   }
 }

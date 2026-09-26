@@ -130,7 +130,7 @@ export function TempleView({ active }: { active: boolean }) {
       map,
       s.player.look,
       { onArrive, onMove: () => (arrived.value = null), onPickup: collect, onSay: () => undefined },
-      { companion: s.companion, pickups: todaysPickups(area.value, map.pickupSpots) },
+      { companion: s.companion, pet: s.pet, pickups: todaysPickups(area.value, map.pickupSpots) },
     )
     current = scene
     stage.current!.setScene(scene)
@@ -141,6 +141,11 @@ export function TempleView({ active }: { active: boolean }) {
   useEffect(() => {
     current?.setLook(game.value.player.look)
   }, [lk])
+
+  const pet = game.value.pet
+  useEffect(() => {
+    current?.setPet(pet)
+  }, [pet])
 
   const comp = game.value.companion
   useEffect(() => {

@@ -27,6 +27,8 @@ export interface SpecialOffer {
   coins: number
   items?: Record<string, number>
   outfits?: string[]
+  /** Pet companions included (premium pets come only from packs). */
+  pets?: string[]
   buff?: { kind: 'merit' | 'coin'; mult: number; minutes: number }
   oneTime?: boolean
   /** Monthly pass: daily coin drip for 30 days. */
@@ -44,6 +46,30 @@ export const SPECIAL_OFFERS: SpecialOffer[] = [
     outfits: ['top_boondee'],
     buff: { kind: 'merit', mult: 2, minutes: 60 },
     oneTime: true,
+  },
+  {
+    id: 'boondee.pet.dragon',
+    name: 'แพ็กมังกรทองน้อย',
+    desc: 'มังกรทองน้อยเดินตามคุณทุกที่ (เหรียญ +8%) + 300 คอยน์',
+    priceTHB: 199,
+    coins: 300,
+    pets: ['dragon'],
+  },
+  {
+    id: 'boondee.pet.naga',
+    name: 'แพ็กพญานาคน้อย',
+    desc: 'พญานาคน้อยเกล็ดทองลอยตามคุณ (บุญ +8%) + 300 คอยน์',
+    priceTHB: 199,
+    coins: 300,
+    pets: ['naga'],
+  },
+  {
+    id: 'boondee.pet.garuda',
+    name: 'แพ็กครุฑน้อย',
+    desc: 'ครุฑน้อยผู้พิทักษ์ (เหรียญ +7%) + 150 คอยน์',
+    priceTHB: 129,
+    coins: 150,
+    pets: ['garuda'],
   },
   {
     id: 'boondee.monthly',

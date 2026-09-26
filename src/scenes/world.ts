@@ -19,6 +19,8 @@ import { sfx } from '../engine/audio'
 import { avatarSprite, type AvatarLook, type Pose, type View } from '../art/avatar'
 import { catPoseSprite, dogSprite, DOG_COATS, monkSprite, noviceSweepSprite, sparrowSprite, type CatPose, type DogPose } from '../art/characters'
 import { drawShadow, type Prop } from '../art/props'
+import { petSprite, type PetAnim, type PetFacing } from '../art/pets'
+import { PET_BY_ID } from '../game/data/pets'
 import { pickupSprite, type PickupKind } from '../art/templeprops'
 import { NavGrid, type Rect } from './pathfind'
 import { applyTint, currentPhase, drawGlow, drawSky, SKY } from './sky'
@@ -141,6 +143,8 @@ export interface SpeechBubble {
 
 export interface WorldOptions {
   companion?: string | null
+  /** Pet companion id (src/game/data/pets.ts) that trails the player. */
+  pet?: string | null
   spawn?: { x: number; y: number }
   pickups?: Pickup[]
 }
@@ -290,6 +294,9 @@ export class WorldScene implements Scene {
   phase: Phase = 'day'
   time = 0
   companion: string | null = null
+  pet: string | null = null
+  private petPos = { x: 0, y: 0, facing: 'down' as Facing, moving: false, t: 0, idle: 0, happy: 0 }
+  private trail: [number, number][] = []
   paused = false
   /** When false the scene ignores input (used for the title screen). */
   interactive = true
@@ -309,6 +316,7 @@ export class WorldScene implements Scene {
     this.player = new Walker(sp.x, sp.y, 62)
     this.player.facing = map.spawn.face ?? 'up'
     this.companion = opts.companion ?? null
+    this.pet = opts.pet ?? null
     this.pickups = [...(opts.pickups ?? [])]
     this.phase = currentPhase()
     this.spawnActors()
@@ -655,6 +663,71 @@ export class WorldScene implements Scene {
 
   // ---------------------------------------------------------------- update
 
+  setPet(id: string | null) {
+    this.pet = id
+    this.trail = []
+    this.petPos.x = this.player.x + 10
+    this.petPos.y = this.player.y + 4
+  }
+
+  /** Make the pet hop with hearts (e.g. after earning merit). */
+  petHappy() {
+    this.petPos.happy = 1.2
+  }
+
+  private updatePet(dt: number) {
+    if (!this.pet) return
+    const p = this.player
+    const q = this.petPos
+    if (!this.trail.length) {
+      q.x = p.x + 10
+      q.y = p.y + 4
+    }
+    const last = this.trail[this.trail.length - 1]
+    if (!last || Math.hypot(last[0] - p.x, last[1] - p.y) > 1) this.trail.push([p.x, p.y])
+    if (this.trail.length > 40) this.trail.shift()
+    // Aim at a point on the trail ~16 px behind the player.
+    let tx = q.x
+    let ty = q.y
+    for (let i = this.trail.length - 1; i >= 0; i--) {
+      const [x, y] = this.trail[i]
+      if (Math.hypot(x - p.x, y - p.y) >= 16) {
+        tx = x
+        ty = y
+        break
+      }
+    }
+    const dx = tx - q.x
+    const dy = ty - q.y
+    const d = Math.hypot(dx, dy)
+    q.moving = d > 1.2
+    if (q.moving) {
+      const sp = Math.min(d, (p.speed * 1.1 + d * 2) * dt)
+      q.x += (dx / d) * sp
+      q.y += (dy / d) * sp
+      q.facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up'
+      q.idle = 0
+    } else q.idle += dt
+    q.t += dt
+    if (q.happy > 0) q.happy -= dt
+  }
+
+  private drawPet(g: Surface, t: number) {
+    const id = this.pet!
+    const q = this.petPos
+    const def = PET_BY_ID[id]
+    const facing: PetFacing = q.facing === 'down' ? 'down' : q.facing === 'up' ? 'up' : 'side'
+    const anim: PetAnim = q.happy > 0 ? 'happy' : q.moving ? 'walk' : q.idle > 12 ? 'sleep' : 'idle'
+    const frame = anim === 'walk' ? Math.floor(q.t * 8) : Math.floor(q.t * 2)
+    const s = petSprite(id, facing, anim, frame, { flip: q.facing === 'left' })
+    if (!def?.flying) drawShadow(g, q.x, q.y, 5, 1.5)
+    g.draw(s.canvas, Math.round(q.x - s.w / 2), Math.round(q.y - s.h + 1))
+    if (anim === 'sleep' && Math.floor(t * 1.2) % 2 === 0) {
+      g.px(q.x + 5, q.y - 12, '#e2e8ff')
+      g.px(q.x + 6, q.y - 14, '#e2e8ff')
+    }
+  }
+
   update(dt: number, t: number) {
     this.time = t
     this.windT += dt
@@ -675,6 +748,7 @@ export class WorldScene implements Scene {
       }
     }
     if (arrived && this.target) this.arrive()
+    this.updatePet(dt)
     // Walking over a pickup collects it.
     for (const q of this.pickups) {
       if (Math.hypot(q.x - p.x, q.y - p.y) < 5) {
@@ -1050,6 +1124,7 @@ export class WorldScene implements Scene {
       }
     }
     add(this.player.y + 0.1, () => drawWalker(this.player, this.look))
+    if (this.pet) add(this.petPos.y, () => this.drawPet(g, t))
     list.sort((a, b) => a.y - b.y)
     for (const d of list) d.draw()
 

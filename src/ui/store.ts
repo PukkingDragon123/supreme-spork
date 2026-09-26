@@ -35,8 +35,8 @@ export const activity = signal<ActivityRequest | null>(null)
 export const arrived = signal<ArriveTarget | null>(null)
 export const area = signal<AreaId>('wat')
 
-export type ShopSection = 'alms' | 'offering' | 'animal' | 'mats' | 'special' | 'boost' | 'area'
-export const shopSection = signal<ShopSection>('alms')
+export type ShopSection = 'pets' | 'fashion' | 'alms' | 'offering' | 'animal' | 'mats' | 'special' | 'boost' | 'area'
+export const shopSection = signal<ShopSection>('pets')
 
 export type SocialSection = 'friends' | 'groups' | 'feed' | 'charity'
 export const socialSection = signal<SocialSection>('friends')

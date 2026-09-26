@@ -105,6 +105,9 @@ export interface GameState {
   mala: { total: number; today: number; day: string }
   reminder: { on: boolean; hour: number; minute: number }
   house: HouseState
+  /** Owned pet companions and the one walking with you. */
+  pets: string[]
+  pet: string | null
   player: { name: string; birthDay: number; friendCode: string; look: AvatarLook }
   merit: number
   coins: number
@@ -170,6 +173,8 @@ export function defaultState(): GameState {
     mala: { total: 0, today: 0, day: '' },
     reminder: { on: false, hour: 19, minute: 0 },
     house: defaultHouse(),
+    pets: [],
+    pet: null,
     player: { name: 'สายบุญ', birthDay: new Date().getDay(), friendCode: makeFriendCode(), look: { ...DEFAULT_LOOK } },
     merit: 0,
     coins: 100,

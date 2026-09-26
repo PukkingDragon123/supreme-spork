@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Boondee pets preview</title>
+    <style>
+      body { background: #2b2340; color: #fff1d6; font-family: sans-serif; margin: 12px; }
+      canvas { image-rendering: pixelated; }
+      .row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px; margin-bottom: 10px; }
+      .cell { display: flex; flex-direction: column; align-items: center; background: #f6e6c8; border-radius: 6px; padding: 4px; color: #3a2838; font-size: 10px; }
+      .cell.grass { background: #b4e486; }
+      .cell .pair { display: flex; align-items: flex-end; gap: 2px; }
+      .card { width: 96px; }
+      .card .n { font-size: 11px; font-weight: bold; }
+      h3 { margin: 8px 0 4px; font-size: 14px; }
+      #err { color: #ff8a7a; white-space: pre; }
+    </style>
+  </head>
+  <body>
+    <div id="err"></div>
+    <div id="g"></div>
+    <script type="module" src="/src/dev/pets.ts"></script>
+  </body>
+</html>

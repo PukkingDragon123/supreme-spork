@@ -14,6 +14,7 @@ import { DOG_BY_ID, MAX_HEARTS } from './data/dogs'
 import { notify, toast } from './events'
 import { Rng } from '../engine/rng'
 import { MATERIAL_INFO, type MaterialId } from './materials'
+import { PET_BY_ID } from './data/pets'
 
 const today = () => dayKey()
 
@@ -123,11 +124,17 @@ export interface MeritOptions {
 }
 
 /** Grant merit (EXP) with every multiplier applied. Returns the amount given. */
+/** The active pet's perk multiplier for a kind (1 when it doesn't apply). */
+export function petPerk(kind: 'merit' | 'coin' | 'animal' | 'mats', s: GameState = game.value): number {
+  const def = s.pet ? PET_BY_ID[s.pet] : null
+  return def && def.perk.kind === kind ? 1 + def.perk.pct / 100 : 1
+}
+
 export function addMerit(base: number, o: MeritOptions = {}): number {
   const s = game.value
   const count = o.key ? s.daily.counts[o.key] ?? 0 : 0
-  let buff = buffMult('merit')
-  if (o.animal) buff += buffMult('animal') - 1
+  let buff = buffMult('merit') * petPerk('merit', s)
+  if (o.animal) buff += buffMult('animal') - 1 + (petPerk('animal', s) - 1)
   const gained = applyMerit(base, {
     buffMult: buff,
     luckyColor: luckyColorActive(s),
@@ -183,7 +190,7 @@ function onLevelUp(from: number, to: number) {
 }
 
 export function addCoins(n: number, o: { boost?: boolean } = {}): number {
-  const gained = Math.round(n * (o.boost ? buffMult('coin') : 1))
+  const gained = Math.round(n * (o.boost ? buffMult('coin') * petPerk('coin') : 1))
   if (gained <= 0) return 0
   mutate((d) => {
     d.coins += gained
@@ -245,6 +252,26 @@ export function buyMaterials(id: string): boolean {
     for (const [k, v] of Object.entries(p.mats)) d.materials[k as MaterialId] = (d.materials[k as MaterialId] ?? 0) + (v ?? 0)
   })
   return true
+}
+
+// ---------------------------------------------------------------------------
+// Pets
+
+export function buyPet(id: string): boolean {
+  const p = PET_BY_ID[id]
+  if (!p || p.premium || game.value.pets.includes(id)) return false
+  if (!spendCoins(p.price)) return false
+  mutate((d) => {
+    d.pets.push(id)
+    d.pet = id
+  })
+  return true
+}
+
+export function setPet(id: string | null) {
+  mutate((d) => {
+    d.pet = id && d.pets.includes(id) ? id : null
+  })
 }
 
 export function buyBoost(id: string): boolean {
@@ -368,7 +395,8 @@ export function track(event: GameEvent, amount = 1) {
       const n = d.daily.counts[k] ?? 0
       if (n < EVENT_MATERIAL_DAILY) {
         d.daily.counts[k] = n + 1
-        d.materials[mat] = (d.materials[mat] ?? 0) + 1
+        // A crafty pet sometimes finds a second one.
+        d.materials[mat] = (d.materials[mat] ?? 0) + (Math.random() < (petPerk('mats', d) - 1) * 5 ? 2 : 1)
         dropped = true
       }
     }
@@ -557,6 +585,11 @@ export function completePurchase(productId: string, tx: string): boolean {
     mutate((d) => {
       if (offer.oneTime) d.starterBought = true
       if (offer.outfits) for (const o of offer.outfits) if (!d.outfits.includes(o)) d.outfits.push(o)
+      if (offer.pets)
+        for (const p of offer.pets) {
+          if (!d.pets.includes(p)) d.pets.push(p)
+          d.pet = p
+        }
       if (offer.monthly) {
         const until = new Date()
         until.setDate(until.getDate() + offer.monthly.days - 1)
