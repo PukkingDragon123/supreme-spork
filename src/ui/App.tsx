@@ -6,7 +6,7 @@ import { Hud } from './Hud'
 import { Hotbar } from './Hotbar'
 import { Menu } from './Menu'
 import { ActionCard } from './ActionCard'
-import { activity, tab, coinStoreOpen, mapOpen, settingsOpen, profileOpen, mode, panel, prayStage, type Tab } from './store'
+import { activity, tab, coinStoreOpen, mapOpen, settingsOpen, profileOpen, mode, panel, prayStage, houseEditing, type Tab } from './store'
 import { QuestsScreen } from './screens/QuestsScreen'
 import { ShopScreen } from './screens/ShopScreen'
 import { SocialScreen } from './screens/SocialScreen'
@@ -78,7 +78,7 @@ export function App() {
           </>
         )}
         {m === 'house' && <HouseView active={!overlay} />}
-        {inGame && !act && !praying && (
+        {inGame && !act && !praying && tab.value === 'temple' && !(m === 'house' && houseEditing.value) && (
           <>
             <Hud />
             <Hotbar />

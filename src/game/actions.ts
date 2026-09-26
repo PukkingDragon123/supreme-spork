@@ -9,10 +9,11 @@ import { OUTFIT_BY_ID, type Slot } from './data/outfits'
 import { AREAS, AREA_BY_ID, type AreaId } from './data/areas'
 import { ACHIEVEMENTS, QUEST_POOL, QUESTS_PER_DAY, ALL_QUESTS_BONUS, type GameEvent } from './data/quests'
 import { CHANTS } from './data/chants'
-import { COIN_PACKS, SPECIAL_OFFERS, AD_DAILY_LIMIT, AD_REWARD_COINS } from './data/store'
+import { COIN_PACKS, SPECIAL_OFFERS, AD_DAILY_LIMIT, AD_REWARD_COINS, MATERIAL_PACKS } from './data/store'
 import { DOG_BY_ID, MAX_HEARTS } from './data/dogs'
 import { notify, toast } from './events'
 import { Rng } from '../engine/rng'
+import { MATERIAL_INFO, type MaterialId } from './materials'
 
 const today = () => dayKey()
 
@@ -237,6 +238,15 @@ export function addItems(items: Record<string, number>) {
   })
 }
 
+export function buyMaterials(id: string): boolean {
+  const p = MATERIAL_PACKS.find((x) => x.id === id)
+  if (!p || !spendCoins(p.price)) return false
+  mutate((d) => {
+    for (const [k, v] of Object.entries(p.mats)) d.materials[k as MaterialId] = (d.materials[k as MaterialId] ?? 0) + (v ?? 0)
+  })
+  return true
+}
+
 export function buyBoost(id: string): boolean {
   const b = BOOSTS.find((x) => x.id === id)
   if (!b) return false
@@ -328,9 +338,40 @@ export function setArea(id: AreaId) {
 // ---------------------------------------------------------------------------
 // Events → stats, quests, achievements
 
+/** Crafting materials that mini-games drop (a few times per day each). */
+export const EVENT_MATERIALS: Partial<Record<GameEvent, MaterialId>> = {
+  alms: 'cloth',
+  koi_fed: 'flower',
+  catfish_fed: 'flower',
+  dog_fed: 'wood',
+  bell_round: 'gold',
+  holy_water: 'clay',
+  gold_leaf: 'gold',
+  krathong: 'cloth',
+  circle_chedi: 'gold',
+  wish: 'flower',
+  donate: 'clay',
+  dedicate: 'flower',
+  deity: 'gold',
+  siamsi: 'wood',
+  lottery: 'wood',
+}
+export const EVENT_MATERIAL_DAILY = 3
+
 export function track(event: GameEvent, amount = 1) {
   const unlocked: { id: string; name: string; coins: number }[] = []
+  const mat = EVENT_MATERIALS[event]
+  let dropped = false
   mutate((d) => {
+    if (mat) {
+      const k = `mat:${event}`
+      const n = d.daily.counts[k] ?? 0
+      if (n < EVENT_MATERIAL_DAILY) {
+        d.daily.counts[k] = n + 1
+        d.materials[mat] = (d.materials[mat] ?? 0) + 1
+        dropped = true
+      }
+    }
     const prev = d.stats[event] ?? 0
     d.stats[event] = event === 'login' ? Math.max(prev, amount) : prev + amount
     for (const q of d.daily.quests) {
@@ -347,6 +388,7 @@ export function track(event: GameEvent, amount = 1) {
     }
   })
   for (const u of unlocked) notify({ kind: 'achievement', ...u })
+  if (dropped && mat) toast(`ได้${MATERIAL_INFO[mat].name} +1 ไว้ทำเฟอร์นิเจอร์`, 'hammer')
 }
 
 export function claimQuest(id: string): boolean {

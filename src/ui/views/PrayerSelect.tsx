@@ -61,7 +61,7 @@ export function PrayerSelect() {
         <PT text={`วันนี้ ${Math.min(prayersToday(s), DAILY_PRAYER_GOAL)}/${DAILY_PRAYER_GOAL}`} size={12} {...TONE_TEXT.ink} />
         {s.prayer.streak > 1 && <span class="chip gold small">🔥 {s.prayer.streak} วัน</span>}
       </div>
-      <Tabs tabs={CHAPTERS.map((c) => ({ id: c.id, label: c.short, icon: chapterUnlocked(c.id) ? undefined : 'lock' }))} value={ch} onChange={pickChapter} />
+      <Tabs tabs={CHAPTERS.map((c) => ({ id: c.id, label: chapterUnlocked(c.id) || c.id === ch ? c.short : '', icon: chapterUnlocked(c.id) ? undefined : 'lock' }))} value={ch} onChange={pickChapter} />
       <div class="ptab-body">
         <div class="row pray-chapter">
           <PT text={chapter.name} size={13} weight={600} {...TONE_TEXT.ink} />

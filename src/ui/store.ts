@@ -35,7 +35,7 @@ export const activity = signal<ActivityRequest | null>(null)
 export const arrived = signal<ArriveTarget | null>(null)
 export const area = signal<AreaId>('wat')
 
-export type ShopSection = 'alms' | 'offering' | 'animal' | 'special' | 'boost' | 'area'
+export type ShopSection = 'alms' | 'offering' | 'animal' | 'mats' | 'special' | 'boost' | 'area'
 export const shopSection = signal<ShopSection>('alms')
 
 export type SocialSection = 'friends' | 'groups' | 'feed' | 'charity'
@@ -54,6 +54,8 @@ export const panel = signal<Panel | null>(null)
 export const prayStage = signal<string | null>(null)
 /** Praying at the home altar instead of the temple hall. */
 export const prayAtHome = signal(false)
+/** Home is in furniture edit mode (hides the HUD and hotbar). */
+export const houseEditing = signal(false)
 
 export function openPanel(p: Panel | null) {
   panel.value = p

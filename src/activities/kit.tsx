@@ -8,7 +8,13 @@ import { adsLeft, grantMeritRaw, rewardAd } from '../game/actions'
 import { ads } from '../services/ads'
 import { Btn, Coin, Icon, Merit } from '../ui/components/common'
 import { FxCanvas } from '../ui/components/FxCanvas'
-import { coinStoreOpen, openActivity } from '../ui/store'
+import { coinStoreOpen, openActivity, activity } from '../ui/store'
+import { signal } from '@preact/signals'
+import { PT, TONE_TEXT } from '../ui/pixeltext'
+import { GOALS } from './goals'
+
+/** Activity id whose goal card should be shown again (the ? button). */
+export const goalRequest = signal<string | null>(null)
 import { sfx } from '../engine/audio'
 
 /** Mount a pixel stage with the given scene for the lifetime of a component. */
@@ -43,16 +49,24 @@ export function ActivityFrame({
   children?: ComponentChildren
   backLabel?: string
 }) {
+  const id = activity.value?.id
   return (
     <>
       <div class="act-top">
-        <button class="btn paper small" onClick={() => (sfx.close(), onClose())} aria-label={backLabel ?? 'กลับ'}>
-          ‹ {backLabel ?? 'กลับ'}
+        <button class="btn paper small icon-btn" onClick={() => (sfx.close(), onClose())} aria-label={backLabel ?? 'กลับ'}>
+          <PT text="‹" size={16} weight={600} {...TONE_TEXT.paper} />
         </button>
-        <div class="panel act-title">{title}</div>
-        <button class="panel hud-coins" onClick={() => (coinStoreOpen.value = true)} aria-label="เติมบุญคอยน์">
+        <div class="title-plate wood act-title">
+          <PT text={title} size={12} weight={600} {...TONE_TEXT.wood} />
+        </div>
+        {id && GOALS[id] && (
+          <button class="btn blue small icon-btn" onClick={() => (sfx.open(), (goalRequest.value = id))} aria-label="วิธีเล่น">
+            <PT text="?" size={14} weight={600} {...TONE_TEXT.blue} />
+          </button>
+        )}
+        <button class="hud2-coins" onClick={() => (coinStoreOpen.value = true)} aria-label="เติมบุญคอยน์">
           <Icon name="coin" size={18} />
-          <span class="num">{game.value.coins.toLocaleString('th-TH')}</span>
+          <PT text={game.value.coins.toLocaleString('en-US')} size={13} weight={600} {...TONE_TEXT.wood} />
         </button>
       </div>
       {children}

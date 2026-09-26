@@ -1,7 +1,13 @@
 // Renders whichever merit activity is currently open.
 
 import type { FunctionComponent } from 'preact'
-import { activity, type ActivityId, type ActivityRequest } from '../ui/store'
+import { useState } from 'preact/hooks'
+import { activity, closeActivity, type ActivityId, type ActivityRequest } from '../ui/store'
+import { GOALS } from './goals'
+import { game, mutate } from '../game/state'
+import { PBtn, Window } from '../ui/components/kit'
+import { Icon } from '../ui/components/common'
+import { goalRequest } from './kit'
 import { HallActivity } from './hall'
 import { WishActivity } from './wish'
 import { SiamsiActivity } from './siamsi'
@@ -38,11 +44,48 @@ const REGISTRY: Partial<Record<ActivityId, FunctionComponent<{ req: ActivityRequ
   circle: CircleActivity,
 }
 
+export function GoalCard({ id, onStart, onClose }: { id: ActivityId; onStart: () => void; onClose?: () => void }) {
+  const g = GOALS[id]
+  if (!g) return null
+  return (
+    <Window title={g.title} icon={g.icon} onClose={onClose} footer={<PBtn tone="green" block size="big" icon="play" onClick={onStart}>เริ่มเลย</PBtn>}>
+      <p class="goal-main">{g.goal}</p>
+      <ol class="goal-steps">
+        {g.steps.map((s, i) => (
+          <li key={i}>
+            <span class="goal-n num">{i + 1}</span>
+            {s}
+          </li>
+        ))}
+      </ol>
+      <div class="panel gold goal-reward small">
+        <Icon name="gift" size={18} /> {g.reward}
+      </div>
+    </Window>
+  )
+}
+
 export function ActivityHost() {
   const a = activity.value
+  const [started, setStarted] = useState<string | null>(null)
   if (!a) return null
   const C = REGISTRY[a.id]
   if (!C) return null
+  const key = `${a.id}:${JSON.stringify(a.params ?? {})}`
+  const needGoal = !!GOALS[a.id] && !game.value.seen.tips.includes(`goal:${a.id}`) && started !== key
+  const again = goalRequest.value === a.id
+  const start = () => {
+    setStarted(key)
+    goalRequest.value = null
+    mutate((d) => {
+      if (!d.seen.tips.includes(`goal:${a.id}`)) d.seen.tips.push(`goal:${a.id}`)
+    })
+  }
   // Key on id + params so switching activities remounts cleanly.
-  return <C key={`${a.id}:${JSON.stringify(a.params ?? {})}`} req={a} />
+  return (
+    <>
+      <C key={key} req={a} />
+      {(needGoal || again) && <GoalCard id={a.id} onStart={start} onClose={again ? start : closeActivity} />}
+    </>
+  )
 }

@@ -140,6 +140,7 @@ img.px,
 .win,
 .panel.modal,
 .panel.sheet {
+  border-style: solid;
   border-width: 16px;
   border-image: var(--sk-panel) 8 fill / 16px repeat;
 }

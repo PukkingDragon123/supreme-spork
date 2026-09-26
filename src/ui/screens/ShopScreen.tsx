@@ -4,7 +4,11 @@ import { game, level } from '../../game/state'
 import { ITEMS, BOOSTS, type ItemCategory } from '../../game/data/items'
 import { AREAS } from '../../game/data/areas'
 import { SPECIAL_OFFERS, AD_REWARD_COINS } from '../../game/data/store'
-import { adsLeft, buyBoost, buyItem, count, isAreaUnlocked, rewardAd, unlockArea } from '../../game/actions'
+import { adsLeft, buyBoost, buyItem, buyMaterials, count, isAreaUnlocked, rewardAd, unlockArea } from '../../game/actions'
+import { MATERIAL_PACKS } from '../../game/data/store'
+import type { MaterialId } from '../../game/materials'
+import { MatChip } from '../views/PrayerSelect'
+import { Tabs } from '../components/kit'
 import { ads } from '../../services/ads'
 import { toast } from '../../game/events'
 import { Btn, Coin, Icon } from '../components/common'
@@ -15,6 +19,7 @@ const SECTIONS: { id: ShopSection; label: string; icon: string }[] = [
   { id: 'alms', label: 'ของใส่บาตร', icon: 'bowl' },
   { id: 'offering', label: 'ของถวาย', icon: 'garland' },
   { id: 'animal', label: 'อาหารสัตว์', icon: 'paw' },
+  { id: 'mats', label: 'วัสดุ', icon: 'hammer' },
   { id: 'special', label: 'พิเศษ', icon: 'krathong' },
   { id: 'boost', label: 'บูสต์บุญ', icon: 'boost' },
   { id: 'area', label: 'ปลดล็อกวัด', icon: 'map' },
@@ -47,15 +52,37 @@ export function ShopScreen() {
           </div>
         </button>
       )}
-      <div class="tabs">
-        {SECTIONS.map((t) => (
-          <button key={t.id} class={`tab ${sec === t.id ? 'active' : ''}`} onClick={() => (sfx.tap(), (shopSection.value = t.id))}>
-            <Icon name={t.icon} size={16} /> {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs compact tabs={SECTIONS} value={sec} onChange={(id) => (shopSection.value = id)} />
 
-      {sec === 'boost' ? (
+      {sec === 'mats' ? (
+        <div class="list">
+          {MATERIAL_PACKS.map((p) => (
+            <div class="panel card" key={p.id}>
+              <span class="recipe">
+                {Object.entries(p.mats).map(([k, v]) => (
+                  <MatChip key={k} id={k as MaterialId} n={v ?? 0} />
+                ))}
+              </span>
+              <div class="grow">
+                <div class="subtitle">{p.name}</div>
+                <div class="small muted">{p.desc}</div>
+              </div>
+              <Btn
+                tone="green"
+                size="small"
+                onClick={() => {
+                  if (buyMaterials(p.id)) {
+                    sfx.purchase()
+                    toast(`ได้${p.name}แล้ว ไปทำเฟอร์นิเจอร์กัน`, 'hammer')
+                  }
+                }}
+              >
+                <Coin n={p.price} size={14} />
+              </Btn>
+            </div>
+          ))}
+        </div>
+      ) : sec === 'boost' ? (
         <div class="list">
           {BOOSTS.map((b) => (
             <div class="panel card" key={b.id}>

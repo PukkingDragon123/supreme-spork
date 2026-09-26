@@ -481,15 +481,18 @@ function ResultWindow({
               ด่านถัดไป
             </PBtn>
           )}
-          <div class="row" style={{ width: '100%' }}>
-            <PBtn tone="wood" class="grow" icon="retry" onClick={onReplay}>
+          <div class="row" style={{ width: '100%', gap: '2px' }}>
+            <PBtn tone="wood" size="small" class="grow" icon="retry" onClick={onReplay}>
               สวดอีก
             </PBtn>
-            <PBtn tone="paper" class="grow" icon="book" onClick={onStages}>
-              เลือกด่าน
+            <PBtn tone="paper" size="small" class="grow" icon="book" onClick={onStages}>
+              ด่าน
+            </PBtn>
+            <PBtn tone="paper" size="small" class="grow" onClick={onExit}>
+              กลับ
             </PBtn>
           </div>
-          <div class="row" style={{ width: '100%' }}>
+          <div class="row" style={{ width: '100%', gap: '2px' }}>
             {!doubled && adsLeft() > 0 && (
               <PBtn tone="blue" size="small" class="grow" icon="tv" onClick={double}>
                 บุญ x2
@@ -500,9 +503,6 @@ function ResultWindow({
                 กรวดน้ำ
               </PBtn>
             )}
-            <PBtn tone="paper" size="small" class="grow" onClick={onExit}>
-              กลับ
-            </PBtn>
           </div>
         </div>
       </div>

@@ -57,3 +57,13 @@ export const SPECIAL_OFFERS: SpecialOffer[] = [
 
 export const AD_REWARD_COINS = 15
 export const AD_DAILY_LIMIT = 5
+
+/** Crafting material bundles bought with Boon Coins. */
+export const MATERIAL_PACKS: { id: string; name: string; desc: string; price: number; mats: Partial<Record<'wood' | 'cloth' | 'clay' | 'gold' | 'flower', number>> }[] = [
+  { id: 'mat_wood', name: 'มัดไม้สัก', desc: 'ไม้ 5 ชิ้น สำหรับเฟอร์นิเจอร์', price: 40, mats: { wood: 5 } },
+  { id: 'mat_cloth', name: 'พับผ้าไหม', desc: 'ผ้า 5 ผืน สำหรับหมอนและม่าน', price: 40, mats: { cloth: 5 } },
+  { id: 'mat_clay', name: 'ตะกร้าดินเผา', desc: 'ดินเผา 5 ชิ้น สำหรับกระถางและโคม', price: 40, mats: { clay: 5 } },
+  { id: 'mat_flower', name: 'กำดอกไม้', desc: 'ดอกไม้ 5 ดอก หอมสดชื่น', price: 30, mats: { flower: 5 } },
+  { id: 'mat_gold', name: 'ทองคำเปลว', desc: 'ทอง 3 แผ่น สำหรับของชิ้นพิเศษ', price: 60, mats: { gold: 3 } },
+  { id: 'mat_all', name: 'ชุดช่างใหญ่', desc: 'ทุกอย่างอย่างละ 4 คุ้มที่สุด', price: 150, mats: { wood: 4, cloth: 4, clay: 4, flower: 4, gold: 4 } },
+]

@@ -203,7 +203,7 @@ export function DressUp({ creating, onDone }: { creating?: boolean; onDone: () =
         {lucky ? `ใส่สี${today.name}แล้ว บุญ +10%` : `วัน${today.day} ใส่สี${today.name} บุญ +10%`}
       </div>
       <div class="dress-panel win">
-        <Tabs tabs={CATS} value={cat} onChange={(c) => (setCat(c), setTrying(null))} />
+        <Tabs compact tabs={CATS} value={cat} onChange={(c) => (setCat(c), setTrying(null))} />
         <div class="ptab-body dress-body scroll">
           {cat === 'body' && <BodyEditor look={look} onChange={celebrate} />}
           {(cat === 'top' || cat === 'bottom') && (

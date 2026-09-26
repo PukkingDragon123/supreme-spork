@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Boondee home (dev)</title>
+    <style>
+      body { background: #2b2340; color: #fff1d6; font-family: sans-serif; margin: 0; }
+      #wrap { display: flex; gap: 12px; flex-wrap: wrap; padding: 8px; }
+      #phone { position: relative; width: 390px; height: 700px; overflow: hidden; border-radius: 14px; background: #000; }
+      #bar { display: flex; flex-wrap: wrap; gap: 4px; max-width: 390px; margin-top: 6px; }
+      button { font-size: 12px; padding: 4px 6px; border-radius: 6px; border: 1px solid #6b4d5e; background: #fff6e4; color: #3a2838; }
+      #log { font-size: 12px; margin-top: 4px; max-width: 390px; min-height: 32px; }
+      #cat canvas { image-rendering: pixelated; background: #c9b8a8; margin: 2px; }
+      #cat .row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 4px; margin-bottom: 8px; }
+      #cat h3 { margin: 4px 0; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <div id="wrap">
+      <div>
+        <div id="phone"></div>
+        <div id="bar"></div>
+        <div id="log"></div>
+      </div>
+      <div id="cat"></div>
+    </div>
+    <script type="module" src="/src/dev/house.ts"></script>
+  </body>
+</html>

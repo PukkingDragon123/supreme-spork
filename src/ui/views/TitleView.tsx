@@ -117,26 +117,18 @@ export function AuthPanel({ onDone, onGuest }: { onDone: () => void; onGuest: ()
       />
       <form class="ptab-body auth-form" onSubmit={submit}>
         {t === 'signup' && (
-          <label class="field">
-            <PT text="ชื่อเล่นในเกม" size={12} {...TONE_TEXT.ink} />
-            <input class="pinput" value={name} maxLength={24} autoComplete="nickname" placeholder="เช่น น้องบุญ" onInput={(e) => setName((e.target as HTMLInputElement).value)} />
-          </label>
+          <input class="pinput" aria-label="ชื่อเล่นในเกม" value={name} maxLength={24} autoComplete="nickname" placeholder="ชื่อเล่นในเกม เช่น น้องบุญ" onInput={(e) => setName((e.target as HTMLInputElement).value)} />
         )}
-        <label class="field">
-          <PT text="อีเมล" size={12} {...TONE_TEXT.ink} />
-          <input class="pinput" type="email" inputMode="email" autoComplete="email" value={email} placeholder="you@example.com" onInput={(e) => setEmail((e.target as HTMLInputElement).value)} />
-        </label>
-        <label class="field">
-          <PT text="รหัสผ่าน" size={12} {...TONE_TEXT.ink} />
-          <input
+        <input class="pinput" aria-label="อีเมล" type="email" inputMode="email" autoComplete="email" value={email} placeholder="อีเมล" onInput={(e) => setEmail((e.target as HTMLInputElement).value)} />
+        <input
             class="pinput"
             type="password"
             autoComplete={t === 'signup' ? 'new-password' : 'current-password'}
             value={pw}
-            placeholder={t === 'signup' ? 'อย่างน้อย 8 ตัว มีตัวอักษรและตัวเลข' : ''}
-            onInput={(e) => setPw((e.target as HTMLInputElement).value)}
-          />
-        </label>
+          aria-label="รหัสผ่าน"
+          placeholder={t === 'signup' ? 'รหัสผ่าน (8 ตัวขึ้นไป มีตัวเลข)' : 'รหัสผ่าน'}
+          onInput={(e) => setPw((e.target as HTMLInputElement).value)}
+        />
         {t === 'signup' && (
           <div class="row auth-gender">
             <PT text="เพศ" size={12} {...TONE_TEXT.ink} />
@@ -169,9 +161,9 @@ export function AuthPanel({ onDone, onGuest }: { onDone: () => void; onGuest: ()
           </p>
         )}
       </form>
-      <button class="auth-guest" type="button" onClick={() => (sfx.tap(), onGuest())}>
-        <PT text="เล่นเลยโดยไม่สมัคร ▸" size={12} {...TONE_TEXT.wood} />
-      </button>
+      <PBtn tone="wood" size="small" block type="button" onClick={onGuest}>
+        เล่นเลยโดยไม่สมัคร ▸
+      </PBtn>
     </div>
   )
 }

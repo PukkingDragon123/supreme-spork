@@ -12,7 +12,7 @@ import { coinStoreOpen, profileOpen } from './store'
 import { sfx } from '../engine/audio'
 import { DAILY_PRAYER_GOAL, prayersToday } from '../game/prayer'
 
-export function PortraitRing({ size = 64 }: { size?: number }) {
+export function PortraitRing({ size = 72 }: { size?: number }) {
   const look = game.value.player.look
   const url = useMemo(() => spriteDataUrl(dollPortrait(look), 4), [lookKey(look)])
   return (
@@ -32,7 +32,7 @@ export function Hud() {
         <PortraitRing />
         <span class="hud2-lv num">{lv.level}</span>
         <span class="hud2-bars">
-          <PT text={s.player.name} size={12} color="#fff6dc" shadow="#3b2616" />
+          <span class="hud2-name"><PT text={s.player.name} size={12} color="#fff6dc" shadow="#1c120c" /></span>
           <span class="hbar gold" title="บุญสะสมสู่เลเวลถัดไป">
             <span style={{ width: `${Math.round((lv.into / Math.max(1, lv.need)) * 100)}%` }} />
           </span>
@@ -44,7 +44,7 @@ export function Hud() {
       </button>
       <button class="hud2-coins" onClick={() => (sfx.open(), (coinStoreOpen.value = true))} aria-label={`บุญคอยน์ ${s.coins} เติมเพิ่ม`}>
         <Icon name="coin" size={22} />
-        <PT text={s.coins.toLocaleString('en-US')} size={13} weight={600} {...TONE_TEXT.wood} />
+        <PT text={s.coins.toLocaleString('en-US')} size={14} weight={600} {...TONE_TEXT.wood} />
         <span class="hud2-plus">
           <Icon name="plus" size={14} />
         </span>

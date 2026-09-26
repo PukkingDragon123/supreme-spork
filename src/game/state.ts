@@ -9,7 +9,7 @@ import { STARTER_INVENTORY } from './data/items'
 import { STARTER_OUTFITS } from './data/outfits'
 import { levelFromMerit } from './economy'
 import { emptyMaterials, type Materials } from './materials'
-import { defaultHouse, type HouseState } from './house'
+import { defaultHouse, normalizeHouse, type HouseState } from './house'
 import { weekKey } from './time'
 
 export const SAVE_KEY = 'boondee.save.v1'
@@ -219,7 +219,7 @@ export function migrate(raw: unknown): GameState {
     pickups: { ...base.pickups, ...(s.pickups ?? {}) },
     mala: { ...base.mala, ...(s.mala ?? {}) },
     reminder: { ...base.reminder, ...(s.reminder ?? {}) },
-    house: s.house && Array.isArray(s.house.placed) ? { ...base.house, ...s.house } : base.house,
+    house: s.house ? normalizeHouse(s.house) : base.house,
     v: SAVE_VERSION,
   }
   // v1 called the main temple 'home'; it is 'wat' now that players have a house.

@@ -7,14 +7,14 @@ import { HouseScene } from '../../scenes/house'
 import { game, mutate } from '../../game/state'
 import { lookKey } from '../../art/avatar'
 import { FURNITURE_BY_ID, FLOORS, WALLPAPERS, type Interact } from '../../game/data/furniture'
-import { moveFurniture, placeFurniture, storeFurniture, roomScore } from '../../game/house'
-import { furnitureThumb } from '../../art/furniture'
+import { storeFurniture, roomScore, cosyTier, ownsSurface, setWallpaper, setFloor } from '../../game/house'
+import { furnitureThumb, surfaceThumb } from '../../art/furniture'
 import { spriteDataUrl } from '../../engine/sprite'
 import { nextStage } from '../../game/prayer'
 import { adsLeft, rewardAd } from '../../game/actions'
 import { ads } from '../../services/ads'
 import { toast } from '../../game/events'
-import { goTemple, openPanel, prayAtHome, prayStage } from '../store'
+import { goTemple, houseEditing, openPanel, prayAtHome, prayStage } from '../store'
 import { PBtn, Slot, Tabs, Window } from '../components/kit'
 import { PT, TONE_TEXT } from '../pixeltext'
 import { sfx } from '../../engine/audio'
@@ -37,7 +37,7 @@ export function HouseView({ active }: { active: boolean }) {
   const s = game.value
 
   useEffect(() => {
-    const st = new Stage(host.current!, { targetWidth: 160 })
+    const st = new Stage(host.current!, { targetWidth: 168 })
     stage.current = st
     const scene = new HouseScene(game.value.house, game.value.player.look, {
       onInteract: (kind, uid) => interact(kind, uid),
@@ -45,16 +45,16 @@ export function HouseView({ active }: { active: boolean }) {
         sfx.tap()
         setPicked(uid)
       },
-      onPlaced: (id, x, y, flip) => {
+      onPlaced: (_id, _x, _y, _flip, next) => {
         mutate((d) => {
-          d.house = placeFurniture(d.house, id, x, y, flip)
+          d.house = next
         })
         sfx.plop()
         setPlacing(null)
       },
-      onMoved: (uid, x, y, flip) => {
+      onMoved: (_uid, _x, _y, _flip, next) => {
         mutate((d) => {
-          d.house = moveFurniture(d.house, uid, x, y, flip)
+          d.house = next
         })
         sfx.plop()
         setPlacing(null)
@@ -63,6 +63,8 @@ export function HouseView({ active }: { active: boolean }) {
     })
     houseScene = scene
     st.setScene(scene)
+    // Keep the room clear of the HUD (top) and hotbar (bottom), in virtual px.
+    scene.setInsets(Math.round(76 / st.cssScale), Math.round(110 / st.cssScale))
     st.start()
     return () => {
       st.destroy()
@@ -85,6 +87,7 @@ export function HouseView({ active }: { active: boolean }) {
     houseScene?.setLook(game.value.player.look)
   }, [lk])
   useEffect(() => {
+    houseEditing.value = editing
     houseScene?.setMode(editing ? 'edit' : 'live')
     if (!editing) {
       houseScene?.cancelPlacing()
@@ -136,18 +139,14 @@ export function HouseView({ active }: { active: boolean }) {
       <div class="stage-host" ref={host} />
       {!editing && (
         <div class="house-tools">
-          <PBtn tone="wood" size="small" icon="edit" onClick={() => setEditing(true)}>
-            จัดห้อง
-          </PBtn>
-          <PBtn tone="wood" size="small" icon="hammer" onClick={() => openPanel('craft')}>
-            ทำเฟอร์นิเจอร์
-          </PBtn>
+          <PBtn tone="wood" class="icon-btn" icon="edit" iconSize={24} aria-label="จัดห้อง" onClick={() => setEditing(true)} />
+          <PBtn tone="wood" class="icon-btn" icon="hammer" iconSize={24} aria-label="ทำเฟอร์นิเจอร์" onClick={() => openPanel('craft')} />
         </div>
       )}
       {editing && (
         <div class="house-edit">
           <div class="house-edit-top">
-            <PT text={`ความน่าอยู่ ${roomScore(house)}`} size={12} color="#fff6dc" shadow="#3b2616" />
+            <PT text={`ความน่าอยู่ ${roomScore(house)} · ${cosyTier(roomScore(house)).name}`} size={12} color="#fff6dc" shadow="#3b2616" />
             <span class="grow" />
             <PBtn tone="green" size="small" icon="check" onClick={() => setEditing(false)}>
               เสร็จ
@@ -206,9 +205,10 @@ export function HouseView({ active }: { active: boolean }) {
               <Tabs
                 tabs={[
                   { id: 'items', label: 'ของในคลัง', icon: 'bag' },
-                  { id: 'wall', label: 'วอลเปเปอร์' },
-                  { id: 'floor', label: 'พื้น' },
+                  { id: 'wall', label: 'ผนัง', icon: 'home' },
+                  { id: 'floor', label: 'พื้น', icon: 'edit' },
                 ]}
+                compact
                 value={tray}
                 onChange={setTray}
               />
@@ -276,34 +276,34 @@ export function HouseView({ active }: { active: boolean }) {
   )
 }
 
-function SurfacePicker({ list, value, kind }: { list: { id: string; name: string; recipe: Record<string, number | undefined>; coins?: number }[]; value: string; kind: 'wallpaper' | 'floor' }) {
-  const owned = game.value.house.storage
+function SurfacePicker({ list, value, kind }: { list: { id: string; name: string }[]; value: string; kind: 'wallpaper' | 'floor' }) {
+  const h = game.value.house
   return (
     <div class="tray-row">
       {list.map((w) => {
-        const have = w.id === value || (owned[w.id] ?? 0) > 0 || !Object.keys(w.recipe).length
+        const have = ownsSurface(h, w.id)
         return (
-          <PBtn
+          <Slot
             key={w.id}
-            tone={w.id === value ? 'green' : have ? 'paper' : 'dark'}
-            size="small"
+            size={60}
+            active={w.id === value}
+            locked={!have}
+            title={w.name}
             onClick={() => {
               if (!have) {
                 openPanel('craft')
                 return
               }
               mutate((d) => {
-                if (kind === 'wallpaper') d.house.wallpaper = w.id
-                else d.house.floor = w.id
+                d.house = kind === 'wallpaper' ? setWallpaper(d.house, w.id) : setFloor(d.house, w.id)
               })
               sfx.plop()
             }}
           >
-            {w.name}
-          </PBtn>
+            <img class="px slot-img" src={spriteDataUrl(surfaceThumb(w.id), 2)} alt="" />
+          </Slot>
         )
       })}
     </div>
   )
 }
-

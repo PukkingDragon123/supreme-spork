@@ -56,13 +56,13 @@ function fontOf(size: number, weight: number, family = PIXEL_FAMILY) {
 }
 
 /** Fixed line box per size so labels of different text line up. */
-function lineBox(size: number, weight: number, family?: string) {
-  const k = `${family}:${size}:${weight}:${fontsReady.peek() ? 1 : 0}`
+function lineBox(size: number, weight: number, family?: string, thai = true) {
+  const k = `${family}:${size}:${weight}:${thai ? 1 : 0}:${fontsReady.peek() ? 1 : 0}`
   let m = metrics.get(k)
   if (!m) {
     const c = ctx2d()
     c.font = fontOf(size, weight, family)
-    const probe = c.measureText('ปั้ญู่ฐุ๊Ág')
+    const probe = c.measureText(thai ? 'ปั้ญู่ฐุ๊Ág' : '0123456789+x')
     m = {
       asc: Math.ceil(probe.actualBoundingBoxAscent || size * 0.95),
       desc: Math.ceil(probe.actualBoundingBoxDescent || size * 0.35),
@@ -86,7 +86,8 @@ export function renderPixelText(text: string, st: PixelTextStyle = {}): Rendered
 
   const c = ctx2d()
   c.font = fontOf(size, weight, family)
-  const { asc, desc } = lineBox(size, weight, family)
+  // Text without Thai (numbers, Latin) gets a tighter box: no room for tone marks.
+  const { asc, desc } = lineBox(size, weight, family, /[\u0E00-\u0E7F]/.test(text))
   const pad = 1
   const tw = Math.max(1, Math.ceil(c.measureText(text).width))
   const w = tw + pad * 2

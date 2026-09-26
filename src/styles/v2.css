@@ -42,30 +42,26 @@ body,
 
 .ring {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-style: solid;
-  border-width: 16px;
-  border-image: var(--sk-ring) 8 fill / 16px stretch;
+  display: inline-block;
+  background: var(--sk-ring) center / 100% 100% no-repeat;
   image-rendering: pixelated;
-  overflow: hidden;
   flex-shrink: 0;
 }
 
 .ring img {
   position: absolute;
-  width: 48px;
-  height: 48px;
-  left: -8px;
-  top: -6px;
-  clip-path: circle(20px at 24px 24px);
+  left: 50%;
+  top: 50%;
+  width: 70%;
+  height: 70%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
 }
 
 .hud2-lv {
   position: absolute;
-  left: 44px;
-  top: 44px;
+  left: 50px;
+  top: 52px;
   min-width: 22px;
   height: 22px;
   padding: 0 4px;
@@ -249,7 +245,7 @@ body,
 /* ---------- screens inside windows ---------- */
 
 .screen-win .win-body {
-  padding: 22px 4px 4px;
+  padding: 32px 4px 4px;
 }
 
 .screen-win .screen {
@@ -314,8 +310,8 @@ body,
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  max-height: 52vh;
+  gap: 4px;
+  max-height: 58vh;
   overflow-y: auto;
 }
 
@@ -611,7 +607,7 @@ body,
   position: absolute;
   z-index: 19;
   right: 8px;
-  top: calc(var(--safe-top) + 62px);
+  bottom: calc(var(--safe-bottom) + 118px);
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -1142,4 +1138,128 @@ body,
 
 .time-input {
   width: 130px;
+}
+
+.hud2-name {
+  display: inline-flex;
+  padding: 0 2px;
+  border-style: solid;
+  border-width: 4px;
+  border-image: var(--sk-card-dark) 3 fill / 4px repeat;
+}
+
+.title-card.auth {
+  max-height: none;
+}
+
+.result-win .win-body {
+  padding-top: 36px;
+}
+
+.win-body {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.win {
+  min-width: 0;
+}
+
+.menu-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.menu-grid .btn {
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 2px;
+}
+
+/* ---------- activity chrome & goal cards ---------- */
+
+.act-top .act-title {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  padding: 0 4px;
+  justify-content: center;
+  overflow: hidden;
+  font-size: inherit;
+}
+
+.goal-main {
+  margin: 4px 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.goal-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.goal-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.goal-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  color: #fff6dc;
+  background: #4f9e4c;
+  box-shadow:
+    0 -2px 0 #1f4a26,
+    0 2px 0 #1f4a26,
+    -2px 0 0 #1f4a26,
+    2px 0 0 #1f4a26;
+}
+
+.goal-reward {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+}
+
+.craft-name {
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Legacy tab rows inside screens, restyled as pixel tabs. */
+.tab {
+  padding: 0 6px;
+  margin: 2px 0;
+  min-height: 36px;
+  background: none;
+  box-shadow: none;
+  color: #fff1d6;
+  text-shadow: 0 2px 0 #5a3418;
+  border-style: solid;
+  border-width: 6px;
+  border-image: var(--sk-btn-wood) 4 4 6 4 fill / 6px 6px 8px repeat;
+}
+
+.tab.active {
+  background: none;
+  color: #3b2616;
+  text-shadow: none;
+  border-image-source: var(--sk-card-gold);
+  border-image-slice: 3 fill;
+  border-image-width: 6px;
+}
+
+.card {
+  padding: 4px;
 }

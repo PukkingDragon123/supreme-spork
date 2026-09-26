@@ -4,9 +4,9 @@
 import { useEffect, useState } from 'preact/hooks'
 import { game, mutate, level } from '../../game/state'
 import { FURNITURE, FLOORS, WALLPAPERS, FURNITURE_BY_ID } from '../../game/data/furniture'
-import { craft, craftable, recipeOf } from '../../game/crafting'
-import { missingFor } from '../../game/house'
-import { furnitureThumb, materialSprite } from '../../art/furniture'
+import { craft, craftable, recipeOf, isSurface } from '../../game/crafting'
+import { missingFor, ownsSurface } from '../../game/house'
+import { furnitureThumb, materialSprite, surfaceThumb } from '../../art/furniture'
 import { MATERIAL_IDS, MATERIAL_INFO, type MaterialId } from '../../game/materials'
 import { ITEM_BY_ID } from '../../game/data/items'
 import { CHANTS } from '../../game/data/chants'
@@ -77,7 +77,7 @@ function CraftWindow() {
   const lv = level.value.level
   const list =
     t === 'room'
-      ? [...WALLPAPERS, ...FLOORS].map((w) => ({ id: w.id, name: w.name, desc: 'เปลี่ยนบรรยากาศทั้งห้อง', level: undefined as number | undefined }))
+      ? [...WALLPAPERS, ...FLOORS].map((w) => ({ id: w.id, name: w.name, desc: w.desc ?? 'เปลี่ยนบรรยากาศทั้งห้อง', level: w.level }))
       : FURNITURE.filter((f) => !f.fixed && (t === 'deco' ? f.kind === 'wall' || f.kind === 'rug' || f.tags?.includes('deco') : f.kind === 'floor' && !f.tags?.includes('deco')))
   return (
     <Window title="โต๊ะช่างไม้" icon="hammer" onClose={close} wide>
@@ -91,25 +91,26 @@ function CraftWindow() {
       </div>
       <Tabs
         tabs={[
-          { id: 'furniture', label: 'เฟอร์นิเจอร์' },
-          { id: 'deco', label: 'ของแต่ง' },
-          { id: 'room', label: 'ผนัง/พื้น' },
+          { id: 'furniture', label: 'ของใช้', icon: 'bed' },
+          { id: 'deco', label: 'ของแต่ง', icon: 'garland' },
+          { id: 'room', label: 'ผนัง/พื้น', icon: 'home' },
         ]}
         value={t}
         onChange={setT}
+        compact
       />
       <div class="ptab-body craft-list">
         {list.map((f) => {
           const r = recipeOf(f.id)!
           const ok = craftable(f.id)
           const lock = (f.level ?? 1) > lv
-          const owned = (game.value.house.storage[f.id] ?? 0) + game.value.house.placed.filter((p) => p.id === f.id).length
-          const miss = missingFor(game.value.materials, r)
+          const owned = isSurface(f.id) ? (ownsSurface(game.value.house, f.id) ? 1 : 0) : (game.value.house.storage[f.id] ?? 0) + game.value.house.placed.filter((p) => p.id === f.id).length
+          const miss = missingFor(game.value.materials, game.value.coins, r, lv).mats
           return (
             <div class="panel craft-card" key={f.id}>
-              <span class="craft-thumb">{FURNITURE_BY_ID[f.id] ? <img class="px" src={spriteDataUrl(furnitureThumb(f.id), 2)} alt="" /> : <Icon name="edit" size={28} />}</span>
+              <span class="craft-thumb"><img class="px" src={spriteDataUrl(FURNITURE_BY_ID[f.id] ? furnitureThumb(f.id) : surfaceThumb(f.id), 2)} alt="" /></span>
               <div class="grow col" style={{ gap: '2px' }}>
-                <PT text={f.name} size={12} weight={600} {...TONE_TEXT.ink} />
+                <b class="craft-name">{f.name}</b>
                 <span class="small muted craft-desc">{f.desc}</span>
                 <Recipe recipe={r.recipe} coins={r.coins} />
               </div>

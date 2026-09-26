@@ -182,7 +182,7 @@ export interface TabDef<T extends string> {
 }
 
 /** Folder tabs that sit on top of a window body. */
-export function Tabs<T extends string>({ tabs, value, onChange, class: cls }: { tabs: TabDef<T>[]; value: T; onChange: (id: T) => void; class?: string }) {
+export function Tabs<T extends string>({ tabs, value, onChange, class: cls, compact }: { tabs: TabDef<T>[]; value: T; onChange: (id: T) => void; class?: string; compact?: boolean }) {
   return (
     <div class={`ptabs ${cls ?? ''}`} role="tablist">
       {tabs.map((t) => (
@@ -190,6 +190,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, class: cls }: { 
           key={t.id}
           role="tab"
           aria-selected={t.id === value}
+          aria-label={t.label}
           class={`ptab ${t.id === value ? 'on' : ''}`}
           onClick={() => {
             if (t.id === value) return
@@ -198,7 +199,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, class: cls }: { 
           }}
         >
           {t.icon && <Icon name={t.icon} size={18} />}
-          <PT text={t.label} size={12} {...(t.id === value ? TONE_TEXT.paper : TONE_TEXT.wood)} />
+          {(!compact || t.id === value || !t.icon) && <PT text={t.label} size={12} {...(t.id === value ? TONE_TEXT.paper : TONE_TEXT.wood)} />}
           {!!t.badge && <span class="badge num">{t.badge}</span>}
         </button>
       ))}

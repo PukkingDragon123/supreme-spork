@@ -2,24 +2,28 @@
 
 import { game, mutate, level } from './state'
 import { FURNITURE_BY_ID, FLOORS, WALLPAPERS } from './data/furniture'
-import { canCraft } from './house'
+import { addToStorage, canCraft, ownsSurface, unlockSurface } from './house'
 import type { MaterialId } from './materials'
 import { toast } from './events'
 
-type Recipe = { recipe: Partial<Record<MaterialId, number>>; coins?: number; level?: number; name: string }
+type Cost = { recipe: Partial<Record<MaterialId, number>>; coins?: number; level?: number; name: string }
 
-export function recipeOf(id: string): Recipe | null {
+export function isSurface(id: string) {
+  return WALLPAPERS.some((w) => w.id === id) || FLOORS.some((f) => f.id === id)
+}
+
+export function recipeOf(id: string): Cost | null {
   return FURNITURE_BY_ID[id] ?? WALLPAPERS.find((w) => w.id === id) ?? FLOORS.find((f) => f.id === id) ?? null
 }
 
 export function craftable(id: string): boolean {
   const r = recipeOf(id)
   if (!r) return false
-  if ((r.level ?? 1) > level.value.level) return false
-  return canCraft(game.value.materials, game.value.coins, { recipe: r.recipe, coins: r.coins })
+  if (isSurface(id) && ownsSurface(game.value.house, id)) return false
+  return canCraft(game.value.materials, game.value.coins, r, level.value.level)
 }
 
-/** Spend materials and put one crafted piece into home storage. */
+/** Spend materials and put the crafted piece into home storage (or unlock a wallpaper/floor). */
 export function craft(id: string): boolean {
   const r = recipeOf(id)
   if (!r || !craftable(id)) {
@@ -27,9 +31,9 @@ export function craft(id: string): boolean {
     return false
   }
   mutate((d) => {
-    for (const [k, v] of Object.entries(r.recipe)) d.materials[k as MaterialId] -= v ?? 0
+    for (const [k, v] of Object.entries(r.recipe)) d.materials[k as MaterialId] = Math.max(0, (d.materials[k as MaterialId] ?? 0) - (v ?? 0))
     d.coins -= r.coins ?? 0
-    d.house = { ...d.house, storage: { ...d.house.storage, [id]: (d.house.storage[id] ?? 0) + 1 } }
+    d.house = isSurface(id) ? unlockSurface(d.house, id) : addToStorage(d.house, id)
   })
   return true
 }

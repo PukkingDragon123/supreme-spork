@@ -31,7 +31,7 @@ function HotSlot({ icon, label, onClick, on, badge, big }: { icon: string; label
         <Icon name={icon} size={big ? 40 : 28} />
         {!!badge && <span class="badge num hot-badge">{badge}</span>}
       </span>
-      <PT text={label} size={12} class="hot-label" {...(big ? TONE_TEXT.gold : TONE_TEXT.wood)} />
+      <PT text={label} size={13} scale={1} class="hot-label" {...TONE_TEXT.wood} />
     </button>
   )
 }
