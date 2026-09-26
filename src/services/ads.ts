@@ -4,7 +4,7 @@
 
 import { signal } from '@preact/signals'
 
-export type AdPlacement = 'free_coins' | 'double_reward' | 'extra_lottery' | 'login_double'
+export type AdPlacement = 'free_coins' | 'double_reward' | 'extra_lottery' | 'login_double' | 'tv_coins'
 
 export interface AdResult {
   rewarded: boolean

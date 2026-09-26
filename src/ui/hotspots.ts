@@ -1,6 +1,6 @@
 // What each world hotspot lets you do.
 
-import { openActivity, openShop, openSocial, mapOpen } from './store'
+import { openActivity, openShop, openSocial, mapOpen, openPanel, goHome } from './store'
 
 export interface HotspotAction {
   label: string
@@ -42,7 +42,15 @@ export function hotspotActions(id: string): HotspotAction[] {
       return [{ label: 'หยอดตู้ทำบุญ', icon: 'coin', run: () => openActivity('donate') }]
     case 'hall':
     case 'hall_mountain':
-      return [{ label: 'เข้าโบสถ์กราบพระ', icon: 'temple', run: () => openActivity('hall', { area: id === 'hall_mountain' ? 'mountain' : 'wat' }) }]
+      return [
+        { label: 'สวดมนต์', icon: 'pray', run: () => openPanel('pray') },
+        { label: 'กราบพระ ปิดทอง เซียมซี', icon: 'temple', tone: 'paper', run: () => openActivity('hall', { area: id === 'hall_mountain' ? 'mountain' : 'wat' }) },
+      ]
+    case 'gate':
+      return [
+        { label: 'กลับบ้าน', icon: 'home', run: () => goHome() },
+        { label: 'ไปวัดอื่น', icon: 'map', tone: 'paper', run: () => (mapOpen.value = true) },
+      ]
     case 'incense':
       return [{ label: 'จุดธูปขอพร', icon: 'incense', run: () => openActivity('wish', { place: 'incense' }) }]
     case 'sala':

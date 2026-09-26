@@ -41,6 +41,42 @@ export const shopSection = signal<ShopSection>('alms')
 export type SocialSection = 'friends' | 'groups' | 'feed' | 'charity'
 export const socialSection = signal<SocialSection>('friends')
 
+/** Top-level screen. */
+export type Mode = 'intro' | 'title' | 'create' | 'arrival' | 'world' | 'house'
+export const mode = signal<Mode>('title')
+/** Where the arrival cutscene is heading. */
+export const arrivalTarget = signal<AreaId>('wat')
+
+/** Windows opened from the hotbar / menu. */
+export type Panel = 'menu' | 'pray' | 'bag' | 'craft' | 'mala' | 'chants' | 'dress' | 'reminder'
+export const panel = signal<Panel | null>(null)
+/** Running prayer session (stage id). */
+export const prayStage = signal<string | null>(null)
+/** Praying at the home altar instead of the temple hall. */
+export const prayAtHome = signal(false)
+
+export function openPanel(p: Panel | null) {
+  panel.value = p
+}
+
+/** Travel to a temple area with the arrival cutscene. */
+export function goTemple(a: AreaId = area.value) {
+  panel.value = null
+  activity.value = null
+  arrived.value = null
+  tab.value = 'temple'
+  arrivalTarget.value = a
+  mode.value = 'arrival'
+}
+
+export function goHome() {
+  panel.value = null
+  activity.value = null
+  arrived.value = null
+  tab.value = 'temple'
+  mode.value = 'house'
+}
+
 export const coinStoreOpen = signal(false)
 export const mapOpen = signal(false)
 export const settingsOpen = signal(false)

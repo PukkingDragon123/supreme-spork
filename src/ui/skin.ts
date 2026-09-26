@@ -133,6 +133,102 @@ function darkSkin(): string {
   }).toDataURL()
 }
 
+/** 9×9 card: dark wood outline, highlight line, flat fill (3 px slices). */
+function cardSkin(fill: string, light: string, dark: string, outline: string = UI.woodDD): string {
+  return bake(9, 9, (g) => {
+    notched(g, 0, 0, 9, 9, outline, 1)
+    g.rect(1, 1, 7, 7, fill)
+    g.rect(1, 1, 7, 1, light)
+    g.rect(1, 7, 7, 1, dark)
+    g.px(1, 1, fill)
+    g.px(7, 1, fill)
+  }).toDataURL()
+}
+
+/** Inset input field (3 px slices). */
+function inputSkin(): string {
+  return bake(9, 9, (g) => {
+    notched(g, 0, 0, 9, 9, UI.woodDD, 1)
+    g.rect(1, 1, 7, 7, UI.parchL)
+    g.rect(1, 1, 7, 1, UI.parchD)
+    g.rect(1, 1, 1, 7, UI.parchD)
+  }).toDataURL()
+}
+
+/** Folder tab (top corners notched, open bottom) – 9×9, 3 px slices. */
+function tabSkin(on: boolean): string {
+  return bake(9, 9, (g) => {
+    const fill = on ? UI.parch : UI.woodL
+    const light = on ? UI.parchL : '#e8b77e'
+    g.rect(1, 0, 7, 9, UI.outline)
+    g.rect(0, 1, 9, 8, UI.outline)
+    g.rect(1, 1, 7, 8, fill)
+    g.rect(1, 1, 7, 1, light)
+    if (!on) g.rect(1, 8, 7, 1, UI.woodD)
+  }).toDataURL()
+}
+
+/** Long wooden strip behind the hotbar (8 px slices). */
+function barSkin(): string {
+  return bake(24, 24, (g) => {
+    notched(g, 0, 0, 24, 24, UI.outline, 2)
+    g.px(1, 1, UI.outline)
+    g.px(22, 1, UI.outline)
+    g.px(1, 22, UI.outline)
+    g.px(22, 22, UI.outline)
+    notched(g, 1, 1, 22, 22, UI.woodD, 1)
+    g.rect(2, 1, 20, 2, UI.wood)
+    g.rect(2, 1, 20, 1, UI.woodL)
+    g.rect(2, 21, 20, 1, UI.woodDD)
+    for (const [x, y] of [
+      [4, 8],
+      [11, 14],
+      [18, 9],
+      [7, 17],
+      [15, 5],
+    ])
+      g.px(x, y, UI.woodDD)
+    for (const [x, y] of [
+      [2, 2],
+      [21, 2],
+      [2, 21],
+      [21, 21],
+    ])
+      g.px(x, y, UI.goldL)
+  }).toDataURL()
+}
+
+/** Recessed slot in the hotbar (4 px slices). */
+function hotSlotSkin(active: boolean): string {
+  return bake(12, 12, (g) => {
+    notched(g, 0, 0, 12, 12, UI.outline, 1)
+    g.rect(1, 1, 10, 10, active ? UI.goldD : UI.woodDD)
+    g.rect(2, 2, 8, 8, active ? UI.gold : '#7a4e2c')
+    g.rect(2, 2, 8, 1, active ? UI.goldL : '#946038')
+    g.rect(2, 9, 8, 1, active ? '#b27418' : '#5e3a20')
+  }).toDataURL()
+}
+
+/** Round-ish frame for the HUD portrait (8 px slices). */
+function ringSkin(): string {
+  return bake(24, 24, (g) => {
+    g.circle(11.5, 11.5, 11.5, UI.outline)
+    g.circle(11.5, 11.5, 10.5, UI.goldD)
+    g.circle(11.5, 11.5, 9.5, UI.gold)
+    g.circle(11.5, 11.5, 8.2, UI.outline)
+    g.circle(11.5, 11.5, 7.4, '#8fd0f0')
+  }).toDataURL()
+}
+
+/** Progress bar frame + fills (3 px slices). */
+function barFrameSkin(): string {
+  return bake(9, 9, (g) => {
+    notched(g, 0, 0, 9, 9, UI.outline, 1)
+    g.rect(1, 1, 7, 7, '#4a2e1c')
+    g.rect(1, 1, 7, 1, '#2e1c10')
+  }).toDataURL()
+}
+
 let installed = false
 
 /** Generate every skin once and publish them as CSS custom properties. */
@@ -162,4 +258,22 @@ export function installSkins() {
   set('--sk-dark', darkSkin())
   set('--sk-plate-wood', plateSkin(UI.wood, UI.woodL, UI.woodD, UI.outline))
   set('--sk-plate-paper', plateSkin(UI.parch, UI.parchL, UI.parchD, UI.woodDD))
+  set('--sk-card', cardSkin(UI.parchL, '#fffaf0', UI.parchD))
+  set('--sk-card-soft', cardSkin(UI.parch, UI.parchL, UI.parchD))
+  set('--sk-card-gold', cardSkin('#fff1c2', '#fffbe6', UI.goldD, '#9a6418'))
+  set('--sk-card-green', cardSkin('#dff2cf', '#f0fae6', '#a9d08e', UI.greenD))
+  set('--sk-card-dark', cardSkin('#4a3226', '#5e4232', '#2e1c14', '#1c120c'))
+  set('--sk-card-wood', cardSkin(UI.wood, UI.woodL, UI.woodD, UI.outline))
+  set('--sk-input', inputSkin())
+  set('--sk-tab', tabSkin(false))
+  set('--sk-tab-on', tabSkin(true))
+  set('--sk-bar', barSkin())
+  set('--sk-hot', hotSlotSkin(false))
+  set('--sk-hot-on', hotSlotSkin(true))
+  set('--sk-ring', ringSkin())
+  set('--sk-meter', barFrameSkin())
+  set('--sk-btn-pink', buttonSkin('#f27aa6', '#ffb3cf', '#c24c7c'))
+  set('--sk-btn-pink-down', buttonSkin('#f27aa6', '#ffb3cf', '#c24c7c', true))
+  set('--sk-btn-dark', buttonSkin('#5a3e30', '#7a5644', '#3a261c'))
+  set('--sk-btn-dark-down', buttonSkin('#5a3e30', '#7a5644', '#3a261c', true))
 }

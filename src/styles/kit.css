@@ -1,0 +1,393 @@
+/* v2 pixel UI kit (see src/ui/components/kit.tsx). One art pixel = 2 CSS px. */
+
+.win-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(18px + var(--safe-top)) 10px calc(12px + var(--safe-bottom));
+  background: rgba(28, 16, 10, 0.55);
+  animation: fade-in 160ms ease-out;
+}
+
+.win {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 360px);
+  max-height: 100%;
+  color: var(--ink);
+  animation: pop-in 220ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.win.wide {
+  width: min(100%, 440px);
+}
+
+.win.full {
+  width: 100%;
+  height: 100%;
+}
+
+.win.titled {
+  margin-top: 24px;
+}
+
+.win-title {
+  position: absolute;
+  left: 50%;
+  top: -38px;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.win-x {
+  position: absolute !important;
+  right: -18px;
+  top: -20px;
+  z-index: 3;
+  margin: 0 !important;
+}
+
+.win-body {
+  flex: 1;
+  min-height: 0;
+  padding: 8px 8px 6px;
+}
+
+.win.titled .win-body {
+  padding-top: 26px;
+}
+
+.win-foot {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  padding: 6px 2px 0;
+}
+
+.win-foot > .btn {
+  flex: 1;
+}
+
+/* ---------- title plate ---------- */
+
+.title-plate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 8px;
+  border-style: solid;
+  border-width: 6px 8px 8px;
+  border-image: var(--sk-title) 4 fill / 6px 8px 8px repeat;
+  white-space: nowrap;
+  image-rendering: pixelated;
+}
+
+.title-plate.gold {
+  border-image-source: var(--sk-title-gold);
+}
+
+.title-plate.wood {
+  border-image-source: var(--sk-plate-wood);
+}
+
+/* ---------- slots ---------- */
+
+.slot {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border-style: solid;
+  border-width: 8px;
+  border-image: var(--sk-slot) 4 fill / 8px repeat;
+  cursor: pointer;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+
+.slot.on {
+  border-image-source: var(--sk-slot-on);
+}
+
+.slot:active {
+  transform: translateY(2px);
+}
+
+.slot.locked > img:not(.slot-lock img) {
+  filter: brightness(0.35) saturate(0.2);
+}
+
+.slot-img {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.slot-count {
+  position: absolute;
+  right: -6px;
+  bottom: -7px;
+  font-size: 12px;
+  color: #fff6dc;
+  text-shadow:
+    2px 0 0 #3b2616,
+    -2px 0 0 #3b2616,
+    0 2px 0 #3b2616,
+    0 -2px 0 #3b2616;
+}
+
+.slot-lock {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slot-badge {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+}
+
+.slot-label {
+  position: absolute;
+  left: 50%;
+  bottom: -22px;
+  transform: translateX(-50%);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 6px;
+  justify-items: center;
+}
+
+/* ---------- folder tabs ---------- */
+
+.ptabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 4px;
+  margin-bottom: -2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  position: relative;
+  z-index: 1;
+}
+
+.ptabs::-webkit-scrollbar {
+  display: none;
+}
+
+.ptab {
+  position: relative;
+  flex: 1 0 auto;
+  justify-content: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 38px;
+  padding: 0 4px;
+  margin: 4px 0 0;
+  background: none;
+  border-style: solid;
+  border-width: 6px 6px 0;
+  border-image: var(--sk-tab) 3 3 0 fill / 6px 6px 0 repeat;
+  cursor: pointer;
+  image-rendering: pixelated;
+}
+
+.ptab.on {
+  border-image-source: var(--sk-tab-on);
+  margin-top: 0;
+  min-height: 42px;
+}
+
+.ptab .badge {
+  position: absolute;
+  top: -8px;
+  right: -6px;
+}
+
+.ptab-body {
+  border-style: solid;
+  border-width: 6px;
+  border-image: var(--sk-card-soft) 3 fill / 6px repeat;
+  padding: 6px 4px;
+}
+
+/* ---------- misc ---------- */
+
+.stars {
+  display: inline-flex;
+  gap: 1px;
+  align-items: center;
+}
+
+.pheading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 2px 6px;
+}
+
+.pcheck {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px;
+  cursor: pointer;
+}
+
+.pcheck input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pcheck-box {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-style: solid;
+  border-width: 6px;
+  border-image: var(--sk-input) 3 fill / 6px repeat;
+}
+
+.pcheck input:focus-visible + .pcheck-box {
+  outline: 3px dashed #4f8fd8;
+}
+
+.pcheck-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pslider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 2px;
+}
+
+.pslider-track {
+  position: relative;
+  display: block;
+  height: 24px;
+}
+
+.pslider-track::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 7px;
+  height: 10px;
+  border-style: solid;
+  border-width: 4px;
+  border-image: var(--sk-meter) 3 fill / 4px repeat;
+  box-sizing: border-box;
+}
+
+.pslider-fill {
+  position: absolute;
+  left: 4px;
+  top: 11px;
+  height: 2px;
+  width: calc((100% - 8px) * var(--p));
+  background: #86cc6a;
+  box-shadow: 0 -2px 0 #4f9e4c inset;
+}
+
+.pslider-knob {
+  position: absolute;
+  top: 0;
+  left: calc((100% - 24px) * var(--p));
+  width: 24px;
+  height: 24px;
+  border-style: solid;
+  border-width: 8px 8px 8px;
+  border-image: var(--sk-btn-wood) 4 fill / 8px repeat;
+  pointer-events: none;
+}
+
+.pslider input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  font-size: 12px;
+  color: #fff;
+  background: #d9533f;
+  box-shadow:
+    0 -2px 0 #3b2616,
+    0 2px 0 #3b2616,
+    -2px 0 0 #3b2616,
+    2px 0 0 #3b2616;
+}
+
+.pinput {
+  width: 100%;
+  min-height: 44px;
+  padding: 2px 6px;
+  font-size: 16px;
+  color: var(--ink);
+  background: none;
+  border-style: solid;
+  border-width: 6px;
+  border-image: var(--sk-input) 3 fill / 6px repeat;
+  outline: none;
+  border-radius: 0;
+}
+
+.pinput:focus {
+  border-image-source: var(--sk-card-gold);
+}
+
+.pinput::placeholder {
+  color: #a88a66;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 6px 0;
+}
+
+.field-err {
+  color: #b83a2a;
+  font-size: 12px;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}

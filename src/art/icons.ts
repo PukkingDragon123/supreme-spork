@@ -515,6 +515,187 @@ const ICONS: Record<string, Draw> = {
     g.vline(5, 4, 7, '#c0392b')
     g.vline(9, 4, 7, '#c0392b')
   },
+  star_empty: (g) => {
+    g.poly([[7, 0], [9, 5], [14, 5], [10, 8], [12, 13], [7, 10], [2, 13], [4, 8], [0, 5], [5, 5]], '#8a6a4a')
+    g.poly([[7, 3], [8, 6], [11, 6], [9, 8], [10, 11], [7, 9], [4, 11], [5, 8], [3, 6], [6, 6]], '#6b4d34')
+  },
+  home: (g) => {
+    g.poly([[7, 0], [14, 6], [12, 6], [12, 13], [2, 13], [2, 6], [0, 6]], '#e05a3a')
+    g.rect(3, 6, 8, 7, '#fff1d6')
+    g.rect(3, 6, 8, 1, '#e0bb8a')
+    g.rect(6, 9, 3, 4, '#9a6a45')
+    g.rect(9, 8, 2, 2, '#8fd0f0')
+    g.px(7, 1, '#ff9a6a')
+    g.line(2, 5, 7, 1, '#ff9a6a')
+  },
+  bag: (g) => {
+    g.rect(5, 1, 4, 2, '#9a6a45')
+    g.rect(4, 2, 1, 2, '#9a6a45')
+    g.rect(9, 2, 1, 2, '#9a6a45')
+    g.rect(2, 4, 10, 9, '#d9914a')
+    g.rect(2, 4, 10, 1, '#f0b870')
+    g.rect(3, 7, 8, 4, '#b8743a')
+    g.rect(6, 8, 2, 2, P.gold)
+    g.rect(2, 12, 10, 1, '#9a5a2a')
+  },
+  menu: (g) => {
+    for (const y of [2, 6, 10]) {
+      g.rect(1, y, 12, 3, '#fff1d6')
+      g.rect(1, y + 2, 12, 1, '#e0bb8a')
+    }
+  },
+  mic: (g) => {
+    g.rect(5, 0, 4, 8, '#9aa7b8')
+    g.rect(4, 1, 6, 6, '#9aa7b8')
+    g.rect(5, 1, 1, 5, '#e6eef6')
+    g.hline(5, 8, 3, '#6b7788')
+    g.hline(5, 8, 5, '#6b7788')
+    g.rect(2, 5, 1, 3, '#5a3d4f')
+    g.rect(11, 5, 1, 3, '#5a3d4f')
+    g.rect(3, 8, 8, 1, '#5a3d4f')
+    g.rect(6, 9, 2, 3, '#5a3d4f')
+    g.rect(4, 12, 6, 1, '#5a3d4f')
+  },
+  mic_off: (g) => {
+    g.rect(5, 0, 4, 8, '#9aa7b8')
+    g.rect(4, 1, 6, 6, '#9aa7b8')
+    g.rect(3, 8, 8, 1, '#5a3d4f')
+    g.rect(6, 9, 2, 3, '#5a3d4f')
+    g.rect(4, 12, 6, 1, '#5a3d4f')
+    g.thickLine(1, 1, 12, 12, 2, P.red)
+  },
+  hammer: (g) => {
+    g.thickLine(3, 12, 9, 5, 2, '#b8844a')
+    g.rect(6, 1, 7, 4, '#9aa7b8')
+    g.rect(6, 1, 7, 1, '#e6eef6')
+    g.rect(11, 1, 2, 4, '#6b7788')
+    g.px(2, 12, '#8a5a30')
+  },
+  mala: (g) => {
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2
+      g.circle(7 + Math.cos(a) * 5, 6 + Math.sin(a) * 5, 1.3, i % 2 ? '#a0582a' : '#c47a3e')
+    }
+    g.rect(6, 11, 2, 3, P.red)
+    g.px(7, 13, P.gold)
+  },
+  pray: (g) => {
+    g.poly([[7, 1], [9, 3], [10, 9], [8, 12], [6, 12], [4, 9], [5, 3]], '#fcd0b1')
+    g.vline(7, 2, 11, '#e0a07a')
+    g.rect(4, 11, 6, 3, P.white)
+    g.px(3, 2, P.goldL)
+    g.px(11, 3, P.goldL)
+    g.px(2, 6, P.gold)
+  },
+  play: (g) => {
+    g.poly([[3, 1], [12, 7], [3, 13]], P.grass)
+    g.line(4, 3, 4, 10, P.grassL)
+  },
+  pause: (g) => {
+    g.rect(3, 2, 3, 10, '#fff1d6')
+    g.rect(8, 2, 3, 10, '#fff1d6')
+  },
+  retry: (g) => {
+    for (let i = 0; i < 20; i++) {
+      const a = -0.6 + (i / 20) * Math.PI * 1.6
+      g.circle(7 + Math.cos(a) * 4.5, 7 + Math.sin(a) * 4.5, 1, P.grassD)
+    }
+    g.poly([[9, 0], [13, 3], [9, 5]], P.grassD)
+  },
+  user: (g) => {
+    g.circle(7, 4, 3, '#fcd0b1')
+    g.rect(4, 1, 6, 2, '#3a2a2a')
+    g.poly([[1, 13], [3, 8], [11, 8], [13, 13]], '#6fa8dc')
+  },
+  mail: (g) => {
+    g.rect(1, 3, 12, 9, '#fff1d6')
+    g.line(1, 3, 7, 8, '#c28e5c')
+    g.line(13, 3, 7, 8, '#c28e5c')
+    g.rect(1, 11, 12, 1, '#e0bb8a')
+  },
+  key: (g) => {
+    g.circle(4, 5, 3, P.gold)
+    g.circle(4, 5, 1, '#9a6418')
+    g.rect(6, 4, 7, 2, P.gold)
+    g.rect(10, 6, 1, 2, P.gold)
+    g.rect(12, 6, 1, 3, P.gold)
+  },
+  door: (g) => {
+    g.rect(3, 1, 8, 12, '#9a6a45')
+    g.rect(4, 2, 6, 10, '#b8844a')
+    g.rect(4, 2, 6, 1, '#d9a45a')
+    g.px(9, 7, P.gold)
+    g.rect(2, 13, 10, 1, '#6b4428')
+  },
+  music: (g) => {
+    g.rect(4, 2, 1, 8, '#5a3d4f')
+    g.rect(10, 1, 1, 8, '#5a3d4f')
+    g.rect(4, 1, 7, 2, '#5a3d4f')
+    g.ellipse(3, 10, 2, 1.5, '#5a3d4f')
+    g.ellipse(9, 9, 2, 1.5, '#5a3d4f')
+  },
+  info: (g) => {
+    g.circle(7, 7, 6, '#4f8fd8')
+    g.rect(6, 6, 2, 5, '#fff')
+    g.rect(6, 3, 2, 2, '#fff')
+  },
+  camera: (g) => {
+    g.rect(1, 4, 12, 8, '#5a3d4f')
+    g.rect(4, 2, 5, 2, '#5a3d4f')
+    g.circle(7, 8, 3, '#9aa7b8')
+    g.circle(7, 8, 1.5, '#2c2f63')
+    g.px(11, 5, P.gold)
+  },
+  edit: (g) => {
+    g.thickLine(3, 11, 11, 3, 2, P.gold)
+    g.poly([[2, 12], [2, 10], [4, 12]], '#5a3d4f')
+    g.rect(10, 2, 2, 2, P.pink)
+  },
+  flip: (g) => {
+    g.poly([[1, 7], [5, 3], [5, 11]], '#4f8fd8')
+    g.poly([[13, 7], [9, 3], [9, 11]], '#4f8fd8')
+    g.vline(7, 1, 13, '#8a6a4a')
+  },
+  rotate: (g) => {
+    for (let i = 0; i < 20; i++) {
+      const a = 0.4 + (i / 20) * Math.PI * 1.6
+      g.circle(7 + Math.cos(a) * 4.5, 7 + Math.sin(a) * 4.5, 1, '#4f8fd8')
+    }
+    g.poly([[10, 0], [13, 4], [8, 4]], '#4f8fd8')
+  },
+  trash: (g) => {
+    g.rect(3, 4, 8, 9, '#9aa7b8')
+    g.rect(2, 2, 10, 2, '#6b7788')
+    g.rect(5, 1, 4, 1, '#6b7788')
+    for (const x of [5, 7, 9]) g.vline(x, 6, 11, '#6b7788')
+  },
+  logout: (g) => {
+    g.rect(1, 1, 7, 12, '#9a6a45')
+    g.rect(2, 2, 5, 10, '#b8844a')
+    g.poly([[13, 7], [9, 3], [9, 11]], P.red)
+    g.rect(5, 6, 5, 2, P.red)
+  },
+  bolt: (g) => {
+    g.poly([[8, 0], [2, 8], [6, 8], [5, 14], [12, 5], [8, 5]], P.gold)
+    g.px(7, 2, P.goldL)
+  },
+  chest: (g) => {
+    g.rect(1, 5, 12, 8, '#b8743a')
+    g.rect(1, 3, 12, 3, '#d9914a')
+    g.rect(1, 3, 12, 1, '#f0b870')
+    g.rect(1, 6, 12, 1, P.goldD)
+    g.rect(6, 5, 2, 3, P.gold)
+    g.vline(3, 3, 12, P.goldD)
+    g.vline(10, 3, 12, P.goldD)
+  },
+  bed: (g) => {
+    g.rect(1, 7, 12, 4, '#fff1d6')
+    g.rect(1, 5, 4, 3, '#ffffff')
+    g.rect(5, 6, 8, 3, '#8fb8e8')
+    g.rect(0, 4, 1, 9, '#9a6a45')
+    g.rect(13, 7, 1, 6, '#9a6a45')
+    g.rect(1, 11, 12, 1, '#9a6a45')
+  },
 }
 
 export const ICON_NAMES = Object.keys(ICONS)

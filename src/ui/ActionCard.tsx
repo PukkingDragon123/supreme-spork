@@ -4,6 +4,8 @@ import { useState } from 'preact/hooks'
 import { arrived, openActivity } from './store'
 import { hotspotActions } from './hotspots'
 import { Btn, Hearts, Icon, Sheet } from './components/common'
+import { CloseX, PBtn } from './components/kit'
+import { PT, TONE_TEXT } from './pixeltext'
 import { DOG_BY_ID, MAX_HEARTS } from '../game/data/dogs'
 import { dogState, petDog, setCompanion } from '../game/actions'
 import { game } from '../game/state'
@@ -20,24 +22,22 @@ export function ActionCard() {
   const h = t.hotspot
   const acts = hotspotActions(h.id)
   return (
-    <div class="action-card panel" key={h.id}>
-      <div class="row">
-        <Icon name={h.icon} size={32} />
-        <div class="grow">
-          <div class="subtitle">{h.label}</div>
-          {h.hint && <div class="small muted">{h.hint}</div>}
+    <div class="prompt win" key={h.id}>
+      <div class="row prompt-head">
+        <Icon name={h.icon} size={26} />
+        <div class="grow col" style={{ gap: '0' }}>
+          <PT text={h.label} size={13} weight={600} {...TONE_TEXT.ink} />
+          {h.hint && <span class="small muted">{h.hint}</span>}
         </div>
-        <button class="btn paper icon-btn small" onClick={() => (sfx.close(), (arrived.value = null))} aria-label="ปิด">
-          <Icon name="close" size={14} />
-        </button>
       </div>
-      <div class="row wrap">
+      <div class="row wrap prompt-acts">
         {acts.map((a, i) => (
-          <Btn key={a.label} tone={a.tone ?? (i === 0 ? '' : 'paper')} onClick={() => a.run()} class="grow">
-            <Icon name={a.icon} size={20} /> {a.label}
-          </Btn>
+          <PBtn key={a.label} tone={(a.tone as never) ?? (i === 0 ? 'green' : 'paper')} size={i === 0 ? undefined : 'small'} icon={a.icon} onClick={() => a.run()} class="grow">
+            {a.label}
+          </PBtn>
         ))}
       </div>
+      <CloseX onClick={() => (arrived.value = null)} />
     </div>
   )
 }
@@ -49,7 +49,7 @@ function DogCard({ id }: { id: string }) {
   const isCompanion = s.companion === id
   if (!def) return null
   return (
-    <div class="action-card panel" key={id}>
+    <div class="prompt win" key={id}>
       <div class="row">
         <Icon name="dog" size={32} />
         <div class="grow">

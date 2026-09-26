@@ -1,73 +1,54 @@
+// Minimal in-game HUD: round portrait with level + two bars (merit to the
+// next level, today's prayer goal) and the coin counter.
+
+import { useMemo } from 'preact/hooks'
 import { game, level } from '../game/state'
-import { activeBuffs, luckyColorActive } from '../game/actions'
-import { titleFor } from '../game/economy'
-import { DAY_COLORS } from '../art/palette'
-import { AREA_BY_ID } from '../game/data/areas'
-import { greeting, hourOf, isAlmsMorning, formatDuration } from '../game/time'
-import { Bar, Icon, Portrait, useTicker } from './components/common'
-import { area, coinStoreOpen, mapOpen, openShop, profileOpen, settingsOpen, tab } from './store'
+import { spriteDataUrl } from '../engine/sprite'
+import { dollPortrait } from '../art/doll'
+import { lookKey } from '../art/avatar'
+import { Icon } from './components/common'
+import { PT, TONE_TEXT } from './pixeltext'
+import { coinStoreOpen, profileOpen } from './store'
 import { sfx } from '../engine/audio'
+import { DAILY_PRAYER_GOAL, prayersToday } from '../game/prayer'
+
+export function PortraitRing({ size = 64 }: { size?: number }) {
+  const look = game.value.player.look
+  const url = useMemo(() => spriteDataUrl(dollPortrait(look), 4), [lookKey(look)])
+  return (
+    <span class="ring" style={{ width: `${size}px`, height: `${size}px` }}>
+      <img class="px" src={url} alt="" draggable={false} />
+    </span>
+  )
+}
 
 export function Hud() {
-  useTicker(15000)
   const s = game.value
   const lv = level.value
-  const today = DAY_COLORS[new Date().getDay()]
-  const lucky = luckyColorActive(s)
-  const buffs = activeBuffs()
-  const morning = isAlmsMorning(hourOf())
+  const done = Math.min(DAILY_PRAYER_GOAL, prayersToday(s))
   return (
-    <div class="hud">
-      <div class="hud-row">
-        <button class="panel hud-player" onClick={() => (sfx.open(), (profileOpen.value = true))} aria-label="โปรไฟล์และสมุดบุญ">
-          <Portrait look={s.player.look} size={38} />
-          <div class="hud-player-info">
-            <div class="row" style={{ gap: '6px' }}>
-              <span class="lv-badge num">Lv.{lv.level}</span>
-              <span class="hud-name">{s.player.name}</span>
-            </div>
-            <div class="hud-title small muted">{titleFor(lv.level)}</div>
-            <Bar value={lv.into} max={lv.need} label="บุญสะสมสู่เลเวลถัดไป" />
-          </div>
-        </button>
-        <div class="hud-right">
-          <button class="panel hud-coins" onClick={() => (sfx.open(), (coinStoreOpen.value = true))} aria-label="เติมบุญคอยน์">
-            <Icon name="coin" size={20} />
-            <span class="num">{s.coins.toLocaleString('th-TH')}</span>
-            <span class="hud-plus">+</span>
-          </button>
-          <button class="btn paper icon-btn small" onClick={() => (sfx.open(), (settingsOpen.value = true))} aria-label="ตั้งค่า">
-            <Icon name="gear" size={18} />
-          </button>
-        </div>
-      </div>
-      {tab.value === 'temple' && (
-        <div class="hud-chips">
-          <button class="chip gold" onClick={() => (sfx.open(), (mapOpen.value = true))}>
-            <Icon name="map" size={14} /> {AREA_BY_ID[area.value].name} ▾
-          </button>
-          <button
-            class={`chip ${lucky ? 'green' : ''}`}
-            onClick={() => (tab.value = 'wardrobe')}
-            title="แต่งสีประจำวันรับบุญเพิ่ม 10%"
-          >
-            <span class="swatch" style={{ background: today.hex }} />
-            {lucky ? `ใส่สี${today.name}แล้ว +10%` : `สีมงคลวันนี้: ${today.name}`}
-          </button>
-          {morning && (
-            <span class="chip pink">
-              <Icon name="sun" size={14} /> ตักบาตรเช้า บุญ x2
-            </span>
-          )}
-          {buffs.slice(0, 2).map((b) => (
-            <button class="chip blue" key={b.id} onClick={() => openShop('boost')}>
-              <Icon name={b.kind === 'coin' ? 'coinbag' : b.kind === 'animal' ? 'paw' : 'boost'} size={14} />
-              {b.kind === 'coin' ? 'เหรียญ' : b.kind === 'animal' ? 'บุญสัตว์' : 'บุญ'} x{b.mult} · {formatDuration(b.until - Date.now())}
-            </button>
-          ))}
-        </div>
-      )}
-      {tab.value === 'temple' && <div class="hud-greet small">{greeting(hourOf())} · ขอให้เป็นวันที่ดีนะ</div>}
+    <div class="hud2">
+      <button class="hud2-player" onClick={() => (sfx.open(), (profileOpen.value = true))} aria-label="โปรไฟล์และสมุดบุญ">
+        <PortraitRing />
+        <span class="hud2-lv num">{lv.level}</span>
+        <span class="hud2-bars">
+          <PT text={s.player.name} size={12} color="#fff6dc" shadow="#3b2616" />
+          <span class="hbar gold" title="บุญสะสมสู่เลเวลถัดไป">
+            <span style={{ width: `${Math.round((lv.into / Math.max(1, lv.need)) * 100)}%` }} />
+          </span>
+          <span class="hbar green" title={`สวดมนต์วันนี้ ${done}/${DAILY_PRAYER_GOAL}`}>
+            <span style={{ width: `${(done / DAILY_PRAYER_GOAL) * 100}%` }} />
+            <i class="hbar-ticks" />
+          </span>
+        </span>
+      </button>
+      <button class="hud2-coins" onClick={() => (sfx.open(), (coinStoreOpen.value = true))} aria-label={`บุญคอยน์ ${s.coins} เติมเพิ่ม`}>
+        <Icon name="coin" size={22} />
+        <PT text={s.coins.toLocaleString('en-US')} size={13} weight={600} {...TONE_TEXT.wood} />
+        <span class="hud2-plus">
+          <Icon name="plus" size={14} />
+        </span>
+      </button>
     </div>
   )
 }

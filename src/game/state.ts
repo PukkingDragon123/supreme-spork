@@ -8,10 +8,12 @@ import type { GameEvent } from './data/quests'
 import { STARTER_INVENTORY } from './data/items'
 import { STARTER_OUTFITS } from './data/outfits'
 import { levelFromMerit } from './economy'
+import { emptyMaterials, type Materials } from './materials'
+import { defaultHouse, type HouseState } from './house'
 import { weekKey } from './time'
 
 export const SAVE_KEY = 'boondee.save.v1'
-export const SAVE_VERSION = 1
+export const SAVE_VERSION = 2
 
 export type BuffKind = 'merit' | 'coin' | 'animal'
 
@@ -66,10 +68,43 @@ export interface Settings {
   reduceMotion: boolean
 }
 
+export interface AccountLink {
+  kind: 'guest' | 'local' | 'supabase'
+  id: string | null
+  email: string | null
+}
+
+export interface PrayerProgress {
+  /** Best stars per stage id. */
+  stars: Record<string, number>
+  /** Best score per stage id. */
+  best: Record<string, number>
+  plays: number
+  /** Preferred input: real microphone or tap-along. */
+  mode: 'voice' | 'tap'
+  /** Consecutive days with at least one prayer. */
+  streak: number
+  lastDay: string | null
+  /** Prayers finished today (for the daily goal). */
+  today: number
+  todayKey: string
+}
+
 export interface GameState {
   v: number
   createdAt: number
+  /** Last local save time (for choosing between device and cloud saves). */
+  savedAt: number
   onboarded: boolean
+  account: AccountLink | null
+  /** One-time story beats already shown. */
+  seen: { intro: boolean; arrival: string[]; tips: string[] }
+  materials: Materials
+  prayer: PrayerProgress
+  pickups: { day: string; taken: string[] }
+  mala: { total: number; today: number; day: string }
+  reminder: { on: boolean; hour: number; minute: number }
+  house: HouseState
   player: { name: string; birthDay: number; friendCode: string; look: AvatarLook }
   merit: number
   coins: number
@@ -125,7 +160,16 @@ export function defaultState(): GameState {
   return {
     v: SAVE_VERSION,
     createdAt: Date.now(),
+    savedAt: 0,
     onboarded: false,
+    account: null,
+    seen: { intro: false, arrival: [], tips: [] },
+    materials: emptyMaterials(),
+    prayer: { stars: {}, best: {}, plays: 0, mode: 'voice', streak: 0, lastDay: null, today: 0, todayKey: '' },
+    pickups: { day: '', taken: [] },
+    mala: { total: 0, today: 0, day: '' },
+    reminder: { on: false, hour: 19, minute: 0 },
+    house: defaultHouse(),
     player: { name: 'สายบุญ', birthDay: new Date().getDay(), friendCode: makeFriendCode(), look: { ...DEFAULT_LOOK } },
     merit: 0,
     coins: 100,
@@ -169,48 +213,70 @@ export function migrate(raw: unknown): GameState {
     social: { ...base.social, ...(s.social ?? {}) },
     monthly: { ...base.monthly, ...(s.monthly ?? {}) },
     week: { ...base.week, ...(s.week ?? {}) },
+    seen: { ...base.seen, ...(s.seen ?? {}) },
+    materials: { ...base.materials, ...(s.materials ?? {}) },
+    prayer: { ...base.prayer, ...(s.prayer ?? {}) },
+    pickups: { ...base.pickups, ...(s.pickups ?? {}) },
+    mala: { ...base.mala, ...(s.mala ?? {}) },
+    reminder: { ...base.reminder, ...(s.reminder ?? {}) },
+    house: s.house && Array.isArray(s.house.placed) ? { ...base.house, ...s.house } : base.house,
     v: SAVE_VERSION,
   }
   // v1 called the main temple 'home'; it is 'wat' now that players have a house.
   merged.areas = [...new Set(merged.areas.map((a) => ((a as string) === 'home' ? 'wat' : a)))] as AreaId[]
   if ((merged.lastArea as string) === 'home') merged.lastArea = 'wat'
   if (!merged.areas.includes('wat')) merged.areas.unshift('wat')
+  // New starter clothes appear for everyone.
+  merged.outfits = [...new Set([...(merged.outfits ?? []), ...STARTER_OUTFITS])]
   return merged
 }
 
 // ---------------------------------------------------------------------------
 // Storage (falls back to memory when localStorage is unavailable).
 
-let memory: string | null = null
+const memory = new Map<string, string>()
+let slotKey = SAVE_KEY
+
+/** Which save slot is active: one per signed-in account, the legacy key for guests. */
+export function useSaveSlot(accountId: string | null) {
+  slotKey = accountId ? `${SAVE_KEY}:${accountId}` : SAVE_KEY
+}
+
+export function currentSaveSlot() {
+  return slotKey
+}
 
 export const storage = {
-  load(): string | null {
+  load(key = slotKey): string | null {
     try {
-      return window.localStorage.getItem(SAVE_KEY) ?? memory
+      return window.localStorage.getItem(key) ?? memory.get(key) ?? null
     } catch {
-      return memory
+      return memory.get(key) ?? null
     }
   },
-  save(data: string) {
-    memory = data
+  save(data: string, key = slotKey) {
+    memory.set(key, data)
     try {
-      window.localStorage.setItem(SAVE_KEY, data)
+      window.localStorage.setItem(key, data)
     } catch {
       /* storage blocked: keep the in-memory copy */
     }
   },
-  clear() {
-    memory = null
+  clear(key = slotKey) {
+    memory.delete(key)
     try {
-      window.localStorage.removeItem(SAVE_KEY)
+      window.localStorage.removeItem(key)
     } catch {
       /* ignore */
     }
   },
 }
 
-export function loadState(): GameState {
-  const raw = storage.load()
+/** Called after every local save (e.g. to push to the cloud). */
+export const persistListeners: ((data: string) => void)[] = []
+
+export function loadState(key?: string): GameState {
+  const raw = storage.load(key)
   if (!raw) return defaultState()
   try {
     return migrate(JSON.parse(raw))
@@ -231,7 +297,10 @@ let saveTimer: ReturnType<typeof setTimeout> | undefined
 export function persistNow() {
   if (saveTimer) clearTimeout(saveTimer)
   saveTimer = undefined
-  storage.save(JSON.stringify(game.value))
+  game.value.savedAt = Date.now()
+  const data = JSON.stringify(game.value)
+  storage.save(data)
+  for (const f of persistListeners) f(data)
 }
 
 function schedulePersist() {

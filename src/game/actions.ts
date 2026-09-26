@@ -276,6 +276,7 @@ export function equip(slot: Slot, id: string | null) {
     else if (slot === 'head') look.head = id
     else if (slot === 'neck') look.neck = id
     else if (slot === 'hand') look.hand = id
+    else if ((slot as string) === 'shoes') look.shoes = id
   })
 }
 

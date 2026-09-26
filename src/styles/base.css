@@ -1,8 +1,8 @@
 /* Boondee UI kit: warm paper panels with pixel-notched borders. */
 
 :root {
-  --ink: #3a2838;
-  --ink-soft: #6b4d5e;
+  --ink: #3b2616;
+  --ink-soft: #7a5a3e;
   --paper: #fff6e4;
   --paper-2: #ffedcc;
   --paper-3: #f6dcae;
@@ -22,8 +22,8 @@
   --night: #2c2f63;
   --red: #e8514a;
   --px: 3px;
-  --font: 'Mitr', 'Noto Sans Thai', 'Leelawadee UI', 'Thonburi', system-ui, sans-serif;
-  --num: 'Pixelify Sans', 'Mitr', system-ui, sans-serif;
+  --font: 'Mali', 'Noto Sans Thai', 'Leelawadee UI', 'Thonburi', system-ui, sans-serif;
+  --num: 'Pixelify Sans', 'Mali', system-ui, sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   color-scheme: light;
@@ -104,180 +104,212 @@ img.px,
   overflow: hidden;
 }
 
-/* ---------- pixel panels ---------- */
+/* ---------- pixel panels (9-slice skins from src/ui/skin.ts) ---------- */
 
+/* One art pixel of the UI = 2 CSS pixels. */
 .panel {
   position: relative;
-  background: var(--paper);
-  margin: var(--px);
-  box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--ink),
-    0 var(--px) 0 0 var(--ink),
-    calc(var(--px) * -1) 0 0 0 var(--ink),
-    var(--px) 0 0 0 var(--ink),
-    inset 0 calc(var(--px) * -1) 0 0 var(--paper-3),
-    inset 0 var(--px) 0 0 #ffffff;
+  margin: 2px;
+  border-style: solid;
+  border-width: 6px;
+  border-image: var(--sk-card) 3 fill / 6px repeat;
+  background: none;
+  image-rendering: pixelated;
 }
 
 .panel.soft {
-  background: var(--paper-2);
+  border-image-source: var(--sk-card-soft);
+}
+
+.panel.gold,
+.panel.sparkle-bg {
+  border-image-source: var(--sk-card-gold);
 }
 
 .panel.dark {
-  background: #3d3157;
+  border-image-source: var(--sk-card-dark);
   color: #fff1d6;
-  box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--ink),
-    0 var(--px) 0 0 var(--ink),
-    calc(var(--px) * -1) 0 0 0 var(--ink),
-    var(--px) 0 0 0 var(--ink),
-    inset 0 calc(var(--px) * -1) 0 0 #2b2340,
-    inset 0 var(--px) 0 0 #574874;
+}
+
+.panel.wood {
+  border-image-source: var(--sk-card-wood);
+  color: #fff1d6;
+}
+
+/* Big windows get the thick wooden frame. */
+.win,
+.panel.modal,
+.panel.sheet {
+  border-width: 16px;
+  border-image: var(--sk-panel) 8 fill / 16px repeat;
 }
 
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 1px 8px;
-  background: var(--paper);
-  font-size: 12px;
-  box-shadow:
-    0 -2px 0 0 var(--ink),
-    0 2px 0 0 var(--ink),
-    -2px 0 0 0 var(--ink),
-    2px 0 0 0 var(--ink);
+  padding: 0 4px;
   margin: 2px;
+  font-size: 12px;
+  border-style: solid;
+  border-width: 6px;
+  border-image: var(--sk-card) 3 fill / 6px repeat;
   white-space: nowrap;
+  line-height: 1.3;
 }
 
 .chip.gold {
-  background: var(--gold-l);
+  border-image-source: var(--sk-card-gold);
 }
 .chip.pink {
-  background: var(--lotus-l);
+  border-image-source: var(--sk-card-gold);
 }
 .chip.green {
-  background: #d7f2cf;
+  border-image-source: var(--sk-card-green);
 }
 .chip.blue {
-  background: #d4ecff;
+  border-image-source: var(--sk-card-soft);
+}
+.chip.dark {
+  border-image-source: var(--sk-card-dark);
+  color: #fff1d6;
 }
 
 /* ---------- buttons ---------- */
 
 .btn {
+  --bs: var(--sk-btn-gold);
+  --bs-down: var(--sk-btn-gold-down);
+  --bt: #5a3410;
+  --bsh: #ffe58a;
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 40px;
-  padding: 6px 14px 9px;
-  margin: var(--px);
-  border: 0;
-  background: var(--gold);
+  min-height: 44px;
+  padding: 0 6px;
+  margin: 2px;
+  background: none;
+  border-style: solid;
+  border-width: 8px 8px 12px;
+  border-image: var(--bs) 4 4 6 4 fill / 8px 8px 12px repeat;
+  color: var(--bt);
+  text-shadow: 0 2px 0 var(--bsh);
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
+  line-height: 1.2;
   cursor: pointer;
-  box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--ink),
-    0 var(--px) 0 0 var(--ink),
-    calc(var(--px) * -1) 0 0 0 var(--ink),
-    var(--px) 0 0 0 var(--ink),
-    inset 0 calc(var(--px) * -1) 0 0 var(--gold-d),
-    inset 0 var(--px) 0 0 var(--gold-l);
-  transition: transform 60ms;
+  image-rendering: pixelated;
 }
 
-.btn:active:not(:disabled) {
-  transform: translateY(2px);
-  box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--ink),
-    0 var(--px) 0 0 var(--ink),
-    calc(var(--px) * -1) 0 0 0 var(--ink),
-    var(--px) 0 0 0 var(--ink),
-    inset 0 calc(var(--px) * -1) 0 0 var(--gold),
-    inset 0 var(--px) 0 0 var(--gold-d);
+.btn > * {
+  position: relative;
+}
+
+.btn:active:not(:disabled),
+.btn.pressed {
+  border-image-source: var(--bs-down);
+}
+
+.btn:active:not(:disabled) > *,
+.btn.pressed > * {
+  top: 3px;
 }
 
 .btn:focus-visible {
-  outline: 3px dashed var(--sky-d);
-  outline-offset: 5px;
+  outline: 3px dashed #4f8fd8;
+  outline-offset: 3px;
 }
 
 .btn:disabled {
-  filter: grayscale(0.7);
-  opacity: 0.6;
+  filter: grayscale(0.75) brightness(0.95);
+  opacity: 0.7;
   cursor: default;
 }
 
-.btn.pink {
-  background: var(--lotus);
-  box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--ink),
-    0 var(--px) 0 0 var(--ink),
-    calc(var(--px) * -1) 0 0 0 var(--ink),
-    var(--px) 0 0 0 var(--ink),
-    inset 0 calc(var(--px) * -1) 0 0 var(--lotus-d),
-    inset 0 var(--px) 0 0 var(--lotus-l);
+.btn.green {
+  --bs: var(--sk-btn);
+  --bs-down: var(--sk-btn-down);
+  --bt: #fff6dc;
+  --bsh: #1f4a26;
 }
 
-.btn.green {
-  background: var(--leaf);
-  color: #fffaf0;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
-  box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--ink),
-    0 var(--px) 0 0 var(--ink),
-    calc(var(--px) * -1) 0 0 0 var(--ink),
-    var(--px) 0 0 0 var(--ink),
-    inset 0 calc(var(--px) * -1) 0 0 var(--leaf-d),
-    inset 0 var(--px) 0 0 #b4e486;
+.btn.pink {
+  --bs: var(--sk-btn-pink);
+  --bs-down: var(--sk-btn-pink-down);
+  --bt: #fff4f8;
+  --bsh: #8e3a5c;
+}
+
+.btn.red {
+  --bs: var(--sk-btn-red);
+  --bs-down: var(--sk-btn-red-down);
+  --bt: #fff1e6;
+  --bsh: #6e2018;
 }
 
 .btn.blue {
-  background: #7fc4ff;
-  box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--ink),
-    0 var(--px) 0 0 var(--ink),
-    calc(var(--px) * -1) 0 0 0 var(--ink),
-    var(--px) 0 0 0 var(--ink),
-    inset 0 calc(var(--px) * -1) 0 0 var(--sky-d),
-    inset 0 var(--px) 0 0 #d4ecff;
+  --bs: var(--sk-btn-blue);
+  --bs-down: var(--sk-btn-blue-down);
+  --bt: #f2f8ff;
+  --bsh: #1f3f70;
 }
 
 .btn.paper {
-  background: var(--paper);
-  box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--ink),
-    0 var(--px) 0 0 var(--ink),
-    calc(var(--px) * -1) 0 0 0 var(--ink),
-    var(--px) 0 0 0 var(--ink),
-    inset 0 calc(var(--px) * -1) 0 0 var(--paper-3),
-    inset 0 var(--px) 0 0 #ffffff;
+  --bs: var(--sk-btn-paper);
+  --bs-down: var(--sk-btn-paper-down);
+  --bt: #3b2616;
+  --bsh: transparent;
+}
+
+.btn.wood {
+  --bs: var(--sk-btn-wood);
+  --bs-down: var(--sk-btn-wood-down);
+  --bt: #fff1d6;
+  --bsh: #5a3418;
+}
+
+.btn.dark {
+  --bs: var(--sk-btn-dark);
+  --bs-down: var(--sk-btn-dark-down);
+  --bt: #fff1d6;
+  --bsh: #1c120c;
 }
 
 .btn.small {
-  min-height: 32px;
-  padding: 3px 10px 6px;
+  min-height: 36px;
+  padding: 0 4px;
   font-size: 13px;
 }
 
 .btn.big {
-  min-height: 52px;
+  min-height: 56px;
   font-size: 18px;
-  padding: 8px 22px 12px;
+  padding: 0 14px;
 }
 
 .btn.block {
   display: flex;
-  width: calc(100% - var(--px) * 2);
+  width: calc(100% - 4px);
 }
 
 .icon-btn {
-  min-width: 40px;
-  padding: 4px 6px 7px;
+  min-width: 44px;
+  padding: 0;
+}
+
+.btn.small.icon-btn {
+  min-width: 36px;
+}
+
+img.pt {
+  display: inline-block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  vertical-align: middle;
+  pointer-events: none;
+  flex-shrink: 0;
 }
 
 /* ---------- common layout ---------- */
@@ -325,13 +357,10 @@ img.px,
 
 .bar {
   position: relative;
-  height: 12px;
-  background: #5a4a66;
-  box-shadow:
-    0 -2px 0 0 var(--ink),
-    0 2px 0 0 var(--ink),
-    -2px 0 0 0 var(--ink),
-    2px 0 0 0 var(--ink);
+  height: 14px;
+  border-style: solid;
+  border-width: 4px;
+  border-image: var(--sk-meter) 3 fill / 4px repeat;
   overflow: hidden;
 }
 
@@ -340,16 +369,21 @@ img.px,
   left: 0;
   top: 0;
   bottom: 0;
-  background: linear-gradient(var(--gold-l) 0 3px, var(--gold) 3px 9px, var(--gold-d) 9px);
+  background: linear-gradient(#ffe58a 0 2px, #f2bf3f 2px 4px, #c98a24 4px);
   transition: width 400ms;
 }
 
-.bar.pink > span {
-  background: linear-gradient(var(--lotus-l) 0 3px, var(--lotus) 3px 9px, var(--lotus-d) 9px);
+.bar.pink > span,
+.bar.red > span {
+  background: linear-gradient(#f7a08c 0 2px, #d9533f 2px 4px, #9c3226 4px);
 }
 
 .bar.green > span {
-  background: linear-gradient(#c8f0cf 0 3px, var(--leaf) 3px 9px, var(--leaf-d) 9px);
+  background: linear-gradient(#b9e89a 0 2px, #4f9e4c 2px 4px, #2f6e36 4px);
+}
+
+.bar.blue > span {
+  background: linear-gradient(#b8dcff 0 2px, #4f8fd8 2px 4px, #2f5f9e 4px);
 }
 
 .scroll {
