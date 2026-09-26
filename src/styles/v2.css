@@ -1265,3 +1265,16 @@ body,
 .card {
   padding: 4px;
 }
+
+.mic-note {
+  position: absolute;
+  z-index: 4;
+  left: 10px;
+  right: 10px;
+  top: calc(var(--safe-top) + 56px);
+  padding: 2px 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: slide-up 250ms ease-out;
+}

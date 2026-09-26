@@ -276,7 +276,9 @@ export class ChantScorer {
     for (let k = this.cursor; k < this.words.length; k++) {
       const w = this.words[k]
       if (w.start - t > TAP_WINDOW) break
-      if (Math.abs(t - w.start) > TAP_WINDOW) continue
+      // Early by up to TAP_WINDOW, or any time while the word is highlighted.
+      if (t < w.start - TAP_WINDOW || t > w.start + Math.max(w.dur, TAP_WINDOW)) continue
+      if (this.state[k].tap !== null) continue
       if (best < 0 || Math.abs(t - w.start) < Math.abs(t - this.words[best].start)) best = k
     }
     if (best < 0) {
@@ -379,8 +381,11 @@ export class ChantScorer {
   private judgeTap(i: number): Judge {
     const s = this.state[i]
     if (s.tap === null) return 'miss'
-    const e = Math.abs(s.tap - this.words[i].start)
-    const j: Judge = e <= TAP_PERFECT ? 'perfect' : e <= TAP_GOOD ? 'good' : 'miss'
+    const w = this.words[i]
+    const e = Math.abs(s.tap - w.start)
+    // Perfect near the word's start; tapping anywhere else inside the highlighted word is still good.
+    const inside = s.tap >= w.start - TAP_WINDOW && s.tap <= w.start + Math.max(w.dur, TAP_WINDOW)
+    const j: Judge = e <= TAP_PERFECT ? 'perfect' : e <= TAP_GOOD || inside ? 'good' : 'miss'
     if (j !== 'miss') s.rhythm = clamp01(1 - Math.max(0, e - 0.06) / 0.24)
     else s.tap = null
     return j

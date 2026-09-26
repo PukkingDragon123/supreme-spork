@@ -149,7 +149,7 @@ export function PrayerSession() {
         use = 'tap'
         setMicMsg(
           r === 'denied'
-            ? 'ยังไม่ได้อนุญาตไมโครโฟน เลยใช้โหมดแตะตามจังหวะแทนนะ (เปิดสิทธิ์ไมค์ในเบราว์เซอร์เพื่อสวดด้วยเสียงจริง)'
+            ? 'ใช้ไมค์ในหน้านี้ไม่ได้ เลยสลับเป็นโหมดแตะให้นะ แตะปุ่มทองทุกครั้งที่คำใหม่ไฮไลต์'
             : 'อุปกรณ์นี้ใช้ไมโครโฟนไม่ได้ เลยใช้โหมดแตะตามจังหวะแทนนะ',
         )
       }
@@ -239,6 +239,12 @@ export function PrayerSession() {
           <div class="pray-combo">
             {(scorer.current?.combo ?? 0) >= 3 && <PT text={`คอมโบ ${scorer.current!.combo}`} size={13} weight={600} color="#ffe58a" shadow="#7a4f12" />}
           </div>
+        </div>
+      )}
+
+      {micMsg && (phase === 'count' || phase === 'chant') && (
+        <div class="mic-note panel dark small" role="status">
+          <Icon name="mic_off" size={16} /> {micMsg}
         </div>
       )}
 
