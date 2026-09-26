@@ -4,7 +4,23 @@
 
 > ต้นแบบนี้ทำงานได้ครบทั้งแอป ระบบชำระเงิน โฆษณา และเพื่อนออนไลน์ยังเป็น **โหมดจำลอง** อยู่ โดยเขียนแยกเป็น interface ไว้แล้ว เพื่อเสียบระบบจริงได้ทันที (ดูหัวข้อ “เชื่อมต่อระบบจริง”)
 
-## ฟีเจอร์
+## ใหม่ในเวอร์ชัน 2: สวดมนต์คือหัวใจของเกม
+
+**วงจรหลัก** สวดมนต์ในโบสถ์ → ได้ดาว บุญ เหรียญ และวัสดุ → เอาวัสดุไปทำเฟอร์นิเจอร์แต่งบ้าน → ดาวครบเปิดวัดใหม่และบทสวดใหม่ → กลับมาสวดทุกวันตามเป้า 3 ครั้ง
+
+- **สวดด้วยไมโครโฟนจริง** ไฮไลต์ทีละคำแบบคาราโอเกะ ระบบฟังเสียง (ไม่ใช่การแปลงเสียงเป็นข้อความ) ตัดสินจากจังหวะที่เริ่มคำ ความต่อเนื่อง ความเงียบระหว่างวรรค และความนิ่งของระดับเสียง ได้ ดีเยี่ยม/ดี/พลาด คอมโบ เกรด S–D และ 1–3 ดาว สวดด้วยไมค์ได้บุญมากกว่า 25% ถ้าไม่มีไมค์หรือไม่อนุญาต ใช้โหมด **แตะตามจังหวะ** แทนได้ (`src/engine/voice.ts`, `src/game/chantScore.ts`)
+- **ด่านสวดมนต์ 26 ด่าน ใน 4 วัด** ตั้งแต่นะโม ไตรสรณคมน์ ศีล ๕ อิติปิโส ไปจนถึงพาหุง ชินบัญชร และคาถาบูชาเทพ จบด้วยการกราบ 3 ครั้ง (`src/game/data/prayers.ts`)
+- **บัญชีผู้ใช้จริง** สมัครด้วยชื่อเล่น อีเมล รหัสผ่าน และเพศ หรือเล่นแบบไม่สมัคร ค่าเริ่มต้นเก็บบัญชีในเครื่อง (รหัสผ่านเข้ารหัส PBKDF2) ถ้าตั้งค่า `VITE_SUPABASE_URL` และ `VITE_SUPABASE_ANON_KEY` จะใช้ Supabase Auth และเซฟขึ้นคลาวด์อัตโนมัติ ตารางอยู่ที่ `supabase/schema.sql` (มี RLS แล้ว)
+- **ฉากเปิดเกมและฉากเดินทาง** อินโทรแบบภาพยนตร์ หน้าไตเติ้ล และฉากนั่งตุ๊กตุ๊ก/เรือ/สองแถวไปถึงวัดทุกครั้งที่เข้าวัด (ข้ามได้)
+- **ห้องแต่งตัวในห้องนอนสไตล์ไทย** เลือกรูปร่างชาย/หญิง สีผิว ดวงตา ทรงผม สีผม เสื้อ ท่อนล่าง รองเท้า เครื่องประดับ มีชุดนักเรียน ชุดนักศึกษา เสื้อลายช้าง เสื้อผ้าสตรีท และเสื้อสีประจำวัน
+- **บ้านของคุณ** ห้องคอนโดวิวเมืองที่มีหิ้งพระ ตู้กระจก เตียง พัดลม เดินได้ แตะของใช้ได้ จัดห้องแบบลากวาง สร้างเฟอร์นิเจอร์ 30 ชิ้น วอลเปเปอร์ 5 แบบ พื้น 5 แบบ จากวัสดุ ไม้ ผ้า ดินเผา ทองคำเปลว ดอกไม้ สวดมนต์หน้าหิ้งพระที่บ้านได้
+- **UI พิกเซลแบบเกม** หน้าต่างกรอบไม้ ป้ายหัวเรื่องสีเขียว ปุ่มหนา ๆ ช่องกระเป๋า และตัวอักษรไทยแบบพิกเซลที่เรนเดอร์จากฟอนต์ Mali (`src/ui/pixeltext.tsx`, `src/ui/skin.ts`) ในเกมเหลือแค่ HUD เล็ก ๆ และแถบเมนูล่าง 5 ช่อง
+- **มินิเกมมีเป้าหมายชัด** ทุกเกมมีการ์ดวิธีเล่น 3 ขั้นก่อนเริ่ม และดรอปวัสดุวันละ 3 ครั้ง
+- **เครื่องมือ** หนังสือสวดมนต์พร้อมคำแปลอ่านฟรีทุกบท ลูกประคำ 108 เม็ด ตั้งเวลาเตือนสวดมนต์และเพิ่มลงปฏิทินในมือถือ (.ics)
+
+> ไมโครโฟนใช้ได้เฉพาะบนเว็บที่เป็น HTTPS หรือ localhost และในแอป Capacitor ไฟล์ `.github/workflows/pages.yml` ช่วย deploy ขึ้น GitHub Pages เพื่อทดลองสวดบนมือถือจริง
+
+## ฟีเจอร์ (จากเวอร์ชัน 1)
 
 **เดินเล่นในวัด 4 แห่ง** แตะพื้นเพื่อเดิน แตะสิ่งที่มีป้ายลอยอยู่เพื่อทำบุญ ลากนิ้วเพื่อมองรอบ ๆ
 
@@ -122,9 +138,13 @@ npx cap open android   # หรือ ios
 - ทำสัญญากับมูลนิธิที่จดทะเบียนและตรวจสอบได้ พร้อมรายงานยอดและใบอนุโมทนาบัตร และพิจารณาเชื่อมระบบ e-Donation ของกรมสรรพากร
 - ตรวจแนวปฏิบัติร้านค้าแอปเรื่องการรับบริจาค (App Store Review Guidelines หมวด 3.2 และนโยบายการชำระเงินของ Google Play) โดยทั่วไปการรับเงินบริจาคในแอปต้องเป็นองค์กรไม่แสวงผลกำไรที่ได้รับอนุมัติ หรือให้บริจาคผ่านช่องทางนอกแอป ทางเลือกที่ปลอดภัยคือให้บริษัทสมทบเงินจริงตามสัดส่วนรายได้ แล้วให้การบริจาคคอยน์ในแอปเป็นการ “เลือกโครงการ” ที่บริษัทจะสมทบให้
 
+### บัญชีและเซฟบนคลาวด์
+
+`src/services/auth.ts` มี `LocalAuthProvider` (บัญชีในเครื่อง) และ `SupabaseAuthProvider` (GoTrue REST) ส่วน `src/services/cloudsave.ts` เซฟเกมลงตาราง `saves` ทุกบัญชีมีช่องเซฟของตัวเอง และบัญชีใหม่จะรับความคืบหน้าจากการเล่นแบบไม่สมัครต่อให้ วิธีเปิดใช้: สร้างโปรเจกต์ Supabase รัน `supabase/schema.sql` แล้วใส่ค่า `VITE_SUPABASE_URL` กับ `VITE_SUPABASE_ANON_KEY` ใน `.env`
+
 ### ความเป็นส่วนตัว
 
-ตอนนี้ข้อมูลทั้งหมดเก็บในเครื่อง (localStorage) คำอธิษฐานไม่ถูกส่งไปที่ใด เมื่อต่อเซิร์ฟเวอร์ ควรทำนโยบายความเป็นส่วนตัวตาม PDPA และให้ผู้ใช้เลือกได้ว่าจะเก็บคำอธิษฐานไว้ในเครื่องเท่านั้นหรือไม่
+ข้อมูลเกมเก็บในเครื่อง (localStorage) เว้นแต่จะเปิด Supabase เสียงจากไมโครโฟนประมวลผลในเครื่องแบบเรียลไทม์ ไม่บันทึกและไม่ส่งออกไปที่ใด คำอธิษฐานไม่ถูกส่งไปที่ใด เมื่อต่อเซิร์ฟเวอร์ ควรทำนโยบายความเป็นส่วนตัวตาม PDPA และให้ผู้ใช้เลือกได้ว่าจะเก็บคำอธิษฐานไว้ในเครื่องเท่านั้นหรือไม่
 
 ## ข้อควรพิจารณาด้านวัฒนธรรมและเนื้อหา
 
@@ -136,5 +156,7 @@ npx cap open android   # หรือ ios
 ## English summary
 
 Boondee (บุญดี) is a cozy pixel-art merit-making app for Thai users. Walk around four temples, give alms to monks (on foot or by boat), chant with word-by-word prompts, meditate, make wishes, draw fortune sticks, apply gold leaf, dedicate merit, scoop holy water, worship six deities, rub the sacred tree for lucky numbers, feed koi, catfish and temple dogs, ring bells, float a krathong and walk candle-lit circles around a golden chedi. Merit is the EXP; Boon Coins are the premium currency (real-money packs, starter pack, monthly pass, rewarded ads). Includes character customization, a weekly friends leaderboard, merit groups with shared goals, a friends' feed with "sathu" reactions, and charity campaigns.
+
+Version 2 makes chanting the core loop: 26 chant stages across four temples, sung into the real microphone and scored on onset timing, flow, rests and pitch steadiness (with a tap-along fallback), rewarding stars, merit, coins and crafting materials. It adds real accounts (local PBKDF2 or Supabase with cloud save), an intro cinematic and temple-arrival cutscenes, a dress-up scene in a Thai-style bedroom with body type, faces, school uniforms and Thai/street wear, a player home with furniture crafting and drag-and-drop decorating, a game-style pixel UI with pixel-rendered Thai text, goal cards for every mini-game, and utilities (chant book, 108-bead mala, daily reminder with calendar export).
 
 Built with Vite, TypeScript and Preact. All art and sound are generated in code. Payments, ads and the social backend run on sandbox implementations behind interfaces (`src/services/*`) so real providers (RevenueCat, AdMob, Firebase/Supabase) can be plugged in. Ships as an installable offline PWA; wrap with Capacitor for the app stores.
