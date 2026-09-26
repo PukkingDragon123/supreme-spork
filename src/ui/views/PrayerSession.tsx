@@ -73,6 +73,8 @@ export function PrayerSession() {
         temple,
         deity,
         look: s.player.look,
+        // The karaoke card covers the bottom ~28%: kneel just above it.
+        safe: { top: 0.1, bottom: 0.34, player: 0.12 },
         playerSprite: (pose, blink) => dollSprite(s.player.look, POSE[pose], { view: 'back', blink, barefoot: true }),
       }),
     { targetWidth: 200 },
@@ -232,7 +234,7 @@ export function PrayerSession() {
             <Icon name={phase === 'paused' ? 'play' : 'pause'} size={18} />
           </button>
           <div class="pray-title">
-            <PT text={chant.name} size={12} color="#fff6dc" shadow="#2a1a10" />
+            <PT text={chant.name} size={11} color="#fff6dc" shadow="#2a1a10" />
           </div>
           <div class="pray-combo">
             {(scorer.current?.combo ?? 0) >= 3 && <PT text={`คอมโบ ${scorer.current!.combo}`} size={13} weight={600} color="#ffe58a" shadow="#7a4f12" />}
