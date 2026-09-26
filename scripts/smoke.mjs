@@ -30,13 +30,31 @@ await page.goto(base, { waitUntil: 'networkidle' })
 await page.evaluate(() => localStorage.clear())
 await page.reload({ waitUntil: 'networkidle' })
 
-await step('onboarding', async () => {
-  await click('เริ่มต้นสายบุญ')
-  await page.fill('#player-name', 'น้องบุญ')
-  await click('ผมยาวสลวย')
-  await click('ต่อไป')
-  await click('เข้าวัดกันเลย')
-  await page.waitForSelector('.nav')
+await step('intro cutscene', async () => {
+  await page.waitForSelector('.cine')
+  await page.waitForTimeout(800)
+  await page.locator('.cine-skip').click()
+  await page.waitForSelector('.title-screen')
+})
+
+await step('sign up', async () => {
+  await page.getByPlaceholder(/ชื่อเล่นในเกม/).fill('น้องบุญ')
+  await page.getByPlaceholder('อีเมล').fill('nongboon@example.com')
+  await page.getByPlaceholder(/รหัสผ่าน/).fill('boondee2026')
+  await click('ชาย')
+  await click('สร้างบัญชี')
+  await page.waitForSelector('.create', { timeout: 15000 })
+})
+
+await step('dress up', async () => {
+  await page.getByRole('tab', { name: 'ทรงผม' }).click()
+  await page.locator('.dress-grid .slot').nth(1).click()
+  await page.getByRole('tab', { name: 'เสื้อ' }).click()
+  await page.locator('.dress-grid .slot').first().click()
+  await click('เสร็จแล้ว ไปต่อ')
+  await click('ออกเดินทางไปวัด')
+  await page.locator('.cine-skip').click({ timeout: 3000 }).catch(() => {})
+  await page.waitForSelector('.hotbar')
 })
 
 await step('daily login', async () => {
@@ -44,10 +62,28 @@ await step('daily login', async () => {
   await click('ไปวัดกันเลย')
 })
 
+await step('pray a stage', async () => {
+  await page.locator('.hot.big').click()
+  await click('เริ่มสวดมนต์')
+  await page.waitForSelector('.pray')
+  await click(/แตะตามจังหวะ/)
+  const tapBtn = page.locator('.kara-tap')
+  await tapBtn.waitFor()
+  for (let i = 0; i < 40; i++) {
+    if (await page.locator('.bows').count()) break
+    await tapBtn.dispatchEvent('pointerdown').catch(() => {})
+    await page.waitForTimeout(350)
+  }
+  await page.waitForSelector('.bows', { timeout: 20000 })
+  await click('กราบพระ')
+  await page.waitForSelector('.result-win', { timeout: 8000 })
+  await click('กลับ')
+})
+
 await step('walk to koi pond', async () => {
-  await page.getByRole('button', { name: 'รายการกิจกรรมในวัดนี้' }).click({ force: true })
-  await page.getByRole('button', { name: /บ่อปลาคาร์ฟ/ }).click()
+  await page.evaluate(() => window.__boondee.openActivity('koi'))
   await page.waitForSelector('.activity', { timeout: 15000 })
+  await click('เริ่มเลย')
 })
 
 await step('feed koi', async () => {
@@ -58,48 +94,65 @@ await step('feed koi', async () => {
     await page.waitForTimeout(250)
   }
   await page.waitForTimeout(2500)
-  await click(/กลับ/)
+  await click('กลับ')
   await page.waitForTimeout(300)
   const done = page.getByRole('button', { name: 'สาธุ ๆ ๆ' })
   if (await done.count()) await done.click()
 })
 
-await step('alms round', async () => {
-  await page.evaluate(() => window.__boondee.openActivity('alms'))
-  await page.waitForSelector('.activity')
-  await page.waitForFunction(() => document.body.innerText.includes('ถวายแด่'), null, { timeout: 15000 })
-  await page.getByRole('button', { name: /แกงเขียวหวาน/ }).click()
-  await page.waitForTimeout(900)
-  await page.getByRole('button', { name: /กล้วยน้ำว้า/ }).click()
-  await page.waitForTimeout(900)
-  await click('นิมนต์รูปถัดไป')
+await step('home and crafting', async () => {
+  await page.evaluate(() => window.__boondee.closeActivity())
+  await page.locator('.hot').first().click()
+  await page.waitForSelector('.house')
+  await page.getByRole('button', { name: 'ทำเฟอร์นิเจอร์' }).click()
+  await page.waitForSelector('.craft-list')
+  await page.locator('.win-x').last().click()
+  await page.getByRole('button', { name: 'จัดห้อง' }).click()
+  await page.waitForSelector('.edit-tray')
+  await click('เสร็จ')
+  await page.locator('.hot').first().click()
+  await page.locator('.cine-skip').click({ timeout: 3000 }).catch(() => {})
+  await page.waitForSelector('.hotbar')
 })
 
-await step('screens', async () => {
-  await page.evaluate(() => window.__boondee.closeActivity())
-  for (const t of ['ภารกิจ', 'ร้านค้า', 'แต่งตัว', 'เพื่อน', 'วัด']) {
-    await page.getByRole('button', { name: t, exact: true }).click()
+await step('menu screens', async () => {
+  for (const t of ['ภารกิจ', 'ร้านค้า', 'เพื่อน']) {
+    await page.getByRole('button', { name: 'เมนู' }).click()
+    await click(new RegExp(t))
     await page.waitForTimeout(400)
+    await page.locator('.win-x').last().click()
+  }
+  for (const t of ['บทสวด', 'ลูกประคำ', 'เตือนสวด']) {
+    await page.getByRole('button', { name: 'เมนู' }).click()
+    await click(t)
+    await page.waitForTimeout(300)
+    await page.locator('.win-x').last().click()
   }
 })
 
 await step('coin store sandbox purchase', async () => {
-  await page.getByRole('button', { name: 'เติมบุญคอยน์' }).first().click()
+  await page.locator('.hud2-coins').click()
   await page.getByRole('button', { name: /ถุงบุญใบเล็ก/ }).click()
   await click('ยืนยันการซื้อ')
   await page.waitForTimeout(1300)
   await click('รับไว้')
+  await page.getByRole('button', { name: 'ปิด' }).first().click()
 })
 
 await step('rewarded ad', async () => {
+  await page.getByRole('button', { name: 'เมนู' }).click()
+  await click(/ภารกิจ/)
   await page.getByRole('button', { name: 'ดูเลย' }).first().click()
   await page.waitForTimeout(5600)
   await click(/รับรางวัล/)
   await page.waitForTimeout(400)
 })
 
-const state = await page.evaluate(() => JSON.parse(localStorage.getItem('boondee.save.v1') ?? '{}'))
-console.log('coins', state.coins, 'merit', state.merit, 'stats', JSON.stringify(state.stats))
+const state = await page.evaluate(() => {
+  const k = Object.keys(localStorage).find((x) => x.startsWith('boondee.save.v1:')) ?? 'boondee.save.v1'
+  return JSON.parse(localStorage.getItem(k) ?? '{}')
+})
+console.log('account', state.account?.email, 'coins', state.coins, 'merit', state.merit, 'stars', JSON.stringify(state.prayer?.stars), 'mats', JSON.stringify(state.materials))
 await browser.close()
 if (errors.length) {
   console.log('\nErrors:\n' + errors.join('\n'))
