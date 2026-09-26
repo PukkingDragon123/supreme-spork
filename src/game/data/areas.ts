@@ -1,6 +1,6 @@
 // Places you can visit. New areas unlock by level or with Boon Coins.
 
-export type AreaId = 'home' | 'shrine' | 'river' | 'mountain'
+export type AreaId = 'wat' | 'shrine' | 'river' | 'mountain'
 
 export interface Area {
   id: AreaId
@@ -15,7 +15,7 @@ export interface Area {
 
 export const AREAS: Area[] = [
   {
-    id: 'home',
+    id: 'wat',
     name: 'วัดศรีบุญดี',
     subtitle: 'วัดใกล้บ้าน',
     desc: 'วัดอบอุ่นประจำชุมชน มีน้องหมาวัด บ่อปลาคาร์ฟ และต้นตะเคียนศักดิ์สิทธิ์',

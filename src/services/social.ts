@@ -96,6 +96,8 @@ export const GROUP_MILESTONES = [
 function randomLook(rng: Rng): AvatarLook {
   const of = (slot: string) => OUTFITS.filter((o) => o.slot === slot && !o.premium)
   return {
+    gender: rng.chance(0.5) ? 'm' : 'f',
+    face: rng.int(0, 2),
     skin: rng.int(0, SKIN_TONES.length - 1),
     hairColor: rng.chance(0.75) ? rng.int(0, 2) : rng.int(0, HAIR_COLORS.length - 1),
     hair: rng.pick(of('hair')).id,

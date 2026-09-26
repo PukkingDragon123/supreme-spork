@@ -306,7 +306,7 @@ export function AlmsActivity({ req }: { req: ActivityRequest }) {
     sfx.hum(0)
     setTimeout(() => sfx.bell(1), 800)
     setTimeout(() => {
-      const bonus = itemsRef.current > 0 ? addMerit(10, { key: 'alms', free: 2, morning: true, area: boat ? 'river' : 'home' }) : 0
+      const bonus = itemsRef.current > 0 ? addMerit(10, { key: 'alms', free: 2, morning: true, area: boat ? 'river' : 'wat' }) : 0
       if (itemsRef.current > 0) {
         track('alms')
         track('alms_item', itemsRef.current)
@@ -335,7 +335,7 @@ export function AlmsActivity({ req }: { req: ActivityRequest }) {
       return
     }
     const ok = sc.give(it.icon, () => {
-      const m = addMerit(it.merit + bonus, { key: 'alms_item', free: 12, morning: true, area: boat ? 'river' : 'home' })
+      const m = addMerit(it.merit + bonus, { key: 'alms_item', free: 12, morning: true, area: boat ? 'river' : 'wat' })
       meritRef.current += m
       itemsRef.current += 1
       setTotal(meritRef.current)

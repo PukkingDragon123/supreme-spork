@@ -323,7 +323,7 @@ export function KoiActivity({ req }: { req: ActivityRequest }) {
     }
     sc.onEat = (f) => {
       const base = f.golden ? 5 : 1
-      const m = addMerit(base, { key: river ? 'catfish' : 'koi', free: 40, animal: true, area: river ? 'river' : 'home' })
+      const m = addMerit(base, { key: river ? 'catfish' : 'koi', free: 40, animal: true, area: river ? 'river' : 'wat' })
       track(river ? 'catfish_fed' : 'koi_fed')
       if (f.golden) {
         setGolden(true)

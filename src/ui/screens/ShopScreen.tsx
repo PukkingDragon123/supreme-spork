@@ -73,7 +73,7 @@ export function ShopScreen() {
         </div>
       ) : sec === 'area' ? (
         <div class="list">
-          {AREAS.filter((a) => a.id !== 'home').map((a) => {
+          {AREAS.filter((a) => a.id !== 'wat').map((a) => {
             const open = isAreaUnlocked(a.id)
             return (
               <div class="panel card" key={a.id}>

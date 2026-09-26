@@ -42,7 +42,7 @@ export function hotspotActions(id: string): HotspotAction[] {
       return [{ label: 'หยอดตู้ทำบุญ', icon: 'coin', run: () => openActivity('donate') }]
     case 'hall':
     case 'hall_mountain':
-      return [{ label: 'เข้าโบสถ์กราบพระ', icon: 'temple', run: () => openActivity('hall', { area: id === 'hall_mountain' ? 'mountain' : 'home' }) }]
+      return [{ label: 'เข้าโบสถ์กราบพระ', icon: 'temple', run: () => openActivity('hall', { area: id === 'hall_mountain' ? 'mountain' : 'wat' }) }]
     case 'incense':
       return [{ label: 'จุดธูปขอพร', icon: 'incense', run: () => openActivity('wish', { place: 'incense' }) }]
     case 'sala':

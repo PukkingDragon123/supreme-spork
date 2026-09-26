@@ -7,7 +7,7 @@ import { Btn, Coin, Icon, Modal } from '../components/common'
 import { area, mapOpen, tab } from '../store'
 import { sfx } from '../../engine/audio'
 
-const AREA_ICON: Record<AreaId, string> = { home: 'temple', shrine: 'deity', river: 'krathong', mountain: 'sparkle' }
+const AREA_ICON: Record<AreaId, string> = { wat: 'temple', shrine: 'deity', river: 'krathong', mountain: 'sparkle' }
 
 export function MapModal() {
   const lv = level.value.level

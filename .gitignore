@@ -5,3 +5,4 @@ dist-single/
 .DS_Store
 android/
 ios/
+.claude/worktrees/

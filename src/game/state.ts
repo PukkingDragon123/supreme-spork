@@ -131,7 +131,7 @@ export function defaultState(): GameState {
     coins: 100,
     inventory: { ...STARTER_INVENTORY },
     outfits: [...STARTER_OUTFITS],
-    areas: ['home'],
+    areas: ['wat'],
     buffs: [],
     week: { key: weekKey(), merit: 0 },
     days: {},
@@ -150,7 +150,7 @@ export function defaultState(): GameState {
     starterBought: false,
     social: { friends: [], groupId: null, created: [], reacted: {}, groupClaims: {} },
     settings: { sound: true, music: true, time: 'real', haptics: true, reduceMotion: false },
-    lastArea: 'home',
+    lastArea: 'wat',
   }
 }
 
@@ -171,7 +171,10 @@ export function migrate(raw: unknown): GameState {
     week: { ...base.week, ...(s.week ?? {}) },
     v: SAVE_VERSION,
   }
-  if (!merged.areas.includes('home')) merged.areas.unshift('home')
+  // v1 called the main temple 'home'; it is 'wat' now that players have a house.
+  merged.areas = [...new Set(merged.areas.map((a) => ((a as string) === 'home' ? 'wat' : a)))] as AreaId[]
+  if ((merged.lastArea as string) === 'home') merged.lastArea = 'wat'
+  if (!merged.areas.includes('wat')) merged.areas.unshift('wat')
   return merged
 }
 

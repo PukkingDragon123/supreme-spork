@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { Stage } from '../../engine/stage'
 import { WorldScene } from '../../scenes/world'
-import { homeMap } from '../../scenes/maps/home'
+import { watMap } from '../../scenes/maps/wat'
 import { game } from '../../game/state'
 import { finishOnboarding, setLook } from '../../game/actions'
 import { HAIR_COLORS, SKIN_TONES, DAY_COLORS } from '../../art/palette'
@@ -26,7 +26,7 @@ export function TitleBackdrop() {
   const host = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const st = new Stage(host.current!, { targetWidth: 170 })
-    const scene = new WorldScene(homeMap(), game.value.player.look, { onArrive() {} }, { spawn: { x: 112, y: 214 } })
+    const scene = new WorldScene(watMap(), game.value.player.look, { onArrive() {} }, { spawn: { x: 112, y: 214 } })
     scene.interactive = false
     st.setScene(scene)
     st.start()

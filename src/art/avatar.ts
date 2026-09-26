@@ -7,8 +7,14 @@ import { cached, outlineCanvas, paintRows, type Sprite } from '../engine/sprite'
 import { HAIR_COLORS, P, SKIN_TONES } from './palette'
 import { OUTFIT_BY_ID, type BottomArt, type Pattern, type TopArt } from '../game/data/outfits'
 
+export type BodyType = 'm' | 'f'
+
 export interface AvatarLook {
+  /** Body/face preset chosen at character creation. */
+  gender: BodyType
   skin: number
+  /** Eye style index. */
+  face: number
   hairColor: number
   hair: string
   top: string
@@ -16,6 +22,7 @@ export interface AvatarLook {
   head?: string | null
   neck?: string | null
   hand?: string | null
+  shoes?: string | null
 }
 
 export type View = 'front' | 'back' | 'side'
@@ -27,7 +34,9 @@ export const FRAME_H = 27
 const HEADROOM = 4
 
 export const DEFAULT_LOOK: AvatarLook = {
+  gender: 'f',
   skin: 1,
+  face: 0,
   hairColor: 0,
   hair: 'hair_bob',
   top: 'top_white',
@@ -1041,7 +1050,7 @@ export function avatarSprite(look: AvatarLook, view: View, pose: Pose, opts: Ava
 }
 
 export function lookKey(l: AvatarLook): string {
-  return [l.skin, l.hairColor, l.hair, l.top, l.bottom, l.head ?? '', l.neck ?? '', l.hand ?? ''].join('|')
+  return [l.gender, l.skin, l.face, l.hairColor, l.hair, l.top, l.bottom, l.head ?? '', l.neck ?? '', l.hand ?? '', l.shoes ?? ''].join('|')
 }
 
 /** Portrait (head and shoulders) for lists and leaderboards. */

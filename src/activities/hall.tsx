@@ -36,8 +36,8 @@ export class HallScene implements Scene {
 
   constructor(public look: AvatarLook) {
     this.npcs = [
-      { skin: 2, hairColor: 0, hair: 'hair_long', top: 'top_white', bottom: 'bot_sarong' },
-      { skin: 0, hairColor: 1, hair: 'hair_short', top: 'top_white', bottom: 'bot_black' },
+      { gender: 'f', face: 1, skin: 2, hairColor: 0, hair: 'hair_long', top: 'top_white', bottom: 'bot_sarong' },
+      { gender: 'm', face: 0, skin: 0, hairColor: 1, hair: 'hair_short', top: 'top_white', bottom: 'bot_black' },
     ]
   }
 

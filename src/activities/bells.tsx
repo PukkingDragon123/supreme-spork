@@ -198,7 +198,7 @@ export function BellsActivity({ req }: { req: ActivityRequest }) {
     const sc = scene.current
     if (!sc) return
     sc.onRing = () => {
-      const m = addMerit(big ? 3 : 1, { key: big ? 'bigbell' : 'bell', free: big ? 9 : 27, area: big ? 'mountain' : 'home' })
+      const m = addMerit(big ? 3 : 1, { key: big ? 'bigbell' : 'bell', free: big ? 9 : 27, area: big ? 'mountain' : 'wat' })
       track('bell')
       setMerit((x) => x + m)
       sc.particles.popText(sc.w / 2 + rand(-30, 30), sc.h * 0.62, `+${m}`)

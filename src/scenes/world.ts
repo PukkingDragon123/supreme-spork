@@ -164,7 +164,9 @@ interface MonkEnt {
 function randomVisitorLook(): AvatarLook {
   const of = (slot: string) => OUTFITS.filter((o) => o.slot === slot && !o.premium && !o.level && o.hair !== 'jook')
   return {
+    gender: Math.random() < 0.5 ? 'm' : 'f',
     skin: Math.floor(Math.random() * SKIN_TONES.length),
+    face: Math.floor(Math.random() * 3),
     hairColor: Math.random() < 0.8 ? Math.floor(Math.random() * 3) : 6,
     hair: pick(of('hair')).id,
     top: Math.random() < 0.5 ? 'top_white' : pick(of('top')).id,

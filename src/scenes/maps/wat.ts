@@ -25,9 +25,9 @@ const KOI = [
   { r: 10, s: 0.6, p: 1, c: P.gold },
 ]
 
-export function homeMap(): MapDef {
+export function watMap(): MapDef {
   return {
-    id: 'home',
+    id: 'wat',
     w: W,
     h: H,
     skyH: 44,

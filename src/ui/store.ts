@@ -33,7 +33,7 @@ export interface ActivityRequest {
 export const tab = signal<Tab>('temple')
 export const activity = signal<ActivityRequest | null>(null)
 export const arrived = signal<ArriveTarget | null>(null)
-export const area = signal<AreaId>('home')
+export const area = signal<AreaId>('wat')
 
 export type ShopSection = 'alms' | 'offering' | 'animal' | 'special' | 'boost' | 'area'
 export const shopSection = signal<ShopSection>('alms')

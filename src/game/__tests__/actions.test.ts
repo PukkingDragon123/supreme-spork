@@ -21,8 +21,8 @@ describe('daily rollover', () => {
   })
 
   it('is deterministic for the same day and player', () => {
-    const a = A.rollQuests('2026-09-24', 'BD-AAAAAA', 5, ['home'])
-    const b = A.rollQuests('2026-09-24', 'BD-AAAAAA', 5, ['home'])
+    const a = A.rollQuests('2026-09-24', 'BD-AAAAAA', 5, ['wat'])
+    const b = A.rollQuests('2026-09-24', 'BD-AAAAAA', 5, ['wat'])
     expect(a).toEqual(b)
   })
 })

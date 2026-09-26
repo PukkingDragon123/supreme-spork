@@ -32,9 +32,9 @@ class CircleScene implements Scene {
   private bg: HTMLCanvasElement | null = null
   constructor(public look: AvatarLook) {
     const others: AvatarLook[] = [
-      { skin: 2, hairColor: 0, hair: 'hair_long', top: 'top_white', bottom: 'bot_sarong' },
-      { skin: 0, hairColor: 1, hair: 'hair_short', top: 'top_white', bottom: 'bot_khaki' },
-      { skin: 3, hairColor: 0, hair: 'hair_bun', top: 'top_lace', bottom: 'bot_skirt' },
+      { gender: 'f', face: 1, skin: 2, hairColor: 0, hair: 'hair_long', top: 'top_white', bottom: 'bot_sarong' },
+      { gender: 'm', face: 0, skin: 0, hairColor: 1, hair: 'hair_short', top: 'top_white', bottom: 'bot_khaki' },
+      { gender: 'f', face: 2, skin: 3, hairColor: 0, hair: 'hair_bun', top: 'top_lace', bottom: 'bot_skirt' },
     ]
     this.npcs = others.map((l, i) => ({ a: Math.PI / 2 + (i + 1) * 1.6, look: l, speed: 0.12 + i * 0.02 }))
   }

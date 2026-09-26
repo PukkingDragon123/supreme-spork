@@ -15,4 +15,7 @@ export default defineConfig(({ mode }) => ({
     assetsInlineLimit: mode === 'single' ? 100_000_000 : 4096,
     target: 'es2020',
   },
+  test: {
+    exclude: ['**/node_modules/**', '**/dist/**', '.claude/**'],
+  },
 }))
