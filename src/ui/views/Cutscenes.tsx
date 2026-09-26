@@ -6,7 +6,8 @@ import { IntroCutscene } from '../../scenes/cutscenes/intro'
 import { ArrivalCutscene } from '../../scenes/cutscenes/arrival'
 import { game, mutate } from '../../game/state'
 import { setArea } from '../../game/actions'
-import { area, arrivalTarget, mode } from '../store'
+import { area, arrivalPlace, arrivalTarget, mode } from '../store'
+import { PLACE_BY_ID } from '../../game/data/places'
 import { PT } from '../pixeltext'
 import { sfx } from '../../engine/audio'
 
@@ -56,17 +57,22 @@ export function IntroView() {
 export function ArrivalView() {
   const [cap, setCap] = useState<string | null>(null)
   const target = arrivalTarget.value
-  const first = !game.value.seen.arrival.includes(target)
+  const placeId = arrivalPlace.value
+  const place = placeId ? PLACE_BY_ID[placeId] : null
+  const key = placeId ?? target
+  const first = !game.value.seen.arrival.includes(key)
   const finish = () => {
     mutate((d) => {
-      if (!d.seen.arrival.includes(target)) d.seen.arrival.push(target)
+      if (!d.seen.arrival.includes(key)) d.seen.arrival.push(key)
+      d.places.current = place && !place.home ? placeId : null
+      if (placeId && !d.places.visited.includes(placeId)) d.places.visited.push(placeId)
     })
     setArea(target)
     area.value = target
     mode.value = 'world'
   }
   const { host, scene } = useStage(
-    () => new ArrivalCutscene({ look: game.value.player.look, area: target, first }, { onCaption: setCap, onDone: finish }),
+    () => new ArrivalCutscene({ look: game.value.player.look, area: target, first, name: place && !place.home ? place.name : undefined }, { onCaption: setCap, onDone: finish }),
     { targetWidth: 200 },
   )
   return (

@@ -18,7 +18,7 @@ export function CreateView() {
   const done = () => {
     finishOnboarding(name || 'สายบุญ', day)
     sfx.levelUp()
-    goTemple('wat')
+    goTemple('wat', null)
   }
   return (
     <div class="create">

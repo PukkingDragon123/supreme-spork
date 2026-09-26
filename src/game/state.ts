@@ -108,6 +108,8 @@ export interface GameState {
   /** Owned pet companions and the one walking with you. */
   pets: string[]
   pet: string | null
+  /** Real places on the Thailand map: bought early, visited, and where you are now. */
+  places: { bought: string[]; visited: string[]; current: string | null }
   player: { name: string; birthDay: number; friendCode: string; look: AvatarLook }
   merit: number
   coins: number
@@ -175,6 +177,7 @@ export function defaultState(): GameState {
     house: defaultHouse(),
     pets: [],
     pet: null,
+    places: { bought: [], visited: [], current: null },
     player: { name: 'สายบุญ', birthDay: new Date().getDay(), friendCode: makeFriendCode(), look: { ...DEFAULT_LOOK } },
     merit: 0,
     coins: 100,
@@ -225,6 +228,7 @@ export function migrate(raw: unknown): GameState {
     mala: { ...base.mala, ...(s.mala ?? {}) },
     reminder: { ...base.reminder, ...(s.reminder ?? {}) },
     house: s.house ? normalizeHouse(s.house) : base.house,
+    places: { ...base.places, ...(s.places ?? {}) },
     v: SAVE_VERSION,
   }
   // v1 called the main temple 'home'; it is 'wat' now that players have a house.

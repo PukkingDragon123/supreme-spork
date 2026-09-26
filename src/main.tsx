@@ -29,6 +29,11 @@ if (isAreaUnlocked(game.value.lastArea)) area.value = game.value.lastArea
 mode.value = skip ? (q0.has('house') ? 'house' : 'world') : game.value.seen.intro ? 'title' : 'intro'
 if (import.meta.env.DEV && q0.get('mode')) mode.value = q0.get('mode') as never
 void initAccount()
+// Build the Thailand map art while idle so the map opens instantly.
+setTimeout(() => {
+  const idle = (window as unknown as { requestIdleCallback?: (f: () => void) => void }).requestIdleCallback ?? ((f: () => void) => setTimeout(f, 1500))
+  idle(() => void import('./art/thaimap').then((m) => m.prewarmThaiMap()))
+}, 4000)
 if (import.meta.env.DEV) {
   // Handy hooks for smoke tests and debugging in the browser console.
   import('./ui/store').then((m) => {

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Boondee Thai map (dev)</title>
+    <style>
+      body { background: #2b2340; color: #fff1d6; font-family: Mali, Loma, sans-serif; margin: 0; }
+      #wrap { display: flex; gap: 12px; flex-wrap: wrap; padding: 8px; }
+      #phone { position: relative; width: 390px; height: 844px; overflow: hidden; border-radius: 14px; background: #000; touch-action: none; }
+      #card { position: absolute; z-index: 2; left: 8px; right: 8px; bottom: 8px; height: 32%; border-radius: 14px; background: #fff6e4f2; color: #3a2838; border: 3px solid #3a2838; padding: 10px; box-sizing: border-box; font-size: 13px; display: none; overflow: hidden; }
+      #card img { image-rendering: pixelated; width: 72px; height: 72px; float: left; margin-right: 8px; }
+      #card b { font-size: 16px; }
+      #card .muted { color: #7a5a6a; font-size: 11px; }
+      #bar { display: flex; flex-wrap: wrap; gap: 4px; max-width: 390px; margin-top: 6px; }
+      button { font-size: 12px; padding: 4px 6px; border-radius: 6px; border: 1px solid #6b4d5e; background: #fff6e4; color: #3a2838; }
+      #log { font-size: 12px; margin-top: 4px; max-width: 390px; min-height: 32px; }
+      #cat canvas, #cat img { image-rendering: pixelated; margin: 2px; }
+      #cat .row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px; margin-bottom: 8px; max-width: 760px; }
+      #cat .cell { display: flex; flex-direction: column; align-items: center; font-size: 10px; width: 84px; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <div id="wrap">
+      <div>
+        <div id="phone"><div id="card"></div></div>
+        <div id="bar"></div>
+        <div id="log"></div>
+      </div>
+      <div id="cat"></div>
+    </div>
+    <script type="module" src="/src/dev/thaimap.ts"></script>
+  </body>
+</html>

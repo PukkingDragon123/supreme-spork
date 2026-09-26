@@ -17,7 +17,7 @@ function startPlaying() {
   unlockAudio()
   sfx.bigBell()
   if (!game.value.onboarded) mode.value = 'create'
-  else goTemple(game.value.lastArea)
+  else goTemple(game.value.lastArea, game.value.places.current)
 }
 
 export function TitleView() {

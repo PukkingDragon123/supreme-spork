@@ -735,7 +735,7 @@ export class ArrivalCutscene implements Scene {
   private dir: Director
 
   constructor(
-    opts: { look: AvatarLook; area: ArrivalArea; first: boolean },
+    opts: { look: AvatarLook; area: ArrivalArea; first: boolean; name?: string },
     ev: CutsceneEvents,
   ) {
     const { look, area, first } = opts
@@ -745,7 +745,7 @@ export class ArrivalCutscene implements Scene {
     const shots: Shot[] = [a, b, c]
     const tB = a.dur
     const tC = a.dur + b.dur
-    const name = AREA_NAMES[area] ?? AREA_NAMES.wat
+    const name = opts.name ?? AREA_NAMES[area] ?? AREA_NAMES.wat
     const captions: Caption[] = []
     if (first) {
       captions.push({ at: 0.4, until: a.dur - 0.2, text: 'วันนี้ไปทำบุญกันเถอะ' })

@@ -46,6 +46,8 @@ export type Mode = 'intro' | 'title' | 'create' | 'arrival' | 'world' | 'house'
 export const mode = signal<Mode>('title')
 /** Where the arrival cutscene is heading. */
 export const arrivalTarget = signal<AreaId>('wat')
+/** Real map place being visited (null for the home temples). */
+export const arrivalPlace = signal<string | null>(null)
 
 /** Windows opened from the hotbar / menu. */
 export type Panel = 'menu' | 'pray' | 'bag' | 'craft' | 'mala' | 'chants' | 'dress' | 'reminder'
@@ -62,7 +64,8 @@ export function openPanel(p: Panel | null) {
 }
 
 /** Travel to a temple area with the arrival cutscene. */
-export function goTemple(a: AreaId = area.value) {
+export function goTemple(a: AreaId = area.value, place: string | null = arrivalPlace.value) {
+  arrivalPlace.value = place
   panel.value = null
   activity.value = null
   arrived.value = null
