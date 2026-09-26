@@ -56,6 +56,14 @@ export const SPECIAL_OFFERS: SpecialOffer[] = [
     pets: ['dragon'],
   },
   {
+    id: 'boondee.set.khon',
+    name: 'ชุดเทวดาโขนทอง',
+    desc: 'ชฎาทอง + ปีกเทวดา + ออร่าทองเปล่งประกาย + 200 คอยน์',
+    priceTHB: 149,
+    coins: 200,
+    outfits: ['head_chada', 'back_angel', 'back_aura', 'top_khon', 'bot_khon'],
+  },
+  {
     id: 'boondee.pet.naga',
     name: 'แพ็กพญานาคน้อย',
     desc: 'พญานาคน้อยเกล็ดทองลอยตามคุณ (บุญ +8%) + 300 คอยน์',

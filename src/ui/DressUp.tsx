@@ -24,7 +24,7 @@ import { PBtn, Slot as SlotBtn, Tabs } from './components/kit'
 import { PT, TONE_TEXT } from './pixeltext'
 
 type Cat = 'body' | 'hair' | 'top' | 'bottom' | 'shoes' | 'acc'
-type Style = 'all' | 'school' | 'thai' | 'modern' | 'temple'
+type Style = 'all' | 'school' | 'thai' | 'modern' | 'temple' | 'fun' | 'work'
 
 const CATS: { id: Cat; label: string; icon: string }[] = [
   { id: 'body', label: 'ตัวละคร', icon: 'user' },
@@ -41,6 +41,8 @@ const STYLES: { id: Style; label: string }[] = [
   { id: 'thai', label: 'ไทย ๆ' },
   { id: 'modern', label: 'สตรีท' },
   { id: 'temple', label: 'ไปวัด' },
+  { id: 'fun', label: 'ฮา ๆ' },
+  { id: 'work', label: 'อาชีพ' },
 ]
 
 type OutfitX = OutfitItem & { category?: string; gender?: 'm' | 'f' }
@@ -54,15 +56,16 @@ export function applyItem(look: AvatarLook, o: OutfitItem | null, slot: Slot | '
   else if (slot === 'neck') l.neck = o?.id ?? null
   else if (slot === 'hand') l.hand = o?.id ?? null
   else if (slot === 'shoes') l.shoes = o?.id ?? null
+  else if ((slot as string) === 'back') l.back = o?.id ?? null
   return l
 }
 
 /** Crop of the doll that shows off one slot (head for hair, torso for tops…). */
 export function thumbFor(look: AvatarLook, slot: string): string {
-  const s = dollSprite(look, 'stand')
+  const s = dollSprite(look, 'stand', { view: slot === 'back' ? 'back' : 'front' })
   const H = s.h
   const [y0, y1] =
-    slot === 'hair' || slot === 'head' ? [0, 0.5] : slot === 'top' || slot === 'neck' || slot === 'hand' ? [0.3, 0.78] : slot === 'shoes' ? [0.72, 1] : [0.55, 1]
+    slot === 'hair' || slot === 'head' ? [0, 0.5] : slot === 'top' || slot === 'neck' || slot === 'hand' || slot === 'back' ? [0.2, 0.8] : slot === 'shoes' ? [0.72, 1] : [0.55, 1]
   const top = Math.floor(H * y0)
   const h = Math.max(8, Math.ceil(H * y1) - top)
   const side = Math.max(h, s.w)
@@ -189,7 +192,7 @@ export function DressUp({ creating, onDone }: { creating?: boolean; onDone: () =
     }
   }
 
-  const slotsOf = (c: Cat): (Slot | 'shoes')[] => (c === 'acc' ? ['head', 'neck', 'hand'] : c === 'body' ? [] : [c as Slot | 'shoes'])
+  const slotsOf = (c: Cat): (Slot | 'shoes')[] => (c === 'acc' ? ['head', 'neck', 'hand', 'back' as Slot] : c === 'body' ? [] : [c as Slot | 'shoes'])
   const items = (c: Cat): OutfitX[] =>
     (OUTFITS as OutfitX[]).filter((o) => {
       if (!slotsOf(c).includes(o.slot as Slot)) return false

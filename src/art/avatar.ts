@@ -23,6 +23,8 @@ export interface AvatarLook {
   neck?: string | null
   hand?: string | null
   shoes?: string | null
+  /** Back slot (wings, backpacks, aura...). */
+  back?: string | null
 }
 
 export type View = 'front' | 'back' | 'side'
@@ -45,6 +47,7 @@ export const DEFAULT_LOOK: AvatarLook = {
   neck: null,
   hand: null,
   shoes: null,
+  back: null,
 }
 
 // ---------------------------------------------------------------------------
@@ -995,6 +998,8 @@ interface AccArt {
   pal: Record<string, string>
   /** Draw behind the head (e.g. hat brims are in front, bags behind). */
   layer?: 'top' | 'neck' | 'hand'
+  /** Painted before the head (e.g. the glass of a space helmet). */
+  under?: { front?: { y: number; rows: string[] }; back?: { y: number; rows: string[] }; side?: { y: number; rows: string[] } }
 }
 
 const ACC: Record<string, AccArt> = {
@@ -1127,6 +1132,339 @@ const ACC: Record<string, AccArt> = {
   },
 }
 
+// ---- lifestyle pack accessories -------------------------------------------
+
+const HELMET_ROWS = [
+  '.....wwwwww.....',
+  '...wwwwrrwwww...',
+  '..wWwwwrrwwwww..',
+  '.wWwwwwrrwwwwwd.',
+  '.wwwwwwrrwwwwwd.',
+  '.wwwwwwrrwwwwwd.',
+  '.kkkkkkkkkkkkkk.',
+]
+const HELMET_STRAP = ['..k..........k..', '..k..........k..', '..k..........k..', '...k........k...']
+const HELMET_SIDE = [
+  '.....wwwwww.....',
+  '...wwwwwwwwww...',
+  '..wWrrrrrrrrww..',
+  '.wWwwwwwwwwwwwd.',
+  '.wwwwwwwwwwwwwd.',
+  '.wwwwwwwwwwwwkk.',
+  '.kkkkkkkkkkk....',
+  '.......k........',
+  '.......k........',
+  '........k.......',
+]
+const SPACE_GLASS = ['................', '.....GGGGGG.....', '...GGGGGGGGGG...', '..GGGGGGGGGGGG..', '.GGGGGGGGGGGGGG.', '.GGGGGGGGGGGGGG.', '.GGGGGGGGGGGGGG.', '.GGGGGGGGGGGGGG.', '.GGGGGGGGGGGGGG.', '.GGGGGGGGGGGGGG.', '.GGGGGGGGGGGGGG.', '.GGGGGGGGGGGGGG.', '.GGGGGGGGGGGGGG.', '..GGGGGGGGGGGG..']
+const CAT_EARS = ['..p..........p..', '.ppp........ppp.', '.pPp........pPp.']
+
+Object.assign(ACC, {
+  helmet: {
+    front: { y: -1, rows: [...HELMET_ROWS, ...HELMET_STRAP] },
+    back: { y: -1, rows: HELMET_ROWS },
+    side: { y: -1, rows: HELMET_SIDE },
+    pal: { w: '#f4f5fa', W: '#ffffff', r: '#e8514a', d: '#c9ccda', k: '#3a3547' },
+  },
+  helmetcute: {
+    front: { y: -4, rows: [...CAT_EARS, ...HELMET_ROWS, ...HELMET_STRAP] },
+    back: { y: -4, rows: [...CAT_EARS, ...HELMET_ROWS] },
+    side: { y: -4, rows: ['.....p..........', '....ppp.........', '....pPp.........', ...HELMET_SIDE] },
+    pal: { w: '#ffb3cf', W: '#ffe0ea', r: '#fffaf0', d: '#e8889f', k: '#8e3a5e', p: '#ff9fc0', P: '#ffe0ea' },
+  },
+  sunhat: {
+    front: { y: -1, rows: ['.....hhhhhh.....', '....hhHhhhhh....', '....hhhhhhhh....', '....rrrrrrrr....', 'hhhhhhhhhhhhhhhh', '.dddddddddddddd.'] },
+    back: { y: -1, rows: ['.....hhhhhh.....', '....hhHhhhhh....', '....hhhhhhhh....', '....rrrrrrrrrr..', 'hhhhhhhhhhhhhrhh', '.ddddddddddddrd.', '.............r..'] },
+    side: { y: -1, rows: ['.....hhhhhh.....', '....hhHhhhhh....', '....hhhhhhhh....', '....rrrrrrrr....', 'hhhhhhhhhhhhhhhh', '.dddddddddddddd.'] },
+    pal: { h: '#f0cf8a', H: '#fff3c4', d: '#c9a05a', r: '#ff7eaa' },
+  },
+  vendorband: {
+    front: { y: 4, rows: ['..............kk', '.ppqpppqpppqppkk', '.pppppppppppppk.', '..............kk'] },
+    back: { y: 4, rows: ['................', '.ppqpppqpppqppp.', '.pppppppkkpppppp', '.......k..k.....'] },
+    side: { y: 4, rows: ['................', '.ppqpppqpppqppp.', 'kkpppppppppppp..', 'k...............'] },
+    pal: { p: '#ff7eaa', q: '#fffaf0', k: '#e8514a' },
+  },
+  chefhat: {
+    front: { y: -4, rows: ['....ww.ww.ww....', '...wwwwwwwwww...', '...wwwWwwwWww...', '...wwwwwwwwww...', '....wwwwwwww....', '....dddddddd....', '....dddddddd....'] },
+    back: { y: -4, rows: ['....ww.ww.ww....', '...wwwwwwwwww...', '...wwwWwwwWww...', '...wwwwwwwwww...', '....wwwwwwww....', '....dddddddd....', '....dddddddd....'] },
+    side: { y: -4, rows: ['.....ww.ww......', '...wwwwwwwwww...', '...wwWwwwWwww...', '...wwwwwwwwww...', '....wwwwwwww....', '....dddddddd....', '....dddddddd....'] },
+    pal: { w: '#fbfcff', W: '#dfe3ee', d: '#e9ecf5' },
+  },
+  catears: {
+    front: { y: -2, rows: CAT_EARS },
+    back: { y: -2, rows: ['..p..........p..', '.ppp........ppp.', '.ppp........ppp.'] },
+    side: { y: -2, rows: ['......p.........', '.....ppp........', '.....pPp........'] },
+    pal: { p: '#f58f35', P: '#ffc4d8' },
+  },
+  bunnyears: {
+    front: { y: -4, rows: ['...ww...........', '..wPw.....wwww..', '..wPw....wPPPww.', '..wPw....ww.....', '...ww...ww......'] },
+    back: { y: -4, rows: ['...........ww...', '..wwww.....wPw..', '.wwPPPw....wPw..', '.....ww....wPw..', '......ww...ww...'] },
+    side: { y: -4, rows: ['.....ww.........', '....wPw..www....', '....wPw.wPPww...', '....wPwww.......', '.....ww.........'] },
+    pal: { w: '#fbfcff', P: '#ffb3cf' },
+  },
+  flowercrown: {
+    front: { y: 0, rows: ['...pp.oo.ww.pp..', '..gpPgoOgwWgpPg.', '...g..g..g..g...'] },
+    back: { y: 0, rows: ['...ww.pp.oo.ww..', '..gwWgpPgoOgwWg.', '...g..g..g..g...'] },
+    side: { y: 0, rows: ['....pp.oo.ww....', '...gpPgoOgwWg...', '....g..g..g.....'] },
+    pal: { p: '#ff7eaa', P: '#ffd6e0', o: '#f58f35', O: '#ffd23f', w: '#fffaf0', W: '#fff3a6', g: '#5ea653' },
+  },
+  turban: {
+    front: { y: -2, rows: ['.......rb.......', '......brrb......', '...rbrbrbrbrb...', '..brbybrbybrbr..', '.rbrbrbrbrbrbrb.', '.brybrbrybrbryr.', '.rrrrrrrrrrrrrr.'] },
+    back: { y: -2, rows: ['.......rb.......', '......brrb......', '...rbrbrbrbrb...', '..brbybrbybrbr..', '.rbrbrbrbrbrbrb.', '.brybrbrybrbryr.', '.rrrrrrrrrrrrrr.'] },
+    side: { y: -2, rows: ['......rb........', '.....brrb.......', '...rbrbrbrbrb...', '..brbybrbybrbr..', '.rbrbrbrbrbrbrb.', '.brybrbrybrbryr.', '.rrrrrrrrrrrrrr.'] },
+    pal: { r: '#e8514a', b: '#3d63b5', y: '#ffd54f' },
+  },
+  heartshades: {
+    front: { y: 7, rows: ['..hh.hhkkhh.hh..', '..hHhhh..hHhhh..', '...hhh....hhh...', '....h......h....'] },
+    side: { y: 7, rows: ['.........hh.hh..', '.....kkkkhHhhh..', '..........hhh...', '...........h....'] },
+    pal: { h: '#ff5e8a', H: '#ffd6e0', k: '#3a2838' },
+  },
+  nerdglasses: {
+    front: { y: 7, rows: ['..kkkkk..kkkkk..', '..kl..kwwkl..k..', '..k...kwwk...k..', '..kkkkk..kkkkk..'] },
+    side: { y: 7, rows: ['.........kkkkk..', '.....kkkkkl..k..', '.........k...k..', '.........kkkkk..'] },
+    pal: { k: '#2e2840', l: '#e6f6ff', w: '#fbfcff' },
+  },
+  dinsor: {
+    front: { y: 9, rows: ['.......w........', '...www.ww..www..', '....w......w....'] },
+    side: { y: 9, rows: ['................', '.........www.w..', '..........w.....'] },
+    pal: { w: '#fbfcff' },
+  },
+  mongkol: {
+    front: { y: 2, rows: ['.......ww.......', '..wrwrwrwrwrwr..'] },
+    back: { y: 3, rows: ['..wrwrwrwrwrwr..', '.......rw.......', '.......wr.......', '.......rw.......', '........w.......'] },
+    side: { y: 3, rows: ['..wrwrwrwrwrwr..', '..rw............', '..wr............', '...w............'] },
+    pal: { w: '#fbfcff', r: '#e8514a' },
+  },
+  chada: {
+    front: { y: -4, rows: ['.......yy.......', '.......yy.......', '......yGyy......', '......yyyy......', '.....yyryyy.....', '....yyyyyyyy....', '...ydyyGyydyy...', '..yyyyyyyyyyyy..', '................', '................', '.y............y.', 'yy............yy', '.y............y.'] },
+    back: { y: -4, rows: ['.......yy.......', '.......yy.......', '......yyyy......', '......yyyy......', '.....yyyyyy.....', '....yyyyyyyy....', '...ydyydyydyy...', '..yyyyyyyyyyyy..'] },
+    side: { y: -4, rows: ['.......yy.......', '.......yy.......', '......yGyy......', '......yyyy......', '.....yyryyy.....', '....yyyyyyyy....', '...ydyyGyydyy...', '..yyyyyyyyyyyy..', '................', '................', '.......y........', '......yy........', '.......y........'] },
+    pal: { y: '#ffd54f', d: '#b8742a', G: '#5ee0a0', r: '#e8514a' },
+  },
+  likay: {
+    front: { y: -4, rows: ['..........ffff..', '.........fFFFf..', '.........fFFf...', '........fFf.....', '....yyyyyfyyy...', '...yrygyrygyry..', '..yyyyyyyyyyyy..'] },
+    back: { y: -4, rows: ['..ffff..........', '..fFFFf.........', '...fFFf.........', '.....fFf........', '...yyyfyyyyy....', '..yyyyyyyyyyyy..', '..yyyyyyyyyyyy..'] },
+    side: { y: -4, rows: ['........ffff....', '.......fFFFf....', '.......fFFf.....', '......fFf.......', '....yyyfyyyy....', '...yrygyrygyy...', '..yyyyyyyyyyyy..'] },
+    pal: { y: '#ffd54f', r: '#e8514a', g: '#5ee0a0', f: '#ff7eaa', F: '#fffaf0' },
+  },
+  spacehelmet: {
+    under: {
+      front: { y: -3, rows: SPACE_GLASS },
+      back: { y: -3, rows: SPACE_GLASS },
+      side: { y: -3, rows: SPACE_GLASS },
+    },
+    front: { y: -3, rows: ['....gggggggg....', '..gg........gg..', '.g..W.........g.', '.g.W..........g.', 'g..............g', 'g..............g', 'g..............g', 'g..............g', 'g..............g', 'g..............g', 'g..............g', 'g..............g', '.g............g.', '.g............g.', '..gggggggggggg..', '...kkkkkkkkkk...'] },
+    back: { y: -3, rows: ['....gggggggg....', '..gg........gg..', '.g..........W.g.', '.g..........W.g.', 'g..............g', 'g..............g', 'g..............g', 'g..............g', 'g..............g', 'g..............g', 'g..............g', 'g..............g', '.g............g.', '.g............g.', '..gggggggggggg..', '...kkkkkkkkkk...'] },
+    side: { y: -3, rows: ['....gggggggg....', '..gg........gg..', '.g.........W..g.', '.g........W...g.', 'g..............g', 'g..............g', 'g..............g', 'g..............g', 'g..............g', 'g..............g', 'g..............g', 'g..............g', '.g............g.', '.g............g.', '..gggggggggggg..', '...kkkkkkkkkk...'] },
+    pal: { g: '#c9d6ea', G: '#dcebfa', W: '#ffffff', k: '#8a8496' },
+  },
+  sleepcap: {
+    front: { y: -3, rows: ['.......ss.......', '.....sSsSs......', '....sSsSsSsss...', '...sSsSsSsSsss..', '..wwwwwwwwwwwsss', '..............sP', '..............PP'] },
+    back: { y: -3, rows: ['.......ss.......', '......sSsSs.....', '...sssSsSsSs....', '..sssSsSsSsSs...', 'ssswwwwwwwwwww..', 'Ps..............', 'PP..............'] },
+    side: { y: -3, rows: ['.......ss.......', '.....sSsSs......', '....sSsSsSs.....', '...sSsSsSsSs....', 'sssswwwwwwwwww..', 'Ps..............', 'PP..............'] },
+    pal: { s: '#7fb0de', S: '#fffaf0', w: '#fffaf0', P: '#ffe45e' },
+  },
+
+  // neck / body
+  lanyard: {
+    front: { y: 13, rows: ['.....b....b.....', '......b..b......', '.......bb.......', '.......ww.......', '.......wc.......'] },
+    side: { y: 13, rows: ['.........b......', '..........b.....', '..........w.....'] },
+    back: { y: 13, rows: ['......bbbb......'] },
+    pal: { b: '#3d63b5', w: '#fbfcff', c: '#e8514a' },
+  },
+  prajiad: {
+    front: { y: 15, rows: ['...rr...........'] },
+    back: { y: 15, rows: ['...........rr...'] },
+    side: { y: 15, rows: ['.......rr.......'] },
+    pal: { r: '#e8514a' },
+  },
+  mask: {
+    front: { y: 9, rows: ['...k........k...', '...wwwwwwwwww...', '....wdwwwwdw....', '.....wwwwww.....'] },
+    side: { y: 9, rows: ['......k.........', '......kwwwwww...', '.......wwdwww...', '........wwww....'] },
+    pal: { w: '#cfe6f7', d: '#a9cbe6', k: '#9fb0cc' },
+  },
+  amuletbig: {
+    front: { y: 13, rows: ['....yy....yy....', '.....yyyyyy.....', '.....o.oo.o.....', '.......oo.......'] },
+    side: { y: 13, rows: ['........yy......', '.........yo.....'] },
+    back: { y: 13, rows: ['....yyyyyyyy....'] },
+    pal: { y: '#ffd23f', o: '#b8742a' },
+  },
+
+  // hand
+  tote: {
+    front: { y: 17, rows: ['...........b..b.', '...........b..b.', '...........ccccc', '...........cecec', '...........ccccc'] },
+    side: { y: 17, rows: ['.......b..b.....', '.......b..b.....', '......ccccc.....', '......cecec.....', '......ccccc.....'] },
+    back: { y: 17, rows: ['.b..b...........', '.b..b...........', 'ccccc...........', 'cecec...........', 'ccccc...........'] },
+    pal: { b: '#c9a06b', c: '#f3e6c8', e: '#e8514a' },
+  },
+  bubbletea: {
+    front: { y: 13, rows: ['.............k..', '............www.', '............bbb.', '............bbb.', '............kbk.', '.............k..'] },
+    side: { y: 13, rows: ['............k...', '...........www..', '...........bbb..', '...........kbk..'] },
+    back: { y: 13, rows: ['..k.............', '.www............', '.bbb............', '.bbb............', '.kbk............'] },
+    pal: { k: '#3a2838', w: '#fff3e6', b: '#c9a07a' },
+  },
+  selfie: {
+    front: { y: 8, rows: ['..............pp', '..............pb', '..............pp', '..............k.', '.............k..', '.............k..', '.............k..', '............k...', '............k...'] },
+    side: { y: 8, rows: ['............pp..', '............pb..', '............pp..', '............k...', '...........k....', '...........k....', '..........k.....', '.........k......', '.........k......'] },
+    back: { y: 8, rows: ['pp..............', 'bp..............', 'pp..............', '.k..............', '..k.............', '..k.............', '..k.............', '...k............', '...k............'] },
+    pal: { p: '#ff9fc0', b: '#9fd0ff', k: '#6a6478' },
+  },
+  minifan: {
+    front: { y: 11, rows: ['............mmm.', '...........m.w.m', '...........mwwwm', '...........m.w.m', '............mmm.', '.............h..', '.............h..'] },
+    side: { y: 11, rows: ['...........mmm..', '..........m.w.m.', '..........mwwwm.', '..........m.w.m.', '...........mmm..', '............h...', '............h...'] },
+    back: { y: 11, rows: ['.mmm............', 'm.w.m...........', 'mwwwm...........', 'm.w.m...........', '.mmm............', '..h.............', '..h.............'] },
+    pal: { m: '#7fd3b5', w: '#fbfcff', h: '#ff9fc0' },
+  },
+  parasol: {
+    front: { y: -4, rows: ['..........rrr...', '........rryyyrr.', '.......rryrrryrr', '.......yryryryry', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '.............k..', '.............k..'] },
+    back: { y: -4, rows: ['...rrr..........', '.rryyyrr........', 'rryrrryrr.......', 'yryryryry.......', '.k..............', '.k..............', '.k..............', '.k..............', '.k..............', '.k..............', '.k..............', '.k..............', '.k..............', '.k..............', '.k..............', '.k..............', '.k..............', '.k..............', '.k..............', '..k.............', '..k.............'] },
+    side: { y: -4, rows: ['..........rrr...', '........rryyyrr.', '.......rryrrryrr', '.......yryryryry', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '..............k.', '.............k..', '............k...', '...........k....', '..........k.....', '.........k......'] },
+    pal: { r: '#c0392f', y: '#ffd54f', k: '#6e4a35' },
+  },
+  watergun: {
+    front: { y: 14, rows: ['............bb..', '............bbd.', '...........ooooo', '............g...'] },
+    side: { y: 14, rows: ['..........bb....', '..........bb.d..', '.........ooooo..', '..........g.....'] },
+    back: { y: 14, rows: ['..bb............', '.dbb............', 'ooooo...........', '...g............'] },
+    pal: { b: '#5ebcff', d: '#bfe6ff', o: '#f58f35', g: '#5ea653' },
+  },
+  grocery: {
+    front: { y: 17, rows: ['............pp..', '...........wccw.', '...........cgcc.', '...........wccw.'] },
+    side: { y: 17, rows: ['........pp......', '.......wccw.....', '.......cgcc.....', '.......wccw.....'] },
+    back: { y: 17, rows: ['..pp............', '.wccw...........', '.ccgc...........', '.wccw...........'] },
+    pal: { p: '#ff9fc0', w: '#eef6fb', c: '#f58f35', g: '#6cc36a' },
+  },
+  phone: {
+    front: { y: 14, rows: ['............pp..', '............bp..', '............bp..'] },
+    side: { y: 14, rows: ['...........pp...', '...........bp...', '...........bp...'] },
+    back: { y: 14, rows: ['..pp............', '..pp............', '..pp............'] },
+    pal: { p: '#ff9fc0', b: '#9fd0ff' },
+  },
+  patongo: {
+    front: { y: 15, rows: ['............y.y.', '............yyy.', '...........bbbb.', '...........bBbb.', '...........bbbb.'] },
+    side: { y: 15, rows: ['...........y.y..', '...........yyy..', '..........bbbb..', '..........bBbb..', '..........bbbb..'] },
+    back: { y: 15, rows: ['.y.y............', '.yyy............', '.bbbb...........', '.bbBb...........', '.bbbb...........'] },
+    pal: { y: '#e9a53a', b: '#c9a06b', B: '#a8804e' },
+  },
+  krathong: {
+    front: { y: 13, rows: ['.............f..', '.............w..', '...........yoyo.', '..........gGgGg.'] },
+    side: { y: 13, rows: ['............f...', '............w...', '..........yoyo..', '.........gGgGg..'] },
+    back: { y: 13, rows: ['..f.............', '..w.............', '.oyoy...........', '.gGgGg..........'] },
+    pal: { f: '#ffbb66', w: '#fffaf0', y: '#ffd23f', o: '#f58f35', g: '#5ea653', G: '#86c95f' },
+  },
+  lookchin: {
+    front: { y: 11, rows: ['.............s..', '............bsb.', '............bbb.', '............bsb.', '.............k..', '.............k..'] },
+    side: { y: 11, rows: ['............s...', '...........bsb..', '...........bbb..', '...........bsb..', '............k...', '............k...'] },
+    back: { y: 11, rows: ['..s.............', '.bsb............', '.bbb............', '.bsb............', '..k.............', '..k.............'] },
+    pal: { b: '#9a6a45', s: '#e8514a', k: '#e0bb8a' },
+  },
+} satisfies Record<string, AccArt>)
+
+// ---- back slot ---------------------------------------------------------------
+
+interface BackPart {
+  y: number
+  rows: string[]
+  /** Paint over the body instead of behind it. */
+  over?: boolean
+}
+
+interface BackArt {
+  front?: BackPart
+  back?: BackPart
+  side?: BackPart
+  /** On the prostration mound (bow pose, seen from behind). */
+  bow?: BackPart
+  pal: Record<string, string>
+}
+
+const WINGS_FRONT = ['.ww..........ww.', 'wwWw........wWww', 'wWWw........wWWw', 'wWww........wwWw', '.wWw........wWw.', '..ww........ww..', '...w........w...']
+const WINGS_BACK = ['ww............ww', 'wWww........wwWw', '.wWWw......wWWw.', '..wWWww..wwWWw..', '...wWWw..wWWw...', '....ww....ww....', '.....w....w.....']
+const WINGS_SIDE = ['..ww............', '.wWww...........', 'wWWww...........', 'wWWw............', 'wWw.............', '.ww.............']
+const WINGS_BOW = ['ww............ww', 'wWw..........wWw', '.wWww......wwWw.', '..wWWw....wWWw..']
+const BF_FRONT = ['pp............pp', 'pPp..........pPp', 'pyPp........pPyp', 'pPPp........pPPp', '.pp..........pp.', 'cCc..........cCc', '.cc..........cc.']
+const BF_BACK = ['pp............pp', 'pPpp........ppPp', 'pyPPp......pPPyp', '.pPPPpp..ppPPPp.', '..ppp......ppp..', '.cCcc......ccCc.', '..cc........cc..']
+const BF_SIDE = ['pp..............', 'pPp.............', 'pyPp............', 'pPPp............', '.pp.............', 'cCc.............', '.cc.............']
+const BF_BOW = ['pp............pp', 'pyPp........pPyp', '.pPPpp....ppPPp.', '..cCc......cCc..']
+const BAG_STRAPS: BackPart = { y: 13, over: true, rows: ['.....k....k.....', '.....k....k.....', '.....k....k.....'] }
+const BAG_BACK: BackPart = { y: 13, over: true, rows: ['......kkkk......', '.....ssssss.....', '.....mpmmpm.....', '.....mmgmmm.....', '.....mpmmpm.....', '.....smmmms.....', '......ssss......'] }
+const BAG_SIDE: BackPart = { y: 13, over: true, rows: ['......k.........', '...ss.k.........', '..smm.k.........', '..smp...........', '..smm...........', '...ss...........'] }
+const BAG_BOW: BackPart = { y: 16, over: true, rows: ['.....ssssss.....', '.....mpmmpm.....', '.....mmgmmm.....'] }
+
+const BACK: Record<string, BackArt> = {
+  angel: {
+    front: { y: 11, rows: WINGS_FRONT },
+    back: { y: 11, rows: WINGS_BACK, over: true },
+    side: { y: 11, rows: WINGS_SIDE },
+    bow: { y: 14, rows: WINGS_BOW, over: true },
+    pal: { w: '#fbfcff', W: '#dfe4f2' },
+  },
+  butterfly: {
+    front: { y: 10, rows: BF_FRONT },
+    back: { y: 10, rows: BF_BACK, over: true },
+    side: { y: 10, rows: BF_SIDE },
+    bow: { y: 14, rows: BF_BOW, over: true },
+    pal: { p: '#ff7eaa', P: '#b98ae6', y: '#ffe45e', c: '#5ec8e8', C: '#bff0ff' },
+  },
+  thaibag: {
+    front: BAG_STRAPS,
+    back: BAG_BACK,
+    side: BAG_SIDE,
+    bow: BAG_BOW,
+    pal: { k: '#7e2436', m: '#c0392f', s: '#8e2533', p: '#ffd54f', g: '#ffd54f' },
+  },
+  schoolbag: {
+    front: BAG_STRAPS,
+    back: BAG_BACK,
+    side: BAG_SIDE,
+    bow: BAG_BOW,
+    pal: { k: '#212a52', m: '#2e3a6b', s: '#212a52', p: '#2e3a6b', g: '#fbfcff' },
+  },
+  flag: {
+    front: { y: -4, rows: ['........rrrrrk..', '.........yyyyk..', '........rrrrrk..', ...Array(17).fill('.............k..')] },
+    back: { y: -4, over: true, rows: ['..krrrrr........', '..kyyyy.........', '..krrrrr........', ...Array(17).fill('..k.............')] },
+    side: { y: -4, rows: ['...krrrrr.......', '...kyyyy........', '...krrrrr.......', ...Array(17).fill('...k............')] },
+    bow: { y: 5, over: true, rows: ['.......rrrrrk...', '........yyyyk...', '.......rrrrrk...', ...Array(9).fill('............k...')] },
+    pal: { r: '#e8514a', y: '#ffd54f', k: '#9a6a45' },
+  },
+  oxygen: {
+    front: { y: 11, rows: ['...ww......ww...', '...wW......wW...'] },
+    back: { y: 12, over: true, rows: ['.....wW..wW.....', '....wwWkkwwW....', '....wwWrgwwW....', '....wwWkkwwW....', '....wwWkkwwW....', '.....ww..ww.....'] },
+    side: { y: 12, rows: ['..wW............', '.wwW............', '.wwW............', '.wwW............', '.wwW............', '..ww............'] },
+    bow: { y: 15, over: true, rows: ['....wwWkkwwW....', '....wwWrgwwW....', '....wwWkkwwW....'] },
+    pal: { w: '#f4f5fa', W: '#c9ccda', k: '#8a8496', r: '#e8514a', g: '#5ee0a0' },
+  },
+}
+
+/** Golden merit halo (รัศมี) drawn behind everything. */
+function paintAura(ctx: CanvasRenderingContext2D, cx: number, cy: number, rad: number) {
+  for (let y = -HEADROOM; y < FRAME_H - HEADROOM; y++) {
+    for (let x = 0; x < FRAME_W; x++) {
+      const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy)
+      if (d > rad + 0.5) continue
+      const ang = Math.atan2(y + 0.5 - cy, x + 0.5 - cx)
+      const ray = Math.abs(Math.sin(ang * 6)) > 0.8
+      ctx.fillStyle = d > rad - 0.8 ? (ray ? '#fff3a6' : '#e9a53a') : d > rad - 2 ? '#ffd54f' : '#fff3a6'
+      ctx.fillRect(x, y + HEADROOM, 1, 1)
+    }
+  }
+}
+
+function paintBack(ctx: CanvasRenderingContext2D, id: string | null | undefined, part: 'front' | 'back' | 'side' | 'bow', dy: number, over: boolean) {
+  if (!id) return
+  const key = OUTFIT_BY_ID[id]?.acc
+  if (!key) return
+  if (key === 'aura') {
+    if (over) return
+    if (part === 'bow') paintAura(ctx, 7.5, 18, 7.6)
+    else paintAura(ctx, 7.5, 6 + dy, 8.2)
+    return
+  }
+  const art = BACK[key]
+  const p = art?.[part]
+  if (!p || !!p.over !== over) return
+  paint(ctx, p.rows, p.y + dy, (k) => art.pal[k] ?? null)
+}
+
 // ---------------------------------------------------------------------------
 // Colour resolution.
 
@@ -1157,6 +1495,21 @@ function patternHit(p: Pattern | undefined, x: number, y: number): 0 | 1 | 2 {
       return 0
     case 'silk':
       return (x + y) % 4 === 0 ? 1 : 0
+    case 'sequin':
+      if ((x * 5 + y * 3) % 7 === 0) return 1
+      if ((x * 5 + y * 3) % 7 === 4) return 2
+      return 0
+    case 'batik':
+      if ((x + y * 2) % 6 === 0) return 1
+      return (x * 2 + y) % 7 === 3 ? 2 : 0
+    case 'mudmee':
+      return (x + y) % 4 === 0 || (x - y + 40) % 4 === 0 ? 1 : 0
+    case 'stars':
+      if ((x * 3 + y * 5) % 9 === 0) return 1
+      return (x * 3 + y * 5) % 9 === 5 ? 2 : 0
+    case 'bands':
+      // relative torso rows (see topColor)
+      return y === 2 ? 1 : y === 3 ? 2 : 0
     case 'denim':
     case 'knit':
       return 0
@@ -1173,6 +1526,8 @@ interface Resolved {
   shoes: ShoeArt | null
   barefoot: boolean
   view: View
+  /** Vertical body offset of the current pose (kneel / sit). */
+  dy: number
 }
 
 function resolve(look: AvatarLook, barefoot: boolean): Resolved {
@@ -1186,6 +1541,7 @@ function resolve(look: AvatarLook, barefoot: boolean): Resolved {
     shoes: look.shoes ? OUTFIT_BY_ID[look.shoes]?.shoes ?? null : null,
     barefoot,
     view: 'front',
+    dy: 0,
   }
 }
 
@@ -1204,17 +1560,28 @@ function mixHex(a: string, b: string, t: number): string {
 
 function topColor(r: Resolved, code: string, x: number, y: number): string | null {
   const t = r.top
+  const ry = y - 13 - r.dy
   switch (code) {
     case 'T':
     case 't': {
       const j = t.jacket
       if (j && (r.view === 'back' || r.view === 'side' || x <= 6 || x >= 9)) return code === 'T' ? j.main : j.shade
-      const hit = patternHit(t.pattern, x, y)
+      const v = t.vest
+      if (v && !(r.view === 'front' && ry <= 1 && (x === 7 || x === 8))) {
+        if (r.view === 'front' && ry === 4 && v.trim) return v.trim
+        return code === 'T' ? v.main : v.shade
+      }
+      if (t.collar === 'tank' && ry === 0) {
+        if (r.view === 'side') return x === 6 || x === 7 ? t.main : r.skin.b
+        return x === 5 || x === 10 ? t.main : r.skin.b
+      }
+      const hit = t.pattern === 'bands' ? patternHit('bands', x, ry) : patternHit(t.pattern, x, y)
       if (hit === 1 && t.patternColor) return t.patternColor
       if (hit === 2 && t.patternColor2) return t.patternColor2
       return code === 'T' ? t.main : t.shade
     }
     case 'C':
+      if (t.vest && !t.jacket) return t.collarColor ?? t.main
       switch (t.collar) {
         case 'shirt':
         case 'polo':
@@ -1227,13 +1594,18 @@ function topColor(r: Resolved, code: string, x: number, y: number): string | nul
           return t.trim ?? r.skin.b
         case 'hood':
           return t.shade
+        case 'tank':
+          return r.skin.b
       }
+      if (t.extra === 'khon' || t.extra === 'likay') return t.extraColor ?? P.gold
+      if (t.extra === 'astro') return t.collarColor ?? t.shade
       return t.extra === 'buttons' ? t.main : r.skin.b
     case 'A':
       if (t.jacket) return t.jacket.sleeve ?? t.jacket.main
-      return t.sleeve === 'none' ? r.skin.b : t.cuff && t.sleeve === 'short' && y >= 15 ? t.cuff : t.main
+      return t.sleeve === 'none' ? r.skin.b : t.cuff && t.sleeve === 'short' && ry >= 2 ? t.cuff : t.main
     case 'a':
       if (t.jacket) return t.jacket.sleeve ?? t.jacket.main
+      if (t.sleeve === 'long' && t.cuff && ry >= 3) return t.cuff
       return t.sleeve === 'long' ? t.main : r.skin.b
     case 'H':
       return r.skin.b
@@ -1247,25 +1619,49 @@ function legColor(r: Resolved, code: string, x: number, y: number): string | nul
   const b = r.bottom
   const pat = (base: string) => {
     const hit = patternHit(b.pattern, x, y)
+    if (hit === 2 && b.patternColor2) return b.patternColor2
     return hit && b.patternColor ? b.patternColor : base
   }
   const shade = x >= 8
-  const sh = r.shoes
-  const sock = !r.barefoot && sh?.sock && (sh.sockH ?? 1) >= 2 ? sh.sock : null
+  const sh = r.barefoot ? null : r.shoes
+  const sock = sh?.sock && (sh.sockH ?? 1) >= 2 ? sh.sock : null
+  const ry = y - 19
   switch (code) {
     case 'W':
+      if (b.detail === 'muay' && b.band) return b.bandText && (x === 7 || x === 9) ? b.bandText : b.band
       if (b.belt && y === 19) return x === 7 || x === 8 ? b.buckle ?? b.belt : b.belt
       return pat(b.main)
     case 'L':
       if (b.kind === 'pants' || b.kind === 'loose' || b.kind === 'jong' || b.kind === 'shorts') return pat(shade ? b.shade : b.main)
       return r.skin.b
-    case 'K':
-      if (b.kind === 'pants' || (b.kind === 'loose' && b.length !== 'midi')) return pat(shade ? b.shade : b.main)
+    case 'K': {
+      const boot = sh?.kind === 'boot' && ry >= 2
+      if (boot) return x === 5 || x === 10 ? sh.shade : sh.main
+      if (b.kind === 'pants' || (b.kind === 'loose' && b.length !== 'midi')) {
+        if (b.detail === 'ripped' && ry === 2 && (x === 6 || x === 9)) return r.skin.b
+        if (b.detail === 'pads' && ry === 2) return b.stripe ?? '#aeb4c8'
+        return pat(shade ? b.shade : b.main)
+      }
+      if (sh?.kind === 'wrap') return x % 2 ? sh.main : r.skin.b
       return sock ?? r.skin.b
+    }
     case 'F':
       if (r.barefoot) return r.skin.d
       if (!sh) return SHOE
-      if (sh.kind === 'flipflop' || sh.kind === 'sandal') return x % 2 ? sh.main : r.skin.b
+      switch (sh.kind) {
+        case 'flipflop':
+        case 'sandal':
+          return x % 2 ? sh.main : r.skin.b
+        case 'wrap':
+          return x === 5 || x === 10 ? sh.main : r.skin.b
+        case 'slipper':
+          return x === 4 || x === 11 ? sh.accent ?? sh.main : sh.main
+        case 'clog':
+          return x === 5 || x === 10 ? sh.accent ?? sh.main : sh.main
+        case 'heel':
+          return x === 6 || x === 9 ? sh.shade : sh.main
+      }
+      if (sh.glow) return x === 4 || x === 11 ? sh.glow[0] : x === 6 || x === 9 ? sh.glow[2 % sh.glow.length] : sh.main
       return sh.main
   }
   return null
@@ -1422,6 +1818,13 @@ function paintBottomOverlay(ctx: CanvasRenderingContext2D, r: Resolved, view: Vi
   } else if (b.kind === 'loose' && view !== 'side') {
     put(4, legsY + 2, col(4, legsY + 2, b.main))
     put(11, legsY + 2, col(11, legsY + 2, b.shade))
+  } else if (b.detail === 'muay') {
+    // flared satin legs with a shiny stripe
+    if (view !== 'side') {
+      put(4, legsY + 1, b.main)
+      put(11, legsY + 1, b.shade)
+      put(5, legsY + 1, mixHex(b.main, '#ffffff', 0.45))
+    } else put(11, legsY + 1, b.shade)
   }
 }
 
@@ -1489,8 +1892,114 @@ function paintTopDetails(ctx: CanvasRenderingContext2D, r: Resolved, view: View,
   }
 }
 
+/** Vests, aprons and costume trims of the lifestyle pack. */
+function paintTopLayers(ctx: CanvasRenderingContext2D, r: Resolved, view: View, pose: Pose) {
+  const t = r.top
+  const put = (x: number, y: number, col: string | undefined) => {
+    if (!col) return
+    ctx.fillStyle = col
+    ctx.fillRect(x, y + HEADROOM, 1, 1)
+  }
+  const Y = 13
+  const wai = pose === 'wai'
+  const v = t.vest
+  if (v) {
+    if (view === 'back') {
+      // big number patch
+      for (let y = Y + 1; y <= Y + 3; y++) for (let x = 6; x <= 9; x++) put(x, y, v.patchColor ?? '#fffaf0')
+      put(6, Y + 2, v.numberColor)
+      put(7, Y + 1, v.numberColor)
+      put(8, Y + 2, v.numberColor)
+      put(9, Y + 1, v.numberColor)
+      if (v.trim) for (let x = 5; x <= 10; x++) put(x, Y + 4, v.trim)
+    } else if (view === 'front' && !wai) {
+      put(9, Y + 2, v.patchColor ?? '#fffaf0')
+      put(9, Y + 3, v.numberColor)
+    } else if (view === 'side') {
+      put(9, Y + 2, v.patchColor ?? '#fffaf0')
+      if (v.trim) for (let x = 5; x <= 10; x++) put(x, Y + 4, v.trim)
+    }
+  }
+  const ap = t.apron
+  if (ap) {
+    const cell = (x: number, y: number) => ((ap.pattern === 'check' || ap.pattern === 'plaid') && (x + y) % 2 === 0 && ap.patternColor ? ap.patternColor : x >= 9 ? ap.shade : ap.main)
+    if (view === 'front') {
+      put(6, Y, ap.strap ?? ap.shade)
+      put(9, Y, ap.strap ?? ap.shade)
+      const y0 = wai ? Y + 3 : Y + 1
+      for (let y = y0; y <= Y + 7; y++) for (let x = 6; x <= 9; x++) put(x, y, cell(x, y))
+      for (const x of [5, 10]) for (let y = Y + 4; y <= Y + 7; y++) put(x, y, cell(x, y))
+      if (ap.pocket) {
+        put(7, Y + 5, ap.shade)
+        put(8, Y + 5, ap.shade)
+      }
+      put(5, Y + 4, ap.strap ?? ap.shade)
+      put(10, Y + 4, ap.strap ?? ap.shade)
+    } else if (view === 'back') {
+      for (let x = 5; x <= 10; x++) put(x, Y + 5, ap.strap ?? ap.shade)
+      put(7, Y + 6, ap.strap ?? ap.shade)
+      put(8, Y + 6, ap.strap ?? ap.shade)
+      put(7, Y, ap.strap ?? ap.shade)
+      put(8, Y, ap.strap ?? ap.shade)
+    } else {
+      for (let y = Y + 1; y <= Y + 7; y++) put(10, y, cell(10, y))
+      for (let x = 5; x <= 9; x++) put(x, Y + 5, ap.strap ?? ap.shade)
+    }
+  }
+  const ec = t.extraColor ?? P.gold
+  if (t.extra === 'likay' || t.extra === 'khon') {
+    // jewelled shoulder pieces (อินทรธนู) curling up
+    if (view !== 'side') {
+      put(3, Y - 1, ec)
+      put(12, Y - 1, ec)
+      put(3, Y, ec)
+      put(4, Y, ec)
+      put(11, Y, ec)
+      put(12, Y, ec)
+    } else {
+      put(8, Y - 1, ec)
+      put(7, Y, ec)
+      put(8, Y, ec)
+    }
+    if (view === 'front' && !wai) {
+      for (let x = 6; x <= 9; x++) put(x, Y, ec)
+      if (t.extra === 'khon') {
+        for (let x = 5; x <= 10; x++) put(x, Y + 1, x === 5 || x === 10 ? mixHex(ec, '#000000', 0.25) : ec)
+        put(7, Y + 2, '#e8514a')
+        put(8, Y + 2, '#7fd3b5')
+      } else {
+        put(7, Y + 1, '#ff5e8a')
+        put(8, Y + 1, ec)
+        for (let x = 5; x <= 10; x++) put(x, Y + 5, ec)
+      }
+    } else if (view === 'back') {
+      for (let x = 6; x <= 9; x++) put(x, Y, ec)
+      if (t.extra === 'likay') for (let x = 5; x <= 10; x++) put(x, Y + 5, ec)
+    }
+  } else if (t.extra === 'astro') {
+    if (view === 'front' && !wai) {
+      for (let x = 6; x <= 9; x++) put(x, Y + 2, '#6c6678')
+      put(6, Y + 2, '#e8514a')
+      put(7, Y + 2, '#ffe45e')
+      put(8, Y + 2, '#5ee0a0')
+      put(3, Y + 1, '#e8514a')
+      put(4, Y + 1, ec)
+    } else if (view === 'side') {
+      put(7, Y + 1, '#e8514a')
+      put(8, Y + 1, ec)
+    }
+  }
+  if (t.placket === 'double' && view === 'front' && !wai) {
+    for (const y of [Y + 1, Y + 3]) {
+      put(6, y, t.buttonColor)
+      put(9, y, t.buttonColor)
+    }
+  }
+}
+
 function paintTopExtras(ctx: CanvasRenderingContext2D, r: Resolved, view: View, pose: Pose) {
   paintTopDetails(ctx, r, view, pose)
+  paintTopLayers(ctx, r, view, pose)
   const t = r.top
   if (!t.extra) return
   const c = t.extraColor ?? P.gold
@@ -1570,6 +2079,13 @@ function paintTopExtras(ctx: CanvasRenderingContext2D, r: Resolved, view: View, 
   }
 }
 
+function paintAccUnder(ctx: CanvasRenderingContext2D, id: string | null | undefined, view: View, dy: number) {
+  if (!id) return
+  const art = ACC[OUTFIT_BY_ID[id]?.acc ?? '']
+  const part = art?.under?.[view]
+  if (part) paint(ctx, part.rows, part.y + dy, (k) => art.pal[k] ?? null)
+}
+
 function paintAcc(ctx: CanvasRenderingContext2D, id: string | null | undefined, view: View, dy: number) {
   if (!id) return
   const item = OUTFIT_BY_ID[id]
@@ -1600,9 +2116,11 @@ export function composeAvatar(look: AvatarLook, view: View, pose: Pose, opts: Av
 
   if (pose === 'bow') {
     // Prostration seen from behind.
+    paintBack(ctx, look.back, 'bow', 0, false)
     paint(ctx, BOW_BACK.legs, 21, lcol)
     paint(ctx, BOW_BACK.torso, 17, tcol)
     paint(ctx, BOW_BACK.hair, 14, hcol)
+    paintBack(ctx, look.back, 'bow', 0, true)
     return c
   }
 
@@ -1610,6 +2128,10 @@ export function composeAvatar(look: AvatarLook, view: View, pose: Pose, opts: Av
   const low = pose === 'kneel' ? 3 : pose === 'sit' ? 3 : 0
   const bob = pose === 'pass' ? -1 : 0
   const dy = low + bob
+  r.dy = dy
+
+  // Things worn on the back that sit behind the body (wings, aura...).
+  paintBack(ctx, look.back, view, dy, false)
 
   // Hair behind the body.
   if (view === 'front' && hair.behind && pose !== 'sit') paint(ctx, hair.behind.rows, hair.behind.y + dy, hcol)
@@ -1647,9 +2169,13 @@ export function composeAvatar(look: AvatarLook, view: View, pose: Pose, opts: Av
     ctx.drawImage(tmp, 0, dy)
   }
 
-  // Neck accessories sit on top of the torso.
-  if (hairItem && view !== 'back') paintAcc(ctx, look.neck, view, dy)
-  if (view === 'back') paintAcc(ctx, look.neck, view, dy)
+  // Neck accessories sit on top of the torso (a face mask goes on after the head).
+  const mask = look.neck === 'neck_mask'
+  if (!mask && hairItem && view !== 'back') paintAcc(ctx, look.neck, view, dy)
+  if (!mask && view === 'back') paintAcc(ctx, look.neck, view, dy)
+  // Backpacks, wings seen from behind...
+  paintBack(ctx, look.back, view, dy, true)
+  paintAccUnder(ctx, look.head, view, dy)
 
   // Head.
   const closed = pose === 'happy' || pose === 'wai'
@@ -1661,7 +2187,7 @@ export function composeAvatar(look: AvatarLook, view: View, pose: Pose, opts: Av
   const hv = view === 'front' ? hair.front : view === 'back' ? hair.back : hair.side
   paint(ctx, hv.rows, hv.y + dy, hcol)
 
-  // Hood ears poke up from behind when wearing the hoodie (back view).
+  if (mask) paintAcc(ctx, look.neck, view, dy)
   paintAcc(ctx, look.head, view, dy)
   paintAcc(ctx, look.hand, view, dy)
   return c
@@ -1684,7 +2210,7 @@ export function avatarSprite(look: AvatarLook, view: View, pose: Pose, opts: Ava
 }
 
 export function lookKey(l: AvatarLook): string {
-  return [l.gender, l.skin, l.face, l.hairColor, l.hair, l.top, l.bottom, l.head ?? '', l.neck ?? '', l.hand ?? '', l.shoes ?? ''].join('|')
+  return [l.gender, l.skin, l.face, l.hairColor, l.hair, l.top, l.bottom, l.head ?? '', l.neck ?? '', l.hand ?? '', l.shoes ?? '', l.back ?? ''].join('|')
 }
 
 /** Portrait (head and shoulders) for lists and leaderboards. */
@@ -1693,7 +2219,8 @@ export function avatarPortrait(look: AvatarLook): Sprite {
   return cached(key, () => {
     const full = avatarSprite(look, 'front', 'stand')
     // Crop an 18×18 square around the head (skipping the headroom rows).
-    const top = look.hair === 'hair_bun' || look.hair === 'hair_jook' || look.head === 'head_ngob' || look.head === 'head_lotus' ? 1 : 3
+    const tall = ['ngob', 'lotus', 'chefhat', 'chada', 'likay', 'bunnyears', 'spacehelmet', 'helmetcute', 'sleepcap']
+    const top = look.hair === 'hair_bun' || look.hair === 'hair_jook' || tall.includes(OUTFIT_BY_ID[look.head ?? '']?.acc ?? '') ? 1 : 3
     const c = createCanvas(18, 18)
     const ctx = c.getContext('2d')!
     ctx.drawImage(full.canvas, 0, top, 18, 18, 0, 0, 18, 18)
