@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Boondee world dev</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <style>
+      html, body { margin: 0; height: 100%; background: #2b2340; overflow: hidden; }
+      #host { position: absolute; inset: 0; overflow: hidden; }
+      .chrome { position: absolute; pointer-events: none; background: rgba(255, 246, 228, 0.88); border: 3px solid #3a2838; border-radius: 8px; box-sizing: border-box; }
+      #sprites { position: absolute; inset: 0; overflow: auto; padding: 8px; color: #fff1d6; font: 12px sans-serif; }
+      #sprites canvas { image-rendering: pixelated; margin: 4px; vertical-align: bottom; background: #86c95f; }
+      #log { position: absolute; left: 4px; bottom: 90px; color: #fff; font: 11px monospace; pointer-events: none; text-shadow: 0 1px 0 #000; }
+    </style>
+  </head>
+  <body>
+    <div id="host"></div>
+    <div id="log"></div>
+    <script type="module" src="/src/dev/world.ts"></script>
+  </body>
+</html>

@@ -31,15 +31,37 @@ export const SKY: Record<Phase, SkyStyle> = {
 }
 
 /** Current phase, honouring the time override in settings. */
+let devPhase: Phase | null | undefined
+/** Dev only: ?phase=dawn|day|golden|dusk|night forces the time of day. */
+function forcedPhase(): Phase | null {
+  if (devPhase !== undefined) return devPhase
+  devPhase = null
+  if (import.meta.env.DEV && typeof location !== 'undefined') {
+    const q = new URLSearchParams(location.search).get('phase')
+    if (q && q in SKY) devPhase = q as Phase
+  }
+  return devPhase
+}
+
 export function currentPhase(): Phase {
+  const f = forcedPhase()
+  if (f) return f
   const t = game.value.settings.time
   if (t !== 'real') return t
   return phaseAt(hourOf())
 }
 
+const gradCache = new Map<string, HTMLCanvasElement>()
+
 export function drawSky(g: Surface, x: number, y: number, w: number, h: number, phase: Phase, time: number) {
   const s = SKY[phase]
-  g.gradientV(x, y, w, h, s.stops, 5)
+  const key = `${phase}:${w}:${h}`
+  let grad = gradCache.get(key)
+  if (!grad) {
+    grad = bake(w, h, (b) => b.gradientV(0, 0, w, h, s.stops, 5))
+    gradCache.set(key, grad)
+  }
+  g.draw(grad, x, y)
   if (s.stars) {
     for (let i = 0; i < 40; i++) {
       const sx = x + ((i * 97) % w)

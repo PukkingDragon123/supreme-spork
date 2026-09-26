@@ -423,6 +423,68 @@ export function birdSprite(frame: 'a' | 'b' | 'fly', color = '#9c8474'): Sprite 
 }
 
 // ---------------------------------------------------------------------------
+// Extra critters for the living temple grounds.
+
+// Pigeon (นกพิราบ), side view facing right. g grey, G light, d dark, n neck
+// sheen, e eye, o orange feet/beak.
+const PIGEON_A = ['...GG.', '..GeGo', '.dnGG.', 'dGGGGG', '.dGGG.', '..o.o.']
+const PIGEON_PECK = ['......', '...GG.', 'd.GeGo', 'dGnGG.', '.dGGG.', '..o.o.']
+const PIGEON_FLY1 = ['G....G', 'GG..GG', '.dGGGe', '..dGGo', '......']
+const PIGEON_FLY2 = ['......', '.dGGGe', 'GGdGGo', 'G....G', '......']
+
+export type PigeonFrame = 'stand' | 'peck' | 'fly1' | 'fly2'
+
+export function pigeonSprite(frame: PigeonFrame, flip = false, tone = 0): Sprite {
+  return cached(`pigeon:${frame}:${flip ? 1 : 0}:${tone}`, () => {
+    const base = ['#b7b4c8', '#d8d2e0', '#a09090'][tone % 3]
+    const map = frame === 'stand' ? PIGEON_A : frame === 'peck' ? PIGEON_PECK : frame === 'fly1' ? PIGEON_FLY1 : PIGEON_FLY2
+    const s = makeSprite(map, { G: base, g: base, d: mixHex(base, '#3a2838', 0.35), n: '#7fc4a8', e: P.ink, o: '#f0906a' }, { outline: P.ink })
+    return flip ? { canvas: flipCanvas(s.canvas), w: s.w, h: s.h } : s
+  })
+}
+
+// Little sparrow for trees bursting into flight.
+const SPARROW_1 = ['b..b', '.bb.', '.bbo']
+const SPARROW_2 = ['....', 'bbbo', 'b..b']
+
+export function sparrowSprite(frame: 0 | 1, flip = false): Sprite {
+  return cached(`sparrow:${frame}:${flip ? 1 : 0}`, () => {
+    const s = makeSprite(frame ? SPARROW_2 : SPARROW_1, { b: '#9c7a5e', o: '#f0a040' }, { outline: P.ink })
+    return flip ? { canvas: flipCanvas(s.canvas), w: s.w, h: s.h } : s
+  })
+}
+
+// Cat poses facing right. B base, b dark, w white, e eye, n nose, c closed eye.
+const CAT_SIT = ['.b..b...', '.bbbb...', '.BeBe...', '.BwnB...', '..BBB..t', '.BBBBB.t', '.BBBBBBt', '.wBwBB..']
+const CAT_HAPPY = ['.b..b...', '.bbbb...', '.BcBc...', '.BwnB.t.', '..BBB.t.', '.BBBBBt.', '.BBBBBB.', '.wBwBB..']
+const CAT_WALK1 = ['......b.b.', '......bbb.', 't.....BeBe', '.tBBBBBBwn', '..BBBBBBB.', '..B.B..B.B', '..w.w..w.w']
+const CAT_WALK2 = ['......b.b.', '......bbb.', '.t....BeBe', 't.BBBBBBwn', '..BBBBBBB.', '...BB.BB..', '...ww.ww..']
+const CAT_GROOM = ['........', '..b..b..', '..bbbb..', '..BcBc..', 'tBBwnB..', 'tBBBBwk.', '.BBBBBw.', '.wwBBBw.']
+
+export type CatPose = 'loaf' | 'sleep' | 'sit' | 'happy' | 'walk1' | 'walk2' | 'groom'
+
+export function catPoseSprite(pose: CatPose, color = '#f5a55a', flip = false): Sprite {
+  if (pose === 'loaf' || pose === 'sleep') {
+    const s = catSprite(pose, color)
+    if (!flip) return s
+    return cached(`catf:${pose}:${color}`, () => ({ canvas: flipCanvas(s.canvas), w: s.w, h: s.h }))
+  }
+  return cached(`catp:${pose}:${color}:${flip ? 1 : 0}`, () => {
+    const map = pose === 'sit' ? CAT_SIT : pose === 'happy' ? CAT_HAPPY : pose === 'walk1' ? CAT_WALK1 : pose === 'walk2' ? CAT_WALK2 : CAT_GROOM
+    const s = makeSprite(map, { B: color, b: mixHex(color, '#3a2838', 0.3), t: color, w: '#fffaf0', e: P.ink, n: '#ff8fa3', c: mixHex(color, '#3a2838', 0.55), k: '#ff8fa3' }, { outline: P.ink })
+    return flip ? { canvas: flipCanvas(s.canvas), w: s.w, h: s.h } : s
+  })
+}
+
+/** Butterfly: frame 0 wings open, 1 wings up. */
+export function butterflySprite(frame: 0 | 1, color: string): Sprite {
+  return cached(`bfly:${frame}:${color}`, () => {
+    const map = frame === 0 ? ['w.w', 'wbw', '.b.'] : ['.w.', 'wbw', '.b.']
+    return makeSprite(map, { w: color, b: '#3a2838' })
+  })
+}
+
+// ---------------------------------------------------------------------------
 
 export function mixHex(a: string, b: string, t: number): string {
   const pa = parseInt(a.slice(1), 16)

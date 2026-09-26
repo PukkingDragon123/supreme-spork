@@ -10,6 +10,12 @@ import { area, arrived } from './store'
 import { setAmbientMood, sfx } from '../engine/audio'
 import { currentPhase } from '../scenes/sky'
 import { hotspotActions } from './hotspots'
+import type { Pickup, PickupKindT as PickupKind } from '../scenes/world'
+import { mutate } from '../game/state'
+import { dayKey } from '../game/time'
+import { Rng } from '../engine/rng'
+import { MATERIAL_INFO } from '../game/materials'
+import { toast } from '../game/events'
 
 let current: WorldScene | null = null
 let autoOpen: string | null = null
@@ -23,6 +29,72 @@ export function travelTo(hotspotId: string) {
 
 export function worldScene() {
   return current
+}
+
+const PICKUPS_PER_DAY = 5
+const PICK_KINDS: PickupKind[] = ['wood', 'cloth', 'clay', 'gold', 'flower', 'wood', 'flower', 'cloth']
+
+/** Today's collectible pickups for an area (same every time you visit that day). */
+function todaysPickups(id: string, spots: { x: number; y: number }[]): Pickup[] {
+  const day = dayKey()
+  const taken = game.value.pickups.day === day ? game.value.pickups.taken : []
+  const rng = new Rng(`${day}:${id}:${game.value.player.friendCode}`)
+  const pool = spots.map((p, i) => ({ ...p, i }))
+  const out: Pickup[] = []
+  for (let n = 0; n < Math.min(PICKUPS_PER_DAY, pool.length); n++) {
+    const k = rng.int(0, pool.length - 1)
+    const sp = pool.splice(k, 1)[0]
+    const pid = `${id}:${sp.i}`
+    if (!taken.includes(pid)) out.push({ id: pid, kind: rng.pick(PICK_KINDS), x: sp.x, y: sp.y })
+  }
+  return out
+}
+
+function collect(id: string, kind: PickupKind) {
+  mutate((d) => {
+    const day = dayKey()
+    if (d.pickups.day !== day) d.pickups = { day, taken: [] }
+    if (!d.pickups.taken.includes(id)) d.pickups.taken.push(id)
+    d.materials[kind] = (d.materials[kind] ?? 0) + 1
+  })
+  sfx.sparkle()
+  toast(`เก็บ${MATERIAL_INFO[kind].name}ได้ 1 ชิ้น`, 'hammer')
+}
+
+/** DOM speech bubbles for tappable scenery characters. */
+function SpeechLayer({ stage }: { stage: { current: Stage | null } }) {
+  const layer = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    let raf = 0
+    const pool: HTMLDivElement[] = []
+    const tick = () => {
+      const sc = current
+      const st = stage.current
+      const el = layer.current
+      if (sc && st && el) {
+        const bs = sc.speechBubbles()
+        while (pool.length < bs.length) {
+          const d = document.createElement('div')
+          d.className = 'say'
+          el.appendChild(d)
+          pool.push(d)
+        }
+        pool.forEach((d, i) => {
+          const b = bs[i]
+          d.style.display = b ? 'block' : 'none'
+          if (!b) return
+          const [x, y] = st.toCss(b.x, b.y)
+          if (d.textContent !== b.text) d.textContent = b.text
+          d.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) translate(-50%, -100%)`
+          d.style.opacity = String(b.alpha)
+        })
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
+  return <div class="say-layer" ref={layer} aria-live="polite" />
 }
 
 export function TempleView({ active }: { active: boolean }) {
@@ -53,7 +125,13 @@ export function TempleView({ active }: { active: boolean }) {
       sfx.open()
       arrived.value = t
     }
-    const scene = new WorldScene(mapFor(area.value), s.player.look, { onArrive, onMove: () => (arrived.value = null) }, { companion: s.companion })
+    const map = mapFor(area.value)
+    const scene = new WorldScene(
+      map,
+      s.player.look,
+      { onArrive, onMove: () => (arrived.value = null), onPickup: collect, onSay: () => undefined },
+      { companion: s.companion, pickups: todaysPickups(area.value, map.pickupSpots) },
+    )
     current = scene
     stage.current!.setScene(scene)
     arrived.value = null
@@ -88,5 +166,10 @@ export function TempleView({ active }: { active: boolean }) {
     if (current) current.highlight = hl
   }, [hl])
 
-  return <div class="stage-host" ref={host} />
+  return (
+    <>
+      <div class="stage-host" ref={host} />
+      <SpeechLayer stage={stage} />
+    </>
+  )
 }

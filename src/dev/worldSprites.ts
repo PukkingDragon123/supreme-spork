@@ -1,0 +1,50 @@
+// Sprite registry for the dev sprite sheet (dev-world.html?sprites=1).
+
+import type { Sprite } from '../engine/sprite'
+import * as T from '../art/temple'
+import * as F from '../art/templeprops'
+import * as G from '../art/garden'
+
+export const DEV_SPRITES: Record<string, () => Sprite> = {
+  hall: () => T.hallSprite(),
+  hallNight: () => T.hallSprite({ night: true }),
+  chedi: () => T.chediSprite(),
+  chediGold: () => T.chediSprite({ gold: true }),
+  chediSmall: () => T.chediSprite({ small: true }),
+  bellTower: () => T.bellTowerSprite(),
+  bellRack: () => T.bellRackSprite(),
+  holyWater: () => T.holyWaterSprite(),
+  gate: () => T.gateSprite(),
+  wall: () => T.wallSprite(72),
+  sema: () => T.semaSprite(),
+  semaBare: () => T.semaSprite(false),
+  yakshaG: () => F.yakshaSprite('green'),
+  yakshaR: () => F.yakshaSprite('red'),
+  vessavana: () => F.yakshaSprite('indigo', { king: true }),
+  lamp: () => F.thaiLampSprite(),
+  urn: () => F.urnSprite(),
+  candles: () => F.candleStandSprite(),
+  donate: () => F.donationSprite(),
+  stall: () => F.stallSprite(),
+  spirit: () => F.spiritHouseSprite(),
+  flagpole: () => F.flagPoleSprite(),
+  jar: () => F.lotusJarSprite(),
+  jarG: () => F.lotusJarSprite('green'),
+  bench: () => F.benchSprite(),
+  buddha: () => F.buddhaStatueSprite(),
+  dresses: () => F.dressRackSprite(),
+  offering: () => F.offeringSprite(),
+  kuti: () => F.kutiSprite(),
+  frangi0: () => G.frangipani(0),
+  frangi3: () => G.frangipani(3),
+  takhian: () => G.takhianTree(),
+  bodhi: () => G.bodhiTree2(),
+  coco: () => G.coconutPalm(),
+  topiary: () => G.topiary(0),
+  topiary2: () => G.topiary(2),
+  bougain: () => G.bougainvillea(),
+  bougain1: () => G.bougainvillea(1),
+  shrub: () => G.shrub(0),
+  shrub2: () => G.shrub(2),
+  banana: () => G.bananaPlant(),
+}
