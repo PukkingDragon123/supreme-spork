@@ -222,3 +222,24 @@ describe('stalls', () => {
     expect(second.discount).toBe(0)
   })
 })
+
+describe('market trading', () => {
+  it('lists collectibles and trades them in and out of the collection', async () => {
+    const M = await import('../market')
+    const list = M.browseListings()
+    const col = list.filter((l) => l.kind === 'collectible')
+    expect(col.length).toBeGreaterThan(0)
+    expect(new Set(col.map((l) => l.itemId)).size).toBe(col.length)
+    const l = col[0]
+    expect(M.tradeName('collectible', l.itemId)).toBe(COLLECTIBLE_BY_ID[l.itemId].name)
+    expect(M.buyListing(l)).toBe(true)
+    expect(game.value.collection.owned[l.itemId]).toBe(l.qty)
+    expect(game.value.stats.trade).toBe(1)
+    expect(game.value.stats.collectible).toBe(l.qty)
+    expect(M.owned('collectible', l.itemId)).toBe(l.qty)
+    expect(M.listItem('collectible', l.itemId, 1, M.baseValue('collectible', l.itemId))).toBe(true)
+    expect(game.value.collection.owned[l.itemId] ?? 0).toBe(l.qty - 1)
+    M.cancelListing(game.value.market.mine[0].id)
+    expect(game.value.collection.owned[l.itemId]).toBe(l.qty)
+  })
+})

@@ -21,6 +21,7 @@ import { openPanel, panel, prayStage, prayAtHome, openShop, mode } from '../stor
 import { DressUp } from '../DressUp'
 import { MarketWindow } from './Market'
 import { PlaceShopWindow } from './PlaceShop'
+import { CollectionBook } from './CollectionBook'
 import { PBtn, Slot, Tabs, Window, Check } from '../components/kit'
 import { PT, TONE_TEXT } from '../pixeltext'
 import { Coin, Icon } from '../components/common'
@@ -44,6 +45,8 @@ export function Panels() {
       return <MarketWindow />
     case 'placeShop':
       return <PlaceShopWindow />
+    case 'collection':
+      return <CollectionBook />
     case 'dress':
       return (
         <div class="dress-screen">
@@ -289,6 +292,9 @@ function BagWindow() {
             ไปโต๊ะช่างไม้
           </PBtn>
         )}
+        <PBtn tone="pink" size="small" icon="gift" onClick={() => openPanel('collection')}>
+          สมุดสะสม
+        </PBtn>
       </div>
     </Window>
   )

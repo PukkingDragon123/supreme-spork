@@ -190,7 +190,9 @@ const MOTIFS: Record<string, Motif> = {
     g.hline(2, 11, 12, p.a)
   },
   buddha(g, p) {
-    g.ditherCircle(7, 6, 6.5, p.aL, 0.7)
+    // Halo (aura) behind the seated figure.
+    g.circle(7, 5.5, 5.6, mix(p.aL, '#ffffff', 0.35))
+    g.circle(7, 5.5, 4.6, mix(p.aL, '#ffffff', 0.6))
     seated(g, p)
   },
   reclining(g, p) {
@@ -423,7 +425,7 @@ const MOTIFS: Record<string, Motif> = {
     for (const [x, y] of [[4, 10], [9, 10], [5, 7], [8, 7]] as [number, number][]) g.px(x, y, '#9fd0ff')
   },
   guanyin(g, p) {
-    g.ditherCircle(7, 4, 4.5, p.d, 0.7)
+    g.circle(7, 4, 4.4, mix(p.d, '#ffffff', 0.45))
     g.ellipse(7, 12.5, 5, 1.5, '#ff9fc0')
     g.hline(3, 11, 12, '#ffd6e0')
     g.poly([[5, 4], [9, 4], [10, 12], [4, 12]], p.m)
@@ -477,7 +479,7 @@ const MOTIFS: Record<string, Motif> = {
     g.px(5, 12, '#8a5a32')
   },
   lantern(g, p) {
-    g.ditherCircle(7, 8, 7, p.aL, 0.6)
+    g.circle(7, 7.5, 6.8, mix(p.aL, '#ffffff', 0.55))
     g.poly([[3, 3], [11, 3], [12, 11], [2, 11]], p.m)
     g.poly([[3, 3], [6, 3], [5, 11], [2, 11]], mix(p.m, '#ffffff', 0.35))
     g.ellipse(7, 3, 4, 1.5, mix(p.m, '#ffffff', 0.2))
@@ -988,7 +990,7 @@ const MOTIFS: Record<string, Motif> = {
     g.hline(10, 12, 10, INK)
   },
   crystal(g, p) {
-    g.ditherCircle(7, 6, 7, p.d, 0.7)
+    g.circle(7, 6, 6.6, mix(p.d, '#ffffff', 0.55))
     g.poly([[3, 12], [11, 12], [9, 10], [5, 10]], p.a)
     g.rect(2, 12, 10, 2, mix(p.a, INK, 0.25))
     g.circle(7, 6, 4.5, mix(p.m, INK, 0.2))
@@ -1022,7 +1024,7 @@ const MOTIFS: Record<string, Motif> = {
     g.rect(0, 13, 14, 1, mix(p.d, INK, 0.3))
   },
   alms(g, p) {
-    g.ditherCircle(10, 4, 4, p.d, 0.9)
+    g.circle(10, 4, 3.4, mix(p.d, '#ffffff', 0.5))
     g.circle(10, 4, 2, p.d)
     g.rect(0, 12, 14, 2, '#b8a88c')
     for (const x of [2, 7, 12]) {
