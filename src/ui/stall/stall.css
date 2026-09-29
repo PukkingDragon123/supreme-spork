@@ -1,0 +1,574 @@
+/* First-person stall (src/ui/stall). All classes are prefixed with .stall. */
+
+.stall {
+  position: absolute;
+  inset: 0;
+  z-index: 55;
+  overflow: hidden;
+  background: #1c1424;
+  animation: stall-in 380ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+.stall.closing {
+  animation: stall-out 460ms ease-in 60ms both;
+  pointer-events: none;
+}
+
+/* No transforms on the container: the stage measures it. */
+@keyframes stall-in {
+  from {
+    opacity: 0;
+    filter: brightness(0.6);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+  }
+}
+
+@keyframes stall-out {
+  to {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+    filter: brightness(0.7);
+  }
+}
+
+.stall-stage {
+  position: absolute;
+  inset: 0;
+}
+
+.stall-top {
+  z-index: 6;
+}
+
+.stall-top .grow {
+  flex: 1;
+}
+
+/* Shop name over the in-scene sign board. */
+.stall-sign {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  pointer-events: none;
+  text-align: center;
+  animation: stall-sign 900ms cubic-bezier(0.3, 1.4, 0.5, 1) both 120ms;
+  transform-origin: 50% 0;
+}
+
+.stall-sign .pt {
+  max-width: 94%;
+  object-fit: contain;
+}
+
+.stall-timer {
+  font-size: 11px;
+  line-height: 1.1;
+  font-weight: 600;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+@keyframes stall-sign {
+  0% {
+    transform: rotate(-4deg) translateY(-8px);
+    opacity: 0;
+  }
+  60% {
+    transform: rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* A soft shade behind the bottom panel so it reads as a layer. */
+.stall-panel::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  right: -8px;
+  top: 10px;
+  bottom: -40px;
+  z-index: -1;
+  background: linear-gradient(to bottom, rgba(40, 24, 16, 0) 0, rgba(40, 24, 16, 0.45) 40px, rgba(40, 24, 16, 0.6));
+  pointer-events: none;
+}
+
+/* Bottom panel: bubble + choices (or the product card). */
+.stall-panel {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(8px + var(--safe-bottom));
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: stall-up 420ms cubic-bezier(0.2, 0.9, 0.3, 1.1) both 150ms;
+}
+
+@keyframes stall-up {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.stall-bubble {
+  position: relative;
+  min-height: 62px;
+  padding: 10px 8px 2px;
+  margin: 14px 2px 2px;
+  cursor: pointer;
+}
+
+/* Tail pointing up at the shopkeeper. */
+.stall-bubble::before {
+  content: '';
+  position: absolute;
+  top: -16px;
+  left: calc(var(--tail, 50%) - 18px);
+  width: 12px;
+  height: 10px;
+  background: #fff6e4;
+  clip-path: polygon(0 100%, 100% 100%, 30% 0);
+  filter: drop-shadow(0 -2px 0 #6e4a35);
+}
+
+.stall-npc-name {
+  position: absolute;
+  top: -20px;
+  left: 8px;
+  padding: 0 6px;
+  border-style: solid;
+  border-width: 5px;
+  border-image: var(--sk-card-wood) 3 fill / 5px repeat;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #fff1d6;
+  text-shadow: 0 1px 0 #5a3418;
+}
+
+.stall-deal {
+  position: absolute;
+  top: -14px;
+  right: 6px;
+  animation: stall-bob 1.4s ease-in-out infinite;
+}
+
+.stall-say {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 500;
+  color: var(--ink);
+  min-height: 40px;
+}
+
+.stall-caret {
+  display: inline-block;
+  width: 7px;
+  height: 13px;
+  margin-left: 2px;
+  background: var(--ink);
+  vertical-align: -1px;
+  animation: stall-blink 0.5s steps(2) infinite;
+}
+
+.stall-more {
+  position: absolute;
+  right: 10px;
+  bottom: 2px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  animation: stall-bob 0.8s ease-in-out infinite;
+}
+
+@keyframes stall-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes stall-bob {
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.stall-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Chat-style reply buttons. */
+.stall-reply {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  margin: 1px 2px;
+  padding: 0 6px;
+  border-style: solid;
+  border-width: 6px;
+  border-image: var(--sk-card) 3 fill / 6px repeat;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  animation: stall-choice 300ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  transition: transform 80ms;
+}
+
+.stall-reply:active {
+  transform: translateY(2px);
+  border-image-source: var(--sk-card-soft);
+}
+
+.stall-reply.gold {
+  border-image-source: var(--sk-card-gold);
+}
+
+.stall-reply .grow {
+  flex: 1;
+}
+
+.stall-reply-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.25;
+}
+
+.stall-reply .stall-arrow {
+  color: var(--ink-soft);
+  font-weight: 700;
+  animation: stall-nudge 1.2s ease-in-out infinite;
+}
+
+@keyframes stall-nudge {
+  50% {
+    transform: translateX(3px);
+  }
+}
+
+.stall-reply:nth-child(2) {
+  animation-delay: 50ms;
+}
+.stall-reply:nth-child(3) {
+  animation-delay: 100ms;
+}
+.stall-reply:nth-child(4) {
+  animation-delay: 150ms;
+}
+.stall-reply:nth-child(5) {
+  animation-delay: 200ms;
+}
+
+@keyframes stall-choice {
+  from {
+    transform: translateX(-24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.stall-pages {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: 0;
+  margin-bottom: -4px;
+}
+
+.stall-pages .chip {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--ink);
+  background: none;
+}
+
+/* ---------- product card ---------- */
+
+.stall-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 6px 0;
+  animation: stall-card 280ms cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+}
+
+.stall-card-say {
+  margin: 0 30px 2px 0;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--ink);
+  min-height: 17px;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.stall-card-say b {
+  color: #8a5a32;
+  margin-right: 2px;
+}
+
+.stall-card-say b::after {
+  content: ':';
+}
+
+.stall-deal-inline {
+  margin-left: 6px;
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1f4a26;
+  background: #b4e486;
+  border-radius: 3px;
+}
+
+.stall-card-top {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.stall-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-top: 2px dashed rgba(122, 90, 62, 0.25);
+  padding-top: 2px;
+}
+
+.stall-card-foot .stall-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.stall-stock {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--leaf-d);
+}
+
+.stall-stock.low {
+  color: var(--saffron-d);
+  animation: stall-blink 1s steps(2) infinite;
+}
+
+.stall-stock.out {
+  color: var(--red);
+}
+
+.stall-newtag {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 700;
+  color: #7a4a00;
+  background: #ffe45e;
+  padding: 0 5px;
+  border-radius: 3px;
+  box-shadow: 0 1px 0 #b8742a;
+}
+
+@keyframes stall-card {
+  from {
+    transform: translateY(30px) scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.stall-card-x {
+  position: absolute !important;
+  top: -14px;
+  right: -8px;
+  z-index: 2;
+  min-height: 32px !important;
+  min-width: 32px;
+}
+
+.stall-card-art {
+  position: relative;
+  flex: none;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--rar) 55%, #fff) 0 30%, color-mix(in srgb, var(--rar) 30%, #fff6e4) 60%, #fff6e4 100%);
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--rar) 70%, #3b2616),
+    inset 0 0 0 4px #fff6e4;
+}
+
+.stall-card-art img {
+  max-width: 76px;
+  max-height: 76px;
+  image-rendering: pixelated;
+  animation: stall-float 2.4s ease-in-out infinite;
+}
+
+@keyframes stall-float {
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Foil sheen for epic and legendary items, masked to the art itself. */
+.stall-foil {
+  position: absolute;
+  inset: 4px;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.75) 45%, rgba(255, 230, 140, 0.5) 50%, rgba(200, 160, 255, 0.45) 55%, transparent 70%);
+  background-size: 250% 100%;
+  -webkit-mask: var(--art) center / contain no-repeat;
+  mask: var(--art) center / contain no-repeat;
+  mix-blend-mode: screen;
+  animation:
+    stall-sheen 2.2s ease-in-out infinite,
+    stall-float 2.4s ease-in-out infinite;
+}
+
+@keyframes stall-sheen {
+  0% {
+    background-position: 120% 0;
+  }
+  60%,
+  100% {
+    background-position: -40% 0;
+  }
+}
+
+.stall-card-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stall-card-name {
+  font-size: 16px;
+  line-height: 1.25;
+  color: var(--ink);
+  padding-right: 18px;
+}
+
+.stall-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+  align-items: center;
+}
+
+.stall-rar {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  border-radius: 3px;
+  box-shadow: 0 2px 0 rgba(59, 38, 22, 0.35);
+}
+
+.stall-card.foil .stall-rar {
+  background-image: linear-gradient(110deg, transparent 20%, rgba(255, 255, 255, 0.6) 45%, transparent 60%) !important;
+  background-size: 250% 100%;
+  animation: stall-sheen 2.2s ease-in-out infinite;
+}
+
+.stall-kind {
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.stall-kind.season {
+  color: #2f77a8;
+}
+
+.stall-card-desc {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.3;
+  color: var(--ink-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.stall-row {
+  line-height: 1.25;
+}
+
+.stall-buy {
+  flex: none;
+}
+
+.stall-buy .btn {
+  min-width: 104px;
+  min-height: 38px;
+}
+
+.stall-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stall-old {
+  font-family: var(--num);
+  font-size: 13px;
+  opacity: 0.6;
+}
+
+/* Coins flying from the buy button to the shopkeeper. */
+.stall-coin {
+  position: absolute;
+  z-index: 20;
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff3a6 0 25%, #ffd54f 26% 60%, #e9a53a 61%);
+  box-shadow:
+    0 0 0 2px #8a5222,
+    0 2px 0 2px rgba(0, 0, 0, 0.2);
+}
+
+.reduce-motion .stall,
+.reduce-motion .stall-sign,
+.reduce-motion .stall-panel,
+.reduce-motion .stall-card,
+.reduce-motion .stall-choices .btn {
+  animation-duration: 1ms !important;
+}

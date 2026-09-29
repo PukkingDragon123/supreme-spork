@@ -125,7 +125,7 @@ export function stallNpc(shop: PlaceShop, kind: StallKind = stallKindFor(shop)):
   const look: AvatarLook = {
     gender,
     skin: region === 'south' || region === 'northeast' ? r.int(1, 3) : r.int(0, 2),
-    face: r.int(0, 2),
+    face: r.pick([0, 0, 1, 5]),
     hairColor: elder ? 6 : r.chance(0.8) ? r.int(0, 1) : r.int(2, 3),
     hair: r.pick(hairs.filter((h) => OUTFIT_BY_ID[h])) ?? 'hair_short',
     top,
