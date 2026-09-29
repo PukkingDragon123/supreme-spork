@@ -331,6 +331,6 @@ export function outfitDisplaySprite(id: string, base: AvatarLook = MANNEQUIN): S
     const withIt = dollSprite(wearing(o, base), 'stand', { view, blink: true })
     const without = dollSprite(base, 'stand', { view, blink: true })
     const cut = isolate(withIt.canvas, without.canvas) ?? iconSprite('shirt')
-    return cut.w > 30 || cut.h > 32 ? half(cut) : cut
+    return cut.w > 40 || cut.h > 44 ? half(cut) : cut
   })
 }

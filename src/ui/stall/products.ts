@@ -14,6 +14,7 @@ import { collectibleSprite, collectibleUrl } from '../../art/collectibles'
 import { grocerySprite, outfitDisplaySprite, snackSprite } from '../../art/stallGoods'
 import { iconUrl } from '../../art/icons'
 import type { SlotRole, StallSlot } from '../../art/stall'
+import { applyItem, thumbFor } from '../DressUp'
 
 export type ProductKind = 'snack' | 'outfit' | 'grocery' | 'collectible'
 
@@ -111,7 +112,8 @@ export function stallProducts(shop: PlaceShop, kind: StallKind, s: GameState): P
         prefer: prefer('outfit'),
         hangs: true,
         sprite: () => outfitDisplaySprite(o.id),
-        bigUrl: () => spriteDataUrl(outfitDisplaySprite(o.id), 4),
+        // The card shows you wearing it.
+        bigUrl: () => thumbFor(applyItem(s.player.look, o, o.slot as never), o.slot),
       })
     }
   if (shop.mart) {
