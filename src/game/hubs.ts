@@ -5,11 +5,12 @@
 // like src/services/presence.ts; nothing is sent anywhere.
 
 import { game, mutate } from './state'
-import { addCoins, track } from './actions'
+import { addCoins, addMerit, track } from './actions'
 import { toast } from './events'
 import { dayKey } from './time'
 import { Rng } from '../engine/rng'
 import { simulatedProfile } from '../services/social'
+import { presence } from '../services/presence'
 import { OUTFITS } from './data/outfits'
 import { HUB_COLLECTIBLE_BY_ID } from './data/collectibles/hubs'
 
@@ -124,7 +125,7 @@ export const HUB_META: Record<string, HubMeta> = {
       { time: 'ในเกม', text: 'รถไฟผ่านตลาดทุก ~80 วินาที' },
     ],
     npcs: [
-      { id: 'npc:mk_piak', name: 'ลุงเปี๊ยก', role: 'แม่ค้าปลาทู (ตัวจริงเสียงจริง)' },
+      { id: 'npc:mk_piak', name: 'ลุงเปี๊ยก', role: 'พ่อค้าปลาทูประจำราง' },
       { id: 'npc:mk_master', name: 'นายสถานี', role: 'นายสถานีแม่กลอง' },
       { id: 'npc:mk_cam', name: 'พี่กล้อง', role: 'ช่างภาพสายรถไฟ' },
     ],
@@ -300,7 +301,7 @@ export const FAIR_GAMES: Record<FairGameId, FairGameDef> = {
     booth: 'ซุ้มปาลูกโป่งพี่ตุ๊ก',
     icon: 'sparkle',
     goal: 'ปาลูกดอกให้โดนลูกโป่งให้ได้มากที่สุด',
-    steps: ['แตะที่ลูกโป่งเพื่อปาลูกดอก (ลูกดอกบินช้านิดนึง กะจังหวะดี ๆ)', 'ลูกโป่งทอง x3 · ลูกโป่งหมูดึ๋ง +5 · ระวังลูกโป่งลายเมฆ', 'มีลูกดอก 12 ดอก ปาติดกันได้คอมโบ'],
+    steps: ['แตะที่ลูกโป่งเพื่อปาลูกดอก (ลูกดอกบินช้านิดนึง ปาดักหน้าไว้)', 'ลูกโป่งทอง +3 · ลูกโป่งหมูดึ๋งที่ลอยผ่าน +5 · ลูกโป่งเหล็กปาไม่แตก', 'มีลูกดอก 12 ดอก ปาโดนติดกันได้โบนัสคอมโบ'],
     time: 35,
   },
   rings: {
@@ -318,7 +319,7 @@ export const FAIR_GAMES: Record<FairGameId, FairGameDef> = {
     booth: 'ซุ้มยิงปืนจุกเฮียปัง',
     icon: 'star',
     goal: 'ยิงจุกคอร์กให้ของรางวัลตกจากชั้น',
-    steps: ['เป้าจะส่ายไปมา แตะปุ่มยิงตอนเป้าตรงของ', 'ของเล็กโดนทีเดียวตก ของใหญ่ต้องยิงหลายนัด', 'เป็ดวิ่งบนราง ยิงโดนได้โบนัส มีจุก 10 นัด'],
+    steps: ['แตะค้างแล้วลากเพื่อเล็ง (เป้าส่ายนิด ๆ) ปล่อยนิ้วเพื่อยิง', 'ของเล็กโดนทีเดียวตก ตุ๊กตาต้องสองนัด หมียักษ์สามนัด (ยิงหัวแรงกว่า)', 'เป็ดว่ายบนราง ยิงโดนได้โบนัส มีจุก 10 นัด'],
     time: 40,
   },
 }
@@ -365,6 +366,8 @@ export interface FairRoundResult {
   tickets: number
   best: boolean
   total: number
+  /** A little merit: the booths' takings go to the temple. */
+  merit: number
 }
 
 /** Book a finished round: tickets, best score and the fair_game event. */
@@ -379,7 +382,8 @@ export function finishFairRound(gameId: FairGameId, stars: number, score: number
     if (best) d.hubs.best[gameId] = score
   })
   track('fair_game')
-  return { tickets, best, total: game.value.hubs.tickets }
+  const merit = addMerit(1 + Math.max(0, Math.min(3, stars)), { key: `fair:${gameId}`, free: 6 })
+  return { tickets, best, total: game.value.hubs.tickets, merit }
 }
 
 // ---------------------------------------------------------------------------
@@ -467,13 +471,18 @@ export interface HubPost {
 
 const SLOT_MS = 600_000
 
-/** How many (simulated) players are in the whole market right now. */
-export function hubCrowd(id: string, now = Date.now()): number {
+/** Share of everyone online who hangs out at each hub (the rest are at temples). */
+const CROWD_SHARE: Record<string, number> = { hub_chatuchak: 0.12, [FAIR_ID]: 0.08 }
+const CROWD_SHARE_DEFAULT = 0.05
+
+/**
+ * How many (simulated) players are in the whole market right now: a slice of
+ * the game's (simulated) online count, so the numbers on the board add up.
+ */
+export function hubCrowd(id: string, now = Date.now(), online = presence().onlineCount()): number {
   const slot = Math.floor(now / SLOT_MS)
-  const hour = new Date(now).getHours()
-  const busy = hour >= 17 && hour <= 21 ? 1.6 : hour >= 9 && hour <= 12 ? 1.3 : hour < 6 ? 0.4 : 1
-  const base = id === FAIR_ID ? 90 : id === 'hub_chatuchak' ? 140 : 70
-  return Math.round(base * busy * new Rng(`crowd:${id}:${slot}`).range(0.8, 1.25))
+  const share = CROWD_SHARE[id] ?? CROWD_SHARE_DEFAULT
+  return Math.max(8, Math.round(online * share * new Rng(`crowd:${id}:${slot}`).range(0.8, 1.25)))
 }
 
 /** Recent chatter on the board: who is looking for what. */
@@ -483,9 +492,11 @@ export function hubFeed(id: string, now = Date.now(), n = 5): HubPost[] {
   const slot = Math.floor(now / SLOT_MS)
   const r = new Rng(`feed:${id}:${slot}`)
   const out: HubPost[] = []
+  let ago = 0
   for (let i = 0; i < n; i++) {
     const p = simulatedProfile(`feed:${id}:${slot}:${i}`)
-    out.push({ name: p.name, level: p.level, text: r.pick(meta.chat), ago: 1 + i * r.int(1, 4) })
+    ago += r.int(1, 4)
+    out.push({ name: p.name, level: p.level, text: r.pick(meta.chat), ago })
   }
   return out
 }

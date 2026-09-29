@@ -19,6 +19,17 @@ export function hotspotActions(id: string): HotspotAction[] {
     const shop = id.slice(5)
     return [{ label: 'เข้าร้าน', icon: 'shop', run: () => openPlaceShop(shop) }]
   }
+  // Temple fair: `fair:<game>` booths and `fair:prizes` (src/activities/fair).
+  if (id.startsWith('fair:')) {
+    const what = id.slice(5)
+    if (what === 'prizes') return [{ label: 'แลกของรางวัล', icon: 'gift', run: () => openActivity('fair', { booth: 'prizes' }) }]
+    return [
+      { label: 'เล่นเกม', icon: 'play', run: () => openActivity('fair', { game: what }) },
+      { label: 'ซุ้มแลกรางวัล', icon: 'gift', tone: 'paper', run: () => openActivity('fair', { booth: 'prizes' }) },
+    ]
+  }
+  // Hub markets: `board:<hubId>` notice boards.
+  if (id.startsWith('board:')) return [{ label: 'อ่านบอร์ดข่าวตลาด', icon: 'scroll', run: () => openActivity('hub', { hub: id.slice(6) }) }]
   if (id.startsWith('pray')) return [{ label: 'สวดมนต์', icon: 'pray', run: () => openPanel('pray') }]
   if (id.startsWith('cook')) return [{ label: 'ทำอาหาร', icon: 'bowl', run: () => openActivity('cook') }]
   switch (id) {
