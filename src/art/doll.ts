@@ -5242,6 +5242,29 @@ Object.assign(GRAPHICS, {
   hippo: ['.1...1.', '1111111', '1k111k1', '1111111', '2111112', '.11111.', '..1k1..'],
 })
 
+/**
+ * Commit a thin decoration crisply: no auto line on the pixels themselves
+ * (a 1px stroke would turn entirely into line colour), plus an optional 1px
+ * `ring` wherever it sits on top of earlier paint.
+ */
+function commitCrisp(b: Buf, L: Layer, ring: string | null, tag = TAG.deco) {
+  if (ring) {
+    const R = new Layer()
+    for (const i of L.m.keys()) {
+      const x = i % IW
+      const y = (i - x) / IW
+      for (const [dx, dy] of N4) {
+        const nx = x + dx
+        const ny = y + dy
+        if (!inb(nx, ny) || L.has(nx, ny) || b.c[ny * IW + nx] === null) continue
+        R.put(nx, ny, ring)
+      }
+    }
+    commit(b, R, null, tag)
+  }
+  commit(b, L, null, tag)
+}
+
 /** Head items of the v4 drop. */
 function drawV4Head(b: Buf, r: Res, key: string, view: DollView, dy: number, stage: 'under' | 'over'): boolean {
   const L = new Layer()
@@ -5276,10 +5299,14 @@ function drawV4Head(b: Buf, r: Res, key: string, view: DollView, dy: number, sta
       }
       commit(b, E, g.d, TAG.deco)
       dome(1, [5, 7, 9, 10, 11, 11, 12, 12, 12], (x, y, w) => (x >= 13 + w || y === 9 ? g.s : y <= 4 && x <= 16 - w + 3 ? g.l : g.b))
-      // red and gold head cloth band
-      for (let x = 4; x <= 27; x++) {
-        p(x, 10, x % 4 === 0 ? V4.gold.b : '#d8434f')
-        p(x, 11, x % 2 ? V4.gold.b : V4.gold.s)
+      // red and gold head cloth band (crisp, so the thin rows keep their colour)
+      const band = () => {
+        const B = new Layer()
+        for (let x = 4; x <= 27; x++) {
+          B.put(x, Y(10), x % 4 === 0 ? V4.gold.b : '#d8434f')
+          B.put(x, Y(11), x % 2 ? V4.gold.b : V4.gold.s)
+        }
+        commitCrisp(b, B, '#7e2436')
       }
       if (front) {
         map(['...gg...', '..grrg..', '.grryrg.', 'gggggggg'], 12, -1, { g: V4.gold.b, r: '#d8434f', y: '#fff3a6' })
@@ -5290,6 +5317,7 @@ function drawV4Head(b: Buf, r: Res, key: string, view: DollView, dy: number, sta
         // tusks
         p(13, 9, '#fffaf0'); p(18, 9, '#fffaf0')
         done(g.d)
+        band()
         // curled-up trunk over the fringe
         const T = tubeLayer([[15.5, Y(6.5)], [15.5, Y(10)], [16.3, Y(12.6)], [18.5, Y(13.2)], [20.2, Y(11.4)]], 1.8, 1, (t, oy) => (Math.floor(t * 9) % 2 === 1 ? g.b : oy > 0.3 ? g.b : oy < -0.4 ? '#e6e3f2' : g.l))
         commit(b, T, g.d, TAG.deco)
@@ -5304,6 +5332,7 @@ function drawV4Head(b: Buf, r: Res, key: string, view: DollView, dy: number, sta
             p(x, y, border ? (x + y) % 2 ? V4.gold.b : V4.gold.s : Math.abs(x - 15.5) + Math.abs(y - 8) < 3 ? V4.gold.b : '#d8434f')
           }
         done(g.d)
+        band()
       }
       return true
     }
@@ -5319,16 +5348,18 @@ function drawV4Head(b: Buf, r: Res, key: string, view: DollView, dy: number, sta
       for (let x = 3; x <= 28; x++) p(x, 10, x >= 25 ? st.b : st.l)
       for (let x = 2; x <= 29; x++) p(x, 11, x >= 26 ? st.s : x % 5 === 0 ? st.l : st.b)
       for (let x = 3; x <= 28; x++) p(x, 12, st.d)
-      if (front) {
-        // pink straw rope tied under the chin
-        const R: Pt[] = [[6, 13], [6, 14], [7, 15], [7, 16], [7, 17], [7, 18], [7, 19], [8, 20], [9, 21], [10, 22], [12, 23], [13, 24]]
-        for (const [x, y] of R) {
-          p(x, y, V4.rope)
-          p(31 - x, y, V4.rope)
-        }
-        map(['rr..rr', '.rRRr.', 'rr..rr'], 13, 23, { r: V4.rope, R: '#ffb3d6' })
-      } else for (const x of [6, 25]) for (let y = 13; y <= 16; y++) p(x, y, V4.rope)
       done(st.d)
+      // pink straw rope tied under the chin
+      const RL = new Layer()
+      if (front) {
+        const R: Pt[] = [[6, 13], [6, 14], [7, 15], [7, 16], [7, 17], [7, 18], [7, 19], [8, 20], [9, 21], [10, 22], [11, 22], [12, 23]]
+        for (const [x, y] of R) {
+          RL.put(x, Y(y), V4.rope)
+          RL.put(31 - x, Y(y), V4.rope)
+        }
+        mapLayer(['rr..rr', '.rRRr.', 'rr..rr'], 13, Y(23), { r: V4.rope, R: '#ffb3d6' }, false, RL)
+      } else for (const x of [6, 25]) for (let y = 13; y <= 16; y++) RL.put(x, Y(y), V4.rope)
+      commitCrisp(b, RL, null)
       return true
     }
     case 'rescuehelmet': {
@@ -5418,16 +5449,18 @@ function drawV4Head(b: Buf, r: Res, key: string, view: DollView, dy: number, sta
       if (stage !== 'over') return true
       // bamboo basket-weave band
       for (let x = 5; x <= 26; x++) {
-        p(x, 8, (x % 2 ? '#d9b98a' : '#c9a06b'))
+        p(x, 8, (x % 2 ? '#e6c89a' : '#c9a06b'))
         p(x, 9, (x % 2 ? '#a8804e' : '#c9a06b'))
       }
-      // two mackerels with the famous bent neck, heads down into the band
-      // silver body, blue-grey back, yellow-green gill line, big round eye
+      commitCrisp(b, L, '#6e4a2e')
+      // two mackerels with the famous bent neck, heads down into the band:
+      // silver belly, blue-grey back, yellow gill line, big round eye
       const FISH = ['........TT', '.......TtT', '..bbbbbbt.', '.bbsssssy.', 'bWksssy...', 'bkks......', '.ss.......']
-      const pal = { b: '#4f6882', s: '#dfe8f2', W: '#ffffff', k: '#1f2a38', t: '#8a9cb0', T: '#aebccc', y: '#c9d66a' }
-      map(FISH, 4, 1, pal)
-      map(FISH, 18, 1, pal, true)
-      done('#3a4a5e')
+      const pal = { b: '#6f8aa6', s: '#eef3f8', W: '#ffffff', k: '#1f2a38', t: '#8a9cb0', T: '#c3cfdc', y: '#e0d25a' }
+      const F = new Layer()
+      mapLayer(FISH, 4, Y(1), pal, false, F)
+      mapLayer(FISH, 18, Y(1), pal, true, F)
+      commitCrisp(b, F, '#2e3a4a')
       return true
     }
     case 'malaibun': {
@@ -5438,26 +5471,30 @@ function drawV4Head(b: Buf, r: Res, key: string, view: DollView, dy: number, sta
       const rose = '#e8514a'
       if (front) {
         // bun peeking over the crown, garland around it
-        ellLayer(15.5, Y(2.6), 4.6, 3.2, (_x, _y, u, v) => (u > 0.45 || v > 0.5 ? hr.s : u < -0.3 && v < -0.2 ? hr.l : hr.b), L)
-        for (let x = 10; x <= 21; x++) p(x, 5, x % 3 === 0 ? mari : x % 3 === 1 ? jas : x === 17 ? rose : '#f5f0dc')
-        for (const x of [11, 20]) p(x, 4, jas)
+        ellLayer(15.5, Y(2.2), 4.6, 3.2, (_x, _y, u, v) => (u > 0.45 || v > 0.5 ? hr.s : u < -0.3 && v < -0.2 ? hr.l : hr.b), L)
         done(hr.d)
-        // tassel (อุบะ) hanging by the ear
+        // garland wrapped round the bun + a tassel (อุบะ) hanging by the ear
         const U = new Layer()
+        for (let x = 10; x <= 21; x++) {
+          U.put(x, Y(4), x % 3 === 0 ? mari : x % 3 === 1 ? jas : x === 17 ? rose : '#f5f0dc')
+          U.put(x, Y(5), x % 3 === 1 ? mari : x % 3 === 2 ? jas : '#f5f0dc')
+        }
         for (const [x, y, c] of [[22, 5, jas], [22, 6, jas], [23, 7, '#f5f0dc'], [23, 8, jas], [23, 9, jas], [24, 10, '#f5f0dc'], [24, 11, rose], [23, 12, rose], [24, 12, '#ff8a7a'], [24, 13, '#5ea653']] as [number, number, string][]) U.put(x, Y(y), c)
-        commit(b, U, '#8a8a70', TAG.deco)
+        commitCrisp(b, U, hr.d)
       } else {
         ellLayer(15.5, Y(4.5), 5.2, 4.3, (x, y, u, v) => (u > 0.5 || v > 0.55 ? hr.s : u < -0.35 && v < -0.2 ? hr.l : (x + y) % 5 === 0 ? hr.s : hr.b), L)
+        done(hr.d)
+        const U = new Layer()
         for (let x = 10; x <= 21; x++) {
-          p(x, 8, x % 3 === 0 ? mari : x % 3 === 1 ? jas : '#f5f0dc')
-          p(x, 9, x % 3 === 1 ? mari : x % 3 === 2 ? jas : rose)
+          U.put(x, Y(8), x % 3 === 0 ? mari : x % 3 === 1 ? jas : '#f5f0dc')
+          U.put(x, Y(9), x % 3 === 1 ? mari : x % 3 === 2 ? jas : rose)
         }
         for (let y = 10; y <= 17; y++) {
-          p(15, y, y % 2 ? jas : '#f5f0dc')
-          p(16, y, y % 3 === 0 ? mari : jas)
+          U.put(15, Y(y), y % 2 ? jas : '#f5f0dc')
+          U.put(16, Y(y), y % 3 === 0 ? mari : jas)
         }
-        p(15, 18, rose); p(16, 18, rose); p(15, 19, '#5ea653'); p(16, 19, '#43905a')
-        done(hr.d)
+        for (const [x, y, c] of [[15, 18, rose], [16, 18, rose], [15, 19, '#5ea653'], [16, 19, '#43905a']] as [number, number, string][]) U.put(x, Y(y), c)
+        commitCrisp(b, U, hr.d)
       }
       return true
     }
@@ -5468,10 +5505,10 @@ function drawV4Head(b: Buf, r: Res, key: string, view: DollView, dy: number, sta
       spots.forEach(([x, y], i) => {
         const c = cols[i % cols.length]
         const m = mat(c)
-        map(['.cc.', 'cCcc', 'cccs', '.ss.'].map((row) => row), x, y, { c: m.b, C: m.l, s: m.s })
-        if (front) p(x + 1, y + 1, mix(m.s, INK, 0.3))
+        map(['.cc.', 'cCcc', 'cccs', '.ss.'], x, y, { c: m.b, C: m.l, s: m.s })
+        if (front) p(x + 1, y + 2, mix(m.s, INK, 0.3))
       })
-      done('#6a5a70')
+      commitCrisp(b, L, mix(r.hr.d, INK, 0.3))
       return true
     }
     case 'hippoears': {
@@ -5482,7 +5519,7 @@ function drawV4Head(b: Buf, r: Res, key: string, view: DollView, dy: number, sta
         p(x, 9, g.s)
       }
       pair(['.gg.', 'gppg', 'gpPg', '.gg.'], 6, 3, { g: g.b, p: front ? '#ff9fc0' : g.s, P: front ? '#ffb3cf' : g.s })
-      done(g.d)
+      commitCrisp(b, L, g.d)
       return true
     }
   }
@@ -5502,15 +5539,16 @@ function drawV4Neck(b: Buf, key: string, view: DollView, dy: number): boolean {
       const c = '#ff8a2a'
       if (!front) {
         for (let x = 13; x <= 18; x++) p(x, 24, c)
-        commit(b, L, '#b8542a', TAG.deco)
+        commitCrisp(b, L, null)
         return true
       }
       for (const [x, y] of V) {
         p(x, y, c)
         p(31 - x, y, c)
       }
-      map(['..ww...', '.ooooOk', 'oOoooos', '.osss..'], 12, 28, { o: '#ff8a2a', O: '#ffc080', s: '#d06018', w: '#c9ccda', k: '#3a2838' })
-      commit(b, L, '#8a3a10', TAG.deco)
+      commitCrisp(b, L, null)
+      const W = mapLayer(['..ww...', '.ooooOk', 'oOoooos', '.osss..'], 12, Y(28), { o: '#ff8a2a', O: '#ffc080', s: '#d06018', w: '#c9ccda', k: '#3a2838' })
+      commitCrisp(b, W, '#8a3a10')
       return true
     }
     case 'saimu': {
@@ -5579,7 +5617,6 @@ function drawV4Hand(b: Buf, key: string, hx: number, hy: number, mirror: boolean
   switch (key) {
     case 'bailer':
       map(['...wwwwww.', 'hhpppppppp', '..pPPPPPps', '...pPPPps.', '....ssss..'], -1, -1, { p: '#ff7eb6', P: '#ffb3d6', s: '#d9508f', h: '#ff7eb6', w: '#9fd8ff' })
-      p(8, 5, '#9fd8ff'); p(6, 7, '#bfe6ff')
       line = '#a8306a'
       break
     case 'megaphone':
@@ -5691,7 +5728,7 @@ function drawV4Back(b: Buf, r: Res, key: string, view: DollView, dy: number, sta
           S.put(21 - i, Y(24 + i), '#c9bca0')
         }
         for (const i of [...S.m.keys()]) if (b.c[i] === null) S.m.delete(i)
-        commit(b, S, '#8a7a5a', TAG.deco)
+        commitCrisp(b, S, null)
       }
       if (!front && stage === 'body') {
         const R = ring(15.5, Y(30.5), 8, 4)
@@ -5758,7 +5795,7 @@ function drawV4Back(b: Buf, r: Res, key: string, view: DollView, dy: number, sta
         commitBehind(b, S, '#a8541f')
       }
       if (!front && stage === 'body') {
-        commit(b, straw(false), '#8e2a5a', TAG.deco)
+        commitCrisp(b, straw(false), '#8e2a5a')
         commit(b, cup(), '#a8541f', TAG.deco)
       }
       return
