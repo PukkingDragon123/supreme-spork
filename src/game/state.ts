@@ -11,6 +11,7 @@ import { levelFromMerit } from './economy'
 import { emptyMaterials, type Materials } from './materials'
 import { defaultHouse, normalizeHouse, type HouseState } from './house'
 import { weekKey } from './time'
+import { defaultLiveEvents, normalizeLiveEvents, type LiveEventsState } from './events/save'
 
 export const SAVE_KEY = 'boondee.save.v1'
 export const SAVE_VERSION = 2
@@ -139,6 +140,8 @@ export interface GameState {
   social: { friends: string[]; groupId: string | null; created: CreatedGroup[]; reacted: Record<string, boolean>; groupClaims: Record<string, number> }
   settings: Settings
   lastArea: AreaId
+  /** Live events (tickets, missions, battle pass) keyed by event id. */
+  liveEvents: LiveEventsState
 }
 
 export function makeFriendCode(): string {
@@ -208,6 +211,7 @@ export function defaultState(): GameState {
     social: { friends: [], groupId: null, created: [], reacted: {}, groupClaims: {} },
     settings: { sound: true, music: true, time: 'real', haptics: true, reduceMotion: false },
     lastArea: 'wat',
+    liveEvents: defaultLiveEvents(),
   }
 }
 
@@ -235,6 +239,7 @@ export function migrate(raw: unknown): GameState {
     house: s.house ? normalizeHouse(s.house) : base.house,
     places: { ...base.places, ...(s.places ?? {}) },
     market: { ...base.market, ...(s.market ?? {}) },
+    liveEvents: normalizeLiveEvents(s.liveEvents),
     v: SAVE_VERSION,
   }
   // v1 called the main temple 'home'; it is 'wat' now that players have a house.
