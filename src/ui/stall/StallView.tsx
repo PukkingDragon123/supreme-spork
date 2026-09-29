@@ -31,7 +31,7 @@ import { signInk } from '../../art/stall'
 import type { DollPose } from '../../art/doll'
 import { StallScene, type Emote } from './scene'
 import { stallProducts, type Product } from './products'
-import { brokeLine, buyLine, byeLine, haggleLine, lookLine, recommendLine, soldOutLine, thanksLine } from './dialogue'
+import { brokeLine, buyLine, byeLine, haggleLine, lookLine, pokeLine, recommendLine, soldOutLine, thanksLine } from './dialogue'
 import type { CollectibleKind } from '../../game/data/collectibleTypes'
 
 export interface StallApi {
@@ -155,6 +155,8 @@ export function StallView({ shop, onClose, extraChoices = [] }: { shop: PlaceSho
   const buyBtn = useRef<HTMLDivElement>(null)
   const choicesRef = useRef<HTMLDivElement>(null)
   const bubbleRef = useRef<HTMLDivElement>(null)
+  /** Tallest reply list seen this visit: the stall only moves up, never back down. */
+  const maxInset = useRef(0)
   const s = game.value
   const [sel, setSel] = useState<number | null>(null)
   const [line, setLine] = useState({ text: shop.greeting, id: 0 })
@@ -240,7 +242,8 @@ export function StallView({ shop, onClose, extraChoices = [] }: { shop: PlaceSho
       const tabs = panel.current?.querySelector('.stall-pages') as HTMLElement | null
       const bub = bubbleRef.current ? bubbleRef.current.offsetHeight + 18 : BUBBLE_H
       const css = el.offsetHeight + (tabs?.offsetHeight ?? 0) + Math.min(bub, BUBBLE_H + 10) + 10
-      sc.setInsets(Math.round(58 / st.cssScale), Math.round(css / st.cssScale))
+      maxInset.current = Math.max(maxInset.current, Math.round(css / st.cssScale))
+      sc.setInsets(Math.round(58 / st.cssScale), maxInset.current)
       const L = sc.L
       if (L.sign[3]) {
         const [x, y] = st.toCss(L.sign[0], L.sign[1])
@@ -252,7 +255,11 @@ export function StallView({ shop, onClose, extraChoices = [] }: { shop: PlaceSho
     fit()
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null
     ro?.observe(el)
-    const onWin = () => setTimeout(fit, 50)
+    const onWin = () =>
+      setTimeout(() => {
+        maxInset.current = 0
+        fit()
+      }, 50)
     window.addEventListener('resize', onWin)
     return () => {
       ro?.disconnect()
@@ -281,7 +288,7 @@ export function StallView({ shop, onClose, extraChoices = [] }: { shop: PlaceSho
       onTapNpc: () => {
         sc.react('happy', 'heart', 0.8)
         sfx.tap()
-        say(pickOne(['จิ้มป้าทำไมจ๊ะ อายนะ~ ซื้อของสิ 555', 'หัวเราะก่อน ฮ่า ๆ ๆ เลือกของได้เลยนะ', 'เอ๊ะ! มีอะไรติดหน้าเหรอ']))
+        say(pokeLine(npc))
       },
       onTapEmpty: () => {
         if (sel !== null) deselect()
@@ -517,10 +524,6 @@ export function StallView({ shop, onClose, extraChoices = [] }: { shop: PlaceSho
       </div>
     </div>
   )
-}
-
-function pickOne<T>(a: T[]): T {
-  return a[Math.floor(Math.random() * a.length)]
 }
 
 function Row({ children }: { children: ComponentChildren }) {

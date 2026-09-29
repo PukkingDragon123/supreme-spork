@@ -371,11 +371,6 @@ export class StallScene implements Scene {
     if (soldOut) g.alpha(0.45)
     g.draw(sp.canvas, x, y)
     g.alpha(1)
-    if (s.role === 'case') {
-      g.alpha(0.18)
-      g.rect(x, y, sp.w, sp.h, '#d4f1ff')
-      g.alpha(1)
-    }
     if (soldOut) {
       // Red "sold out" tape.
       g.rect(x - 2, y + sp.h / 2 - 2, sp.w + 4, 5, '#e8514a')

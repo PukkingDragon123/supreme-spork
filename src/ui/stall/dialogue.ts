@@ -12,9 +12,14 @@ function by(npc: StallNpc, l: Lines): string {
   const own = l[npc.dialect]
   const list = own && own.length ? own : l.central
   const politeM = npc.gender === 'm'
+  // How the shopkeeper calls themself (ป้า / ลุง / พี่) and you (ลูก / หลาน / น้อง).
+  const me = npc.elder ? (politeM ? 'ลุง' : 'ป้า') : 'พี่'
+  const you = npc.elder ? (politeM ? 'หลาน' : 'ลูก') : 'น้อง'
   return pick(list)
     .replace(/\{k\}/g, politeM ? 'ครับ' : 'ค่ะ')
     .replace(/\{j\}/g, politeM ? 'ครับ' : 'จ้า')
+    .replace(/\{me\}/g, me)
+    .replace(/\{you\}/g, you)
 }
 
 function fill(t: string, v: Record<string, string>) {
@@ -45,7 +50,7 @@ export function recommendLine(npc: StallNpc, shop: PlaceShop, item: { name: stri
   if (item.kind === 'snack')
     return fill(
       by(npc, {
-        central: ['ลอง {n} สิ{j} อร่อยจนต้องกลับมาซื้อซ้ำ', '{n} เลย{j} ทำใหม่ร้อน ๆ กินแล้วมีแรงทำบุญ', 'ขายดีสุดคือ {n}{j} ป้ารับประกันความอร่อย'],
+        central: ['ลอง {n} สิ{j} อร่อยจนต้องกลับมาซื้อซ้ำ', '{n} เลย{j} ทำใหม่ร้อน ๆ กินแล้วมีแรงทำบุญ', 'ขายดีสุดคือ {n}{j} {me}รับประกันความอร่อย'],
         north: ['กิ๋น {n} ก่อนเน้อ ลำขนาดเจ้า', '{n} ลำแต๊ ๆ เจ้า ลองแล้วจะติดใจ'],
         isan: ['{n} แซ่บหลายเด้อ ลองเบิ่งแน่', 'เอา {n} บ่ อร่อยคักเด้อ'],
         south: ['{n} หรอยจังฮู้ ลองดูหนา', 'กิน {n} แล้วจะหรอยไปทั้งวัน'],
@@ -72,7 +77,7 @@ export function recommendLine(npc: StallNpc, shop: PlaceShop, item: { name: stri
 export function haggleLine(npc: StallNpc, discount: number, again: boolean): string {
   if (again)
     return by(npc, {
-      central: ['ต่อไปแล้ววันนี้ไง{j} พรุ่งนี้ค่อยมาต่อใหม่', 'อ้าว ต่อซ้ำไม่ได้นะ{j} ต้นทุนป้าก็ต้องกินนะ'],
+      central: ['ต่อไปแล้ววันนี้ไง{j} พรุ่งนี้ค่อยมาต่อใหม่', 'อ้าว ต่อซ้ำไม่ได้นะ{j} ต้นทุน{me}ก็ต้องกินนะ'],
       north: ['ต่อไปแล้วเจ้า ปรือนี้ค่อยมาใหม่เน้อ'],
       isan: ['ต่อแล้วเด้อ บ่ได้แล้วมื้อนี้'],
       south: ['ต่อไปแล้วหนา พรุ่งนี้ค่อยมาแหลงใหม่'],
@@ -101,7 +106,7 @@ export function haggleLine(npc: StallNpc, discount: number, again: boolean): str
       teen: ['โอเคค่ะ ลด 10% ให้ เพราะน่ารัก~'],
     })
   return by(npc, {
-    central: ['ลดได้แต่น้ำหนักนะ{j} ราคาลดไม่ได้ 555', 'ราคานี้ต่ำสุดแล้ว{j} ต่อกว่านี้ป้าต้องไปบวชแล้ว', 'ต่อราคาได้ แต่ขอต่อชีวิตป้าด้วยนะ ไม่ได้{j}'],
+    central: ['ลดได้แต่น้ำหนักนะ{j} ราคาลดไม่ได้ 555', 'ราคานี้ต่ำสุดแล้ว{j} ต่อกว่านี้{me}ต้องไปบวชแล้ว', 'ต่อราคาได้ แต่ขอต่อชีวิต{me}ด้วยนะ ไม่ได้{j}'],
     north: ['บ่ได้เจ้า ราคานี้ถูกแล้วเน้อ', 'ลดบ่ได้แล้วเจ้า ต้นทุนแปงเองกับมือ'],
     isan: ['บ่ได้ดอกเด้อ ราคานี้ถูกหลายแล้ว', 'ลดบ่ได้ ต้นทุนสูงเด้อ ข้าวเหนียวก็แพง'],
     south: ['ไม่ได้หนา ราคานี้ถูกแล้วจังฮู้', 'ลดไม่ได้แล้ว ของดีแท้ ๆ'],
@@ -114,7 +119,7 @@ export function haggleLine(npc: StallNpc, discount: number, again: boolean): str
 export function thanksLine(npc: StallNpc, shop: PlaceShop): string {
   if (shop.lines?.thanks?.length && Math.random() < 0.4) return pick(shop.lines.thanks)
   return by(npc, {
-    central: ['ขอบใจจ้า เดินทางปลอดภัยนะ ทำบุญให้สนุก', 'ด้วยความยินดี{j} แวะมาใหม่นะ', 'ยินดีจ้า ขอให้บุญรักษานะลูก'],
+    central: ['ขอบใจจ้า เดินทางปลอดภัยนะ ทำบุญให้สนุก', 'ด้วยความยินดี{j} แวะมาใหม่นะ', 'ยินดี{j} ขอให้บุญรักษานะ{you}'],
     north: ['ขอบคุณเจ้า แอ่วมาใหม่เน้อ', 'ยินดีเจ้า ไปดีมาดีเน้อ'],
     isan: ['ขอบใจหลายเด้อ มาแอ่วอีกเด้อ', 'ยินดีเด้อ โชคดีเด้อ'],
     south: ['ขอบใจหนา มาอีกนะหลาว', 'ยินดีจังฮู้ ไปดีมาดีหนา'],
@@ -137,7 +142,7 @@ export function buyLine(npc: StallNpc, shop: PlaceShop, kind: string): string {
       teen: ['ขอบคุณค่ะ! ตัวแม่สายสะสมเลย'],
     })
   return by(npc, {
-    central: ['ขอบใจจ้า! อร่อยแล้วมาบอกกันนะ', 'ขอบใจจ้า! ทานให้อร่อยนะลูก'],
+    central: ['ขอบใจจ้า! อร่อยแล้วมาบอกกันนะ', 'ขอบใจ{j}! ทานให้อร่อยนะ{you}'],
     north: ['ขอบใจเจ้า! กิ๋นหื้อลำเน้อ'],
     isan: ['ขอบใจหลายเด้อ! กินให้แซ่บเด้อ'],
     south: ['ขอบใจหนา! กินให้หรอยจังฮู้'],
@@ -177,6 +182,18 @@ export function byeLine(npc: StallNpc): string {
     chinese: ['ไปดี ๆ เฮงเฮง'],
     polite: ['ขอบคุณที่ใช้บริการ{k}~'],
     teen: ['บ๊ายบายค่ะ~'],
+  })
+}
+
+export function pokeLine(npc: StallNpc): string {
+  return by(npc, {
+    central: ['จิ้ม{me}ทำไม{j} อายนะ~ ซื้อของสิ 555', 'หัวเราะก่อน ฮ่า ๆ ๆ เลือกของได้เลยนะ{you}', 'เอ๊ะ! มีอะไรติดหน้า{me}เหรอ'],
+    north: ['จิ้มหยังเจ้า อายเน้อ 555', 'หัวใจ{me}เต้นแรงแล้วเจ้า เลือกของเลยเน้อ'],
+    isan: ['จิ้มหยังเด้อ อายแล้ว 555', 'ฮ่า ๆ บ่ต้องจิ้ม เลือกของเลยเด้อ'],
+    south: ['จิ้มไหรหนา อายจังฮู้ 555', 'อย่าจิ้ม ๆ เลือกของเลยหนา'],
+    chinese: ['โอ๊ย ลื้อจิ้มอั๊วทำไม ซื้อของดีกว่า เฮงเฮง', 'อั๊วจั๊กจี้! 555'],
+    polite: ['มีอะไรให้ช่วยไหม{k}~', 'ยินดีต้อนรับ{k}! (ยิ้มกว้าง)'],
+    teen: ['จิ้มทำไมคะ เขิน 555', 'หนูไม่ใช่ปุ่มนะคะ 555'],
   })
 }
 

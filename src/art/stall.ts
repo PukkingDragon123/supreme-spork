@@ -99,8 +99,10 @@ export function stallLayout(kind: StallKind, w: number, h: number, insetTop: num
   const side = Math.max(30, npcX + 6)
   const st = KIND_STYLE[kind]
   const slots: StallSlot[] = []
+  // The mart sells small packets, so it packs its shelves tighter.
+  const pitch = kind === 'mart' ? 24 : 28
   const across = (row: 'A' | 'B', y: number, style: RowStyle) => {
-    const n = Math.max(4, Math.min(6, Math.floor((w - 8) / 30)))
+    const n = Math.max(4, Math.min(7, Math.floor((w - 8) / pitch)))
     const gap = (w - 8) / n
     for (let i = 0; i < n; i++) {
       const role: SlotRole = style === 'shelf' ? 'shelf' : style === 'rack' ? 'rack' : 'hook'
@@ -111,14 +113,14 @@ export function stallLayout(kind: StallKind, w: number, h: number, insetTop: num
   across('B', rowB, st.rows.B)
   // Beside the NPC.
   const cRole: SlotRole = st.rows.C === 'shelf' ? 'shelf' : 'hook'
-  const perSide = side >= 58 ? 2 : 1
+  const perSide = side >= 58 || (kind === 'mart' && side >= 44) ? 2 : 1
   for (let i = 0; i < perSide; i++) {
     const cx = Math.round((side / perSide) * (i + 0.5))
     slots.push({ x: cx, y: cRole === 'shelf' ? rowC : rowC - 26, w: Math.floor(side / perSide) - 2, role: cRole, front: false, row: 'C' })
     slots.push({ x: w - cx, y: cRole === 'shelf' ? rowC : rowC - 26, w: Math.floor(side / perSide) - 2, role: cRole, front: false, row: 'C' })
   }
   // Counter top.
-  const n = Math.max(4, Math.min(6, Math.floor((w - 6) / 30)))
+  const n = Math.max(4, Math.min(7, Math.floor((w - 6) / pitch)))
   const gap = (w - 6) / n
   for (let i = 0; i < n; i++) slots.push({ x: Math.round(3 + gap * (i + 0.5)), y: counterY + 2, w: Math.floor(gap) - 2, role: st.counter === 'case' ? 'case' : 'counter', front: true, row: 'D' })
   return { w, h, top, sign, awningH, rowA, rowB, rowC, counterY, counterH: 40, npcX, npcY, side, slots }
@@ -177,7 +179,7 @@ function stripedAwning(g: Surface, L: StallLayout, m: Mood) {
     const c = Math.floor(x / 8) % 2 ? m.awn[1] : m.awn[0]
     g.vline(x, top + 8, hem, c)
   }
-  g.dither(0, hem - 6, w, 6, null, 'rgba(58,40,56,0.18)', 0.5)
+  g.rect(0, hem - 5, w, 5, 'rgba(58,40,56,0.12)')
   scallop(g, 0, w, hem, m.awn[0], m.awn[1])
   g.rect(0, top + 6, w, 3, mix(m.awn[0], P.ink, 0.35))
   g.hline(0, w, top + 6, mix(m.awn[0], '#ffffff', 0.3))
@@ -287,10 +289,17 @@ function skyAndPlace(g: Surface, L: StallLayout, m: Mood, seed: number) {
 
 function interior(g: Surface, L: StallLayout, m: Mood) {
   const { w, h } = L
-  g.rect(0, 0, w, h, m.wall)
-  g.dither(0, 0, w, L.top + 30, null, m.wallD, 0.35)
-  // Warm light from above.
-  g.ditherCircle(w / 2, L.top + 40, w * 0.55, m.wallL, 0.35, 0.8)
+  // Darker ceiling fading into the wall, a warm pool of light behind the
+  // shopkeeper and soft side vignettes.
+  g.gradientV(0, 0, w, L.top + 40, [mix(m.wallD, P.ink, 0.25), m.wallD, m.wall], 4)
+  g.rect(0, L.top + 40, w, h, m.wall)
+  g.ellipse(w / 2, L.npcY + 20, w * 0.42, 46, mix(m.wall, m.wallL, 0.35))
+  g.ellipse(w / 2, L.npcY + 22, w * 0.3, 34, mix(m.wall, m.wallL, 0.6))
+  for (let i = 0; i < 6; i++) {
+    const a = 0.1 - i * 0.016
+    g.rect(i, 0, 1, h, `rgba(40,20,30,${a})`)
+    g.rect(w - 1 - i, 0, 1, h, `rgba(40,20,30,${a})`)
+  }
   g.rect(0, L.counterY - 6, w, h, m.floor)
 }
 
@@ -471,17 +480,27 @@ const BACK: Record<StallKind, Painter> = {
   },
   teahouse(g, L, m) {
     interior(g, L, m)
-    // Round moon window with a bamboo view.
+    // Round moon window: a warm dusk over misty hills, framed in dark wood
+    // with a lattice rim (so the view never reads as the shopkeeper's hair).
     const cx = L.w / 2
-    const cy = L.rowB + 28
-    g.circle(cx, cy, 30, m.woodD)
-    g.circle(cx, cy, 27, '#bfe3c8')
-    for (let x = cx - 22; x < cx + 24; x += 7) {
-      g.vline(x, cy - 26, cy + 26, '#6cc36a')
-      g.px(x + 1, cy - 10, '#43905a')
-      g.px(x - 1, cy + 4, '#43905a')
+    const cy = L.rowB + 30
+    g.circle(cx, cy, 31, '#2a120c')
+    g.circle(cx, cy, 29, m.woodD)
+    g.circle(cx, cy, 26, '#ffcf8a')
+    g.ellipse(cx, cy - 12, 22, 9, '#ffe2a8')
+    g.circle(cx + 10, cy - 8, 5, '#fff3c8')
+    g.ellipse(cx - 10, cy + 12, 20, 10, '#c98a6a')
+    g.ellipse(cx + 12, cy + 16, 22, 11, '#a86a54')
+    g.ellipse(cx, cy + 24, 26, 8, '#7a4a3a')
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2
+      g.px(cx + Math.cos(a) * 27.5, cy + Math.sin(a) * 27.5, m.trim)
     }
-    g.ditherCircle(cx, cy, 27, '#ffffff', 0.25)
+    // Bamboo leaves at the sides of the view.
+    for (const [x, y, f] of [[cx - 22, cy - 6, 1], [cx + 21, cy + 2, -1]] as [number, number, number][]) {
+      g.vline(x, y - 12, y + 14, '#5e8a3a')
+      for (let k = 0; k < 4; k++) g.line(x, y - 8 + k * 6, x + f * 5, y - 10 + k * 6, '#6cc36a')
+    }
     // Tiled eave with gold trim.
     g.rect(0, L.top, L.w, 12, m.awn[0])
     for (let x = 0; x < L.w; x += 6) g.rect(x, L.top + 2, 3, 10, mix(m.awn[0], P.ink, 0.25))
@@ -720,7 +739,7 @@ export function drawStallFx(g: Surface, kind: StallKind, L: StallLayout, t: numb
     if (kind === 'mart' && Math.sin(t * 13) > 0.97) g.rect(0, L.top, L.w, 17, 'rgba(255,255,255,0.12)')
     return
   }
-  if (kind === 'noodle') steam(g, 12, y - 18, t, 14)
+  if (kind === 'noodle') steam(g, 12, y - 18, t, 16, '176,188,206')
   if (kind === 'teahouse') steam(g, L.w - 18, y - 12, t, 8)
   if (kind === 'snack') {
     // Charcoal grill smoke at the left end.
@@ -738,11 +757,11 @@ export function drawStallFx(g: Surface, kind: StallKind, L: StallLayout, t: numb
   }
 }
 
-function steam(g: Surface, x: number, y: number, t: number, n: number) {
+function steam(g: Surface, x: number, y: number, t: number, n: number, rgb = '255,255,255') {
   for (let i = 0; i < n; i++) {
     const k = (t * 0.5 + i / n) % 1
     const sx = x + Math.sin(k * 7 + i * 1.7) * (2 + k * 4)
-    g.ellipse(sx, y - k * 26, 1.2 + k * 2.4, 1 + k * 2, `rgba(255,255,255,${(1 - k) * 0.55})`)
+    g.ellipse(sx, y - k * 30, 1.4 + k * 3, 1.2 + k * 2.4, `rgba(${rgb},${(1 - k) * 0.6})`)
   }
 }
 
@@ -772,7 +791,12 @@ export function drawContainer(g: Surface, kind: StallKind, s: StallSlot, i: numb
       g.hline(x - 12, x + 11, y + 1, '#b8a88c')
     }
   } else if (s.role === 'case') {
-    g.ellipse(s.x, s.y - 2, 11, 2.5, 'rgba(58,20,20,0.35)')
+    // A little red velvet cushion on top of the glass case.
+    g.ellipse(s.x, s.y - 1, 11, 3, '#6e1a24')
+    g.ellipse(s.x, s.y - 1.6, 10, 2.4, '#b8343f')
+    g.hline(s.x - 6, s.x + 4, s.y - 3, '#e86060')
+    g.px(s.x - 11, s.y, '#ffd54f')
+    g.px(s.x + 11, s.y, '#ffd54f')
   } else if (s.role === 'shelf') {
     g.ellipse(s.x, s.y, 10, 1.5, 'rgba(58,40,56,0.22)')
   }
