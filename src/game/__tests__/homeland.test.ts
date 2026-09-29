@@ -67,7 +67,8 @@ describe('provinces', () => {
   it('covers every region, matching the provinces of the map places', () => {
     const counts = Object.fromEntries(REGIONS.map((r) => [r.id, provincesOf(r.id).length]))
     expect(counts).toEqual({ bangkok: 1, central: 14, north: 16, northeast: 20, east: 7, west: 5, south: 14 })
-    for (const pl of PLACES) {
+    // The temple fair sits in the fictional hometown circle; every other place is real.
+    for (const pl of PLACES.filter((x) => x.kind !== 'fair')) {
       const pr = PROVINCES.find((p) => p.name === pl.province)
       expect(pr, pl.province).toBeTruthy()
       expect(pr!.region).toBe(pl.region)

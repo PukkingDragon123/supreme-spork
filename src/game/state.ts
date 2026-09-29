@@ -15,6 +15,7 @@ import { weekKey } from './time'
 import { defaultLiveEvents, normalizeLiveEvents, type LiveEventsState } from './events/save'
 import { emptyCollection, normalizeCollection, type CollectionState } from './collectionState'
 import { emptyNpcQuests, normalizeNpcQuests, type NpcQuestsState } from './npcQuestState'
+import { defaultHubs, normalizeHubs, type HubsState } from './hubState'
 
 export const SAVE_KEY = 'boondee.save.v1'
 export const SAVE_VERSION = 2
@@ -153,6 +154,8 @@ export interface GameState {
   market: { mine: import('./market').MyListing[]; bought: string[]; earned: number }
   /** Collectibles & souvenirs: owned counts, first-found days, daily stall stock (see game/collectibles.ts). */
   collection: CollectionState
+  /** Hub markets and the temple fair: passport stamps, prize tickets, prizes (see hubState.ts). */
+  hubs: HubsState
   player: { name: string; birthDay: number; friendCode: string; look: AvatarLook }
   merit: number
   coins: number
@@ -230,6 +233,7 @@ export function defaultState(): GameState {
     places: { bought: [], visited: [], current: null },
     market: { mine: [], bought: [], earned: 0 },
     collection: emptyCollection(),
+    hubs: defaultHubs(),
     player: { name: 'สายบุญ', birthDay: new Date().getDay(), friendCode: makeFriendCode(), look: { ...DEFAULT_LOOK } },
     merit: 0,
     coins: 100,
@@ -290,6 +294,7 @@ export function migrate(raw: unknown): GameState {
     collection: normalizeCollection(s.collection),
     shop: normalizeShop(s.shop),
     npcQuests: normalizeNpcQuests(s.npcQuests),
+    hubs: normalizeHubs(s.hubs),
     v: SAVE_VERSION,
   }
   // v1 called the main temple 'home'; it is 'wat' now that players have a house.

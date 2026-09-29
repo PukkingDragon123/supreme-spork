@@ -26,6 +26,10 @@ export type ActivityId =
   | 'hall'
   | 'job'
   | 'cook'
+  /** Temple-fair games and prize booth (src/activities/fair). */
+  | 'fair'
+  /** Hub-market notice board. */
+  | 'hub'
 
 export interface ActivityRequest {
   id: ActivityId

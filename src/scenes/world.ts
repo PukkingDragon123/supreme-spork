@@ -127,6 +127,10 @@ export interface MapDef {
   visitors?: number
   /** Open water (ponds, rivers, flooded streets): swimming pets paddle here. */
   water?: Rect[]
+  /** What other (simulated) players say here (defaults to temple chatter). */
+  remoteChat?: string[]
+  /** Always show this time of day (e.g. the night-time temple fair). */
+  forcePhase?: Phase
 }
 
 /** Hotspots that sit on water (used when a map has no explicit `water`). */
@@ -360,7 +364,7 @@ export class WorldScene implements Scene {
     this.companion = opts.companion ?? null
     this.pet = opts.pet ?? null
     this.pickups = [...(opts.pickups ?? [])]
-    this.phase = currentPhase()
+    this.phase = map.forcePhase ?? currentPhase()
     this.spawnActors()
     if (map.birds) this.life.push(new Pigeons(this, map.birds, 9))
     this.life.push(...(map.life?.(this) ?? []))
@@ -743,7 +747,8 @@ export class WorldScene implements Scene {
       r.chat -= dt
       if (r.chat <= 0) {
         r.chat = 10 + Math.random() * 18
-        if (this.onScreen(r.w.x, r.w.y, 0)) this.say(REMOTE_CHAT[Math.floor(Math.random() * REMOTE_CHAT.length)], r.w.x, r.w.y - 30, 2.4)
+        const lines = this.map.remoteChat ?? REMOTE_CHAT
+        if (this.onScreen(r.w.x, r.w.y, 0)) this.say(lines[Math.floor(Math.random() * lines.length)], r.w.x, r.w.y - 30, 2.4)
       }
       if (r.p.pet) {
         const dx = r.w.x + 9 - r.petX
@@ -831,7 +836,7 @@ export class WorldScene implements Scene {
   update(dt: number, t: number) {
     this.time = t
     this.windT += dt
-    this.phase = currentPhase()
+    this.phase = this.map.forcePhase ?? currentPhase()
     if (this.paused) {
       this.particles.update(dt)
       return

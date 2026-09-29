@@ -9,6 +9,7 @@
 // the unit tests.
 
 import type { AvatarLook } from '../../art/avatar'
+import { HUB_QUEST_NPCS } from './hubQuestNpcs'
 
 export type QuestNpcSprite = 'person' | 'monk' | 'novice'
 
@@ -297,6 +298,9 @@ const extra: QuestNpc[] = []
 export function registerQuestNpcs(list: QuestNpc[]) {
   for (const n of list) if (!QUEST_NPCS.some((x) => x.id === n.id) && !extra.some((x) => x.id === n.id)) extra.push(n)
 }
+
+// Hub-market and temple-fair givers (drawn by their own maps).
+registerQuestNpcs(HUB_QUEST_NPCS)
 
 export function allQuestNpcs(): QuestNpc[] {
   return extra.length ? [...QUEST_NPCS, ...extra] : QUEST_NPCS

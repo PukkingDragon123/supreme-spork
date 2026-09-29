@@ -7,6 +7,7 @@ import { MAPS as HISTORIC } from './historic'
 import { MAPS as SOUTH } from './south'
 import { MAPS as BANGKOK } from './bangkok'
 import { MAPS as NORTHISAN } from './northisan'
+import { MAPS as HUBS } from './hubs'
 
 export const PLACE_MAPS: Record<string, () => MapDef> = {
   ...CENTRAL,
@@ -14,4 +15,5 @@ export const PLACE_MAPS: Record<string, () => MapDef> = {
   ...SOUTH,
   ...BANGKOK,
   ...NORTHISAN,
+  ...HUBS,
 }

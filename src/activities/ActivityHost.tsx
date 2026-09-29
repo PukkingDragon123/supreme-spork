@@ -24,6 +24,7 @@ import { KrathongActivity } from './krathong'
 import { CircleActivity } from './circle'
 import { JobActivity } from './jobs'
 import { CookActivity } from './cook'
+import { FairActivity, HubBoard } from './fair'
 
 const REGISTRY: Partial<Record<ActivityId, FunctionComponent<{ req: ActivityRequest }>>> = {
   hall: HallActivity,
@@ -44,6 +45,8 @@ const REGISTRY: Partial<Record<ActivityId, FunctionComponent<{ req: ActivityRequ
   circle: CircleActivity,
   job: JobActivity,
   cook: CookActivity,
+  fair: FairActivity,
+  hub: HubBoard,
 }
 
 export function GoalCard({ id, onStart, onClose }: { id: ActivityId; onStart: () => void; onClose?: () => void }) {

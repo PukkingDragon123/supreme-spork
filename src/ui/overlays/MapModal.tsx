@@ -195,7 +195,7 @@ export function MapModal() {
           </div>
           <p class="small place-about">{p.about}</p>
           <div class="row wrap place-wish">
-            <span class="small muted">นิยมขอพรเรื่อง</span>
+            <span class="small muted">{p.kind ? 'ไฮไลต์' : 'นิยมขอพรเรื่อง'}</span>
             {p.wishFor.map((w) => (
               <span class="chip gold small" key={w}>
                 {w}
@@ -212,7 +212,7 @@ export function MapModal() {
               คุณอยู่ที่นี่แล้ว
             </PBtn>
           ) : open ? (
-            <PBtn tone="green" block size="big" icon="temple" onClick={() => go(p)}>
+            <PBtn tone="green" block size="big" icon={p.kind ? 'market' : 'temple'} onClick={() => go(p)}>
               ออกเดินทาง
             </PBtn>
           ) : acc?.rankLocked ? (

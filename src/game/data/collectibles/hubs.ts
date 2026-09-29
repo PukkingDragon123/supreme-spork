@@ -1,0 +1,57 @@
+// Hub-market and temple-fair collectibles (group `hubs`). Market souvenirs
+// carry `place` (the hub's place id) so the hub stalls can stock them; the
+// fair prizes are won with prize tickets at the fair's prize booth
+// (src/activities/fair/prizes.tsx) and are not sold anywhere.
+
+import type { CollectibleDef } from '../collectibleTypes'
+
+const SOUVENIRS: CollectibleDef[] = [
+  // --- ตลาดนัดจตุจักร ---
+  { id: 'hub_jj_clocktower', name: 'หอนาฬิกาจตุจักรจิ๋ว', desc: 'โมเดลหอนาฬิกากลางตลาด จุดนัดเจอเพื่อนยอดฮิต หลงเมื่อไหร่ให้มองหามัน', rarity: 'uncommon', kind: 'figure', series: 'ของดีตลาดนัดจตุจักร', place: 'hub_chatuchak', value: 120, art: { motif: 'clocktower', palette: ['#fffaf0', '#e8514a', '#5a8de0'] } },
+  { id: 'hub_jj_hippo_plush', name: 'ตุ๊กตาหมูดึ๋งฮิปโปแคระ', desc: 'ฮิปโปแคระตัวกลมแก้มชมพู กัดเบา ๆ เด้งดึ๋ง ของไวรัลที่ใคร ๆ ก็ต่อคิว', rarity: 'rare', kind: 'plush', series: 'ของดีตลาดนัดจตุจักร', place: 'hub_chatuchak', value: 260, art: { motif: 'hippo', palette: ['#8a8098', '#ff9fc0', '#fffaf0'] } },
+  { id: 'hub_jj_blindbox', name: 'กล่องสุ่มลาบุ๊บลาบั๊บ', desc: 'ฟันเลื่อยยิ้มกว้าง จะได้สีไหนไม่รู้จนกว่าจะแกะ (พาโรดี้ ไม่ใช่ของแบรนด์จริงนะ)', rarity: 'rare', kind: 'toy', series: 'ของดีตลาดนัดจตุจักร', place: 'hub_chatuchak', value: 240, art: { motif: 'blindbox', palette: ['#c8a0ff', '#fffaf0', '#ff6f91'] } },
+  { id: 'hub_jj_elephant_pants', name: 'พวงกุญแจกางเกงช้าง', desc: 'กางเกงช้างจิ๋วห้อยกระเป๋า ใส่แล้วสบายกระเป๋า', rarity: 'common', kind: 'keychain', series: 'ของดีตลาดนัดจตุจักร', place: 'hub_chatuchak', value: 45, art: { motif: 'elephant', palette: ['#6a4fb0', '#ffd23f', '#fffaf0'] } },
+  { id: 'hub_jj_orange_cat', name: 'แม่เหล็กแมวส้มหนึ่งเซลล์', desc: 'แมวส้มทุกตัวใช้สมองร่วมกันหนึ่งก้อน วันนี้ตัวนี้ถือ', rarity: 'common', kind: 'magnet', series: 'ของดีตลาดนัดจตุจักร', place: 'hub_chatuchak', value: 40, art: { motif: 'cat', palette: ['#f58f35', '#fffaf0', '#3a2838'] } },
+  // --- ตลาดน้ำดำเนินสะดวก ---
+  { id: 'hub_dn_boat', name: 'เรือพายแม่ค้าจิ๋ว', desc: 'เรือไม้ลำเล็กพร้อมแม่ค้าใส่งอบ ผลไม้เต็มลำ', rarity: 'uncommon', kind: 'figure', series: 'ของดีตลาดน้ำดำเนินสะดวก', place: 'hub_damnoen', value: 110, art: { motif: 'boat', palette: ['#8a5a3a', '#5a8de0', '#ffd23f'] } },
+  { id: 'hub_dn_ngob', name: 'เข็มกลัดงอบชาวสวน', desc: 'งอบสานใบลานกันแดดกันฝน ของคู่แม่ค้าตลาดน้ำ', rarity: 'common', kind: 'pin', series: 'ของดีตลาดน้ำดำเนินสะดวก', place: 'hub_damnoen', value: 35, art: { motif: 'hat', palette: ['#e0c080', '#9a6a45', '#fffaf0'] } },
+  { id: 'hub_dn_monitor', name: 'ตุ๊กตาตัวเงินตัวทอง', desc: 'ว่ายข้ามคลองทีไร ทั้งตลาดตะโกนพร้อมกัน ตัวเงินตัวทอง!', rarity: 'rare', kind: 'plush', series: 'ของดีตลาดน้ำดำเนินสะดวก', place: 'hub_damnoen', value: 220, art: { motif: 'lizard', palette: ['#5e6a4a', '#ffd23f', '#3a3040'] } },
+  { id: 'hub_dn_postcard', name: 'โปสการ์ดคลองดำเนินฯ', desc: 'ภาพเรือแน่นคลองยามเช้า หมอกบาง ๆ กับกลิ่นก๋วยเตี๋ยวเรือ', rarity: 'common', kind: 'postcard', series: 'ของดีตลาดน้ำดำเนินสะดวก', place: 'hub_damnoen', value: 30, art: { motif: 'canal', palette: ['#4aa0c8', '#8a5a3a', '#86c95f'] } },
+  // --- ตลาดร่มหุบ แม่กลอง ---
+  { id: 'hub_mk_train', name: 'รถไฟแม่กลองไขลาน', desc: 'ไขลานแล้ววิ่งผ่านตลาด ร่มจิ๋วหุบเองได้ (จริง ๆ ไม่ได้ แต่ลองจินตนาการ)', rarity: 'rare', kind: 'toy', series: 'ของดีตลาดร่มหุบ', place: 'hub_maeklong', value: 230, art: { motif: 'train', palette: ['#ffd23f', '#e8514a', '#5a8de0'] } },
+  { id: 'hub_mk_umbrella', name: 'พวงกุญแจร่มหุบได้', desc: 'กางได้ หุบได้ เหมือนแม่ค้าตอนรถไฟมา', rarity: 'common', kind: 'keychain', series: 'ของดีตลาดร่มหุบ', place: 'hub_maeklong', value: 45, art: { motif: 'umbrella', palette: ['#e8514a', '#fffaf0', '#6e4a35'] } },
+  { id: 'hub_mk_platu', name: 'แม่เหล็กปลาทูหน้างอคอหัก', desc: 'ปลาทูแม่กลองแท้ต้องหน้างอคอหัก ติดตู้เย็นแล้วหิวทุกครั้ง', rarity: 'uncommon', kind: 'magnet', series: 'ของดีตลาดร่มหุบ', place: 'hub_maeklong', value: 80, art: { motif: 'fish', palette: ['#9fb4c8', '#e0bb8a', '#3a3040'] } },
+  // --- ถนนคนเดินเชียงใหม่ ---
+  { id: 'hub_tp_gate', name: 'โมเดลประตูท่าแพ', desc: 'กำแพงอิฐแดงกับประตูไม้บานใหญ่ นกพิราบแถมไม่ได้', rarity: 'uncommon', kind: 'figure', series: 'ของดีถนนคนเดินเชียงใหม่', place: 'hub_thaphae', value: 120, art: { motif: 'gate', palette: ['#b8543a', '#6e4a35', '#fffaf0'] } },
+  { id: 'hub_tp_lantern', name: 'โคมยี่เป็งจิ๋ว', desc: 'โคมล้านนาห้อยพู่ จุดไฟแล้วอบอุ่นใจ', rarity: 'common', kind: 'charm', series: 'ของดีถนนคนเดินเชียงใหม่', place: 'hub_thaphae', value: 50, art: { motif: 'lantern', palette: ['#ffcf5a', '#e8514a', '#fffaf0'] } },
+  { id: 'hub_tp_bosang', name: 'ร่มบ่อสร้างวาดมือ', desc: 'ร่มกระดาษสาลายดอกไม้ วาดสด ๆ ต่อหน้า', rarity: 'rare', kind: 'figure', series: 'ของดีถนนคนเดินเชียงใหม่', place: 'hub_thaphae', value: 200, art: { motif: 'umbrella', palette: ['#ff9fc0', '#6cc36a', '#ffd23f'], foil: true } },
+  // --- ตลาดกิมหยง ---
+  { id: 'hub_ky_chicken', name: 'พวงกุญแจไก่ทอดหาดใหญ่', desc: 'ไก่ทอดโรยหอมเจียว กลิ่นไม่มี แต่ความหิวมีเต็ม', rarity: 'common', kind: 'keychain', series: 'ของดีตลาดกิมหยง', place: 'hub_kimyong', value: 45, art: { motif: 'chicken', palette: ['#d9782a', '#ffd23f', '#6e4a35'] } },
+  { id: 'hub_ky_dates', name: 'กล่องอินทผลัมทองคำ', desc: 'กล่องทองลายดาว อินทผลัมเม็ดโตเรียงสวย', rarity: 'uncommon', kind: 'figure', series: 'ของดีตลาดกิมหยง', place: 'hub_kimyong', value: 90, art: { motif: 'dates', palette: ['#8a4a2a', '#ffd54f', '#fffaf0'] } },
+  { id: 'hub_ky_market', name: 'สแตมป์ตลาดกิมหยง', desc: 'ตราประทับอาคารตลาดเก่าหาดใหญ่ ของสะสมนักช้อปข้ามแดน', rarity: 'common', kind: 'stamp', series: 'ของดีตลาดกิมหยง', place: 'hub_kimyong', value: 30, art: { motif: 'market', palette: ['#f0d890', '#e8514a', '#3a2838'] } },
+  // --- ตลาดอินโดจีน มุกดาหาร ---
+  { id: 'hub_ic_tower', name: 'หอแก้วมุกดาหารจิ๋ว', desc: 'หอคอยริมโขงยอดลูกแก้ว ส่องไปเห็นสะหวันนะเขต', rarity: 'uncommon', kind: 'snowglobe', series: 'ของดีตลาดอินโดจีน', place: 'hub_indochina', value: 130, art: { motif: 'tower', palette: ['#fffaf0', '#9fd0ff', '#ffd54f'] } },
+  { id: 'hub_ic_silk', name: 'ผ้าไหมมัดหมี่ผืนจิ๋ว', desc: 'ลายขิดมัดหมี่ทอมือจากแม่ใหญ่ริมโขง', rarity: 'rare', kind: 'charm', series: 'ของดีตลาดอินโดจีน', place: 'hub_indochina', value: 210, art: { motif: 'silk', palette: ['#b8343f', '#ffd54f', '#3d63b5'] } },
+  { id: 'hub_ic_naga', name: 'เข็มกลัดพญานาคริมโขง', desc: 'พญานาคเขียวมรกตเฝ้าแม่น้ำโขง', rarity: 'common', kind: 'pin', series: 'ของดีตลาดอินโดจีน', place: 'hub_indochina', value: 40, art: { motif: 'naga', palette: ['#43a86a', '#ffd54f', '#fffaf0'] } },
+  // --- ตราประทับพาสปอร์ตตลาด (รางวัลเควส) ---
+  { id: 'hub_passport_gold', name: 'พาสปอร์ตนักช้อปทองคำ', desc: 'ประทับครบทั้งหกตลาดดังทั่วไทย ตัวจริงเรื่องช้อป', rarity: 'epic', kind: 'stamp', series: 'พาสปอร์ตตลาดดัง', value: 600, art: { motif: 'passport', palette: ['#ffd54f', '#b8343f', '#fffaf0'], foil: true }, tradeable: false },
+]
+
+/** Fair prizes: won with prize tickets at the งานวัด prize booth only. */
+export const FAIR_PRIZE_COLLECTIBLES: CollectibleDef[] = [
+  { id: 'fair_goldfish', name: 'ปลาทองในถุงงานวัด', desc: 'ปลาทองตัวจิ๋วในถุงพลาสติกผูกหนังยาง รางวัลคลาสสิกของงานวัด', rarity: 'common', kind: 'toy', series: 'ของรางวัลงานวัด', place: 'fair_temple', value: 40, art: { motif: 'goldfish', palette: ['#f58f35', '#d4f1ff', '#ff6f91'] } },
+  { id: 'fair_balloon_hippo', name: 'ลูกโป่งหมูดึ๋ง', desc: 'ลูกโป่งฮิปโปแคระลอยหงึกหงัก ผูกข้อมือไว้ไม่ให้ลอยหนี', rarity: 'uncommon', kind: 'toy', series: 'ของรางวัลงานวัด', place: 'fair_temple', value: 90, art: { motif: 'hippo', palette: ['#b4a8c8', '#ff9fc0', '#fffaf0'] } },
+  { id: 'fair_teddy_pink', name: 'ตุ๊กตาหมีชมพูตัวยักษ์', desc: 'หมีตัวใหญ่กว่าคนถือ ต้องนั่งรถเมล์กลับบ้านสองที่', rarity: 'rare', kind: 'plush', series: 'ของรางวัลงานวัด', place: 'fair_temple', value: 180, art: { motif: 'teddy', palette: ['#ff9fc0', '#fffaf0', '#3a2838'] } },
+  { id: 'fair_likay_doll', name: 'ตุ๊กตาพระเอกลิเก', desc: 'ชุดเลื่อมวิบวับ ขนนกฟู ร้องได้หนึ่งประโยค โอ้ละหนอ~', rarity: 'rare', kind: 'figure', series: 'ของรางวัลงานวัด', place: 'fair_temple', value: 200, art: { motif: 'likay', palette: ['#e8514a', '#ffd54f', '#6cf0c0'], foil: true } },
+  { id: 'fair_ferris_globe', name: 'ลูกแก้วชิงช้าสวรรค์', desc: 'เขย่าแล้วไฟกระพริบ ชิงช้าหมุนเบา ๆ ในลูกแก้ว', rarity: 'epic', kind: 'snowglobe', series: 'ของรางวัลงานวัด', place: 'fair_temple', value: 360, art: { motif: 'ferriswheel', palette: ['#6a5a9a', '#ffd23f', '#ff6f91'], foil: true } },
+  { id: 'fair_ghost_keychain', name: 'พวงกุญแจผีบ้านขี้ตกใจ', desc: 'ผีที่กลัวคนมากกว่าคนกลัวผี แตะแล้วร้องกรี๊ด', rarity: 'uncommon', kind: 'keychain', series: 'ของรางวัลงานวัด', place: 'fair_temple', value: 70, art: { motif: 'ghost', palette: ['#fffaf0', '#9fd0ff', '#3a2838'] } },
+  { id: 'fair_uncle_duck', name: 'ฟิกเกอร์ลุงเป็ดตกน้ำ', desc: 'มาสคอตลุงเป็ดในชุดกันน้ำ ตกน้ำไปแล้ว 999 ครั้งยังยิ้มได้', rarity: 'rare', kind: 'figure', series: 'ของรางวัลงานวัด', place: 'fair_temple', value: 190, art: { motif: 'duck', palette: ['#ffd23f', '#f58f35', '#5a8de0'] } },
+  { id: 'fair_mega_hippo', name: 'หมูดึ๋งไซส์จัมโบ้', desc: 'รางวัลใหญ่สุดของงาน ตุ๊กตาฮิปโปแคระตัวเท่าโซฟา คนทั้งงานปรบมือให้', rarity: 'legendary', kind: 'plush', series: 'ของรางวัลงานวัด', place: 'fair_temple', value: 900, art: { motif: 'hippo', palette: ['#8a8098', '#ff6f91', '#ffd54f'], foil: true }, tradeable: false },
+]
+
+export const HUB_COLLECTIBLES: CollectibleDef[] = SOUVENIRS
+
+/** Everything this group adds (souvenirs + fair prizes). */
+export const COLLECTIBLES: CollectibleDef[] = [...SOUVENIRS, ...FAIR_PRIZE_COLLECTIBLES]
+
+export const HUB_COLLECTIBLE_BY_ID: Record<string, CollectibleDef> = Object.fromEntries(COLLECTIBLES.map((c) => [c.id, c]))
