@@ -176,7 +176,7 @@ export interface WorldOptions {
   companion?: string | null
   /** Pet companion id (src/game/data/pets.ts) that trails the player. */
   pet?: string | null
-  spawn?: { x: number; y: number }
+  spawn?: { x: number; y: number; face?: Facing }
   pickups?: Pickup[]
 }
 
@@ -346,7 +346,7 @@ export class WorldScene implements Scene {
     for (const [cx, cy, rx, ry] of map.ellipses ?? []) this.grid.blockEllipse(cx, cy, rx, ry)
     const sp = opts.spawn ?? map.spawn
     this.player = new Walker(sp.x, sp.y, 62)
-    this.player.facing = map.spawn.face ?? 'up'
+    this.player.facing = opts.spawn?.face ?? map.spawn.face ?? 'up'
     this.companion = opts.companion ?? null
     this.pet = opts.pet ?? null
     this.pickups = [...(opts.pickups ?? [])]

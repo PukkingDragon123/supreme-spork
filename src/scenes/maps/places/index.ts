@@ -4,8 +4,14 @@
 import type { MapDef } from '../../world'
 import { MAPS as CENTRAL } from './central'
 import { MAPS as HISTORIC } from './historic'
+import { MAPS as SOUTH } from './south'
+import { MAPS as BANGKOK } from './bangkok'
+import { MAPS as NORTHISAN } from './northisan'
 
 export const PLACE_MAPS: Record<string, () => MapDef> = {
   ...CENTRAL,
   ...HISTORIC,
+  ...SOUTH,
+  ...BANGKOK,
+  ...NORTHISAN,
 }

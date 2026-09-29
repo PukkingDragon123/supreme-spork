@@ -14,6 +14,7 @@ import * as G from '../../art/garden'
 import { mat, road } from './common'
 import * as M from '../../art/modern'
 import { tukTuk } from '../../art/props'
+import { broomSprite, leafPile, wateringCanSprite } from '../../art/places/south'
 import { randomVisitorLook, type WorldScene } from '../world'
 import { Banners, drawPerson, drawPhoneMonk, drawSpriteGag, FairLights, gagFx, Gags, type Gag } from '../gags'
 import { CloudShadows, EaveBells, Flags, Flames, Glints, KoiPond, Lanterns, RackBells, Smoke, SunRays, TapZones, TowerBell, Traffic, Butterflies } from '../life'
@@ -130,6 +131,9 @@ function bakeGround(g: Surface, night: boolean) {
   for (const f of FRANGI) G.groundShadow(g, f.x, f.y, 15, 4, 0.6)
   G.groundShadow(g, TAKHIAN.x, TAKHIAN.y - 2, 36, 9, 0.7)
   G.groundShadow(g, BODHI.x, BODHI.y - 8, 36, 8, 0.5)
+  // Fallen bodhi leaves waiting for a volunteer's broom (job:sweep_leaves).
+  leafPile(g, 222, 572, 13, 7, ['#9ed86a', '#c9a04c', '#d9b25f', '#76c05e', '#b0803a'])
+  leafPile(g, 196, 584, 7, 9)
   // Alms mat beside the path.
   mat(g, 146, 584, 22, 10)
   g.ellipse(157, 589, 4, 1.6, '#c9a04c')
@@ -306,7 +310,8 @@ export function watMap(): MapDef {
   const pole = F.flagPoleSprite(44)
 
   const props: PlacedProp[] = [
-    { sprite: hall, night: hallNight, x: HALL.x, y: HALL.y },
+    // Sorted a little early so the player can climb the stairs to the door.
+    { sprite: hall, night: hallNight, x: HALL.x, y: HALL.y, z: -28 },
     { sprite: chedi, x: CHEDI.x, y: CHEDI.y },
     { sprite: T.chediSprite({ small: true }), x: 64, y: 118 },
     { sprite: T.chediSprite({ small: true }), x: 192, y: 118 },
@@ -367,6 +372,8 @@ export function watMap(): MapDef {
     { sprite: pole, x: 152, y: 614 },
     { sprite: G.coconutPalm(0), x: 8, y: 816 },
     { sprite: G.coconutPalm(1), x: 250, y: 818 },
+    { sprite: broomSprite(), x: 204, y: 566 },
+    { sprite: wateringCanSprite(), x: 140, y: 560 },
     ...LAMPS.map(([x, y]) => ({ sprite: lamp, night: lampN, x, y })),
   ]
 
@@ -381,7 +388,10 @@ export function watMap(): MapDef {
     props,
     obstacles: [
       { x: 0, y: 0, w: W, h: 118 },
-      { x: 50, y: 110, w: 156, h: 131 },
+      // The hall, with the naga stairs left open up to the door.
+      { x: 50, y: 110, w: 156, h: 114 },
+      { x: 50, y: 224, w: 66, h: 17 },
+      { x: 140, y: 224, w: 66, h: 17 },
       { x: 100, y: 238, w: 11, h: 12 },
       { x: 145, y: 238, w: 11, h: 12 },
       { x: 0, y: 118, w: 48, h: 98 },
@@ -461,6 +471,9 @@ export function watMap(): MapDef {
         beacon: true,
         near: 16,
       },
+      { id: 'door:wat:ubosot', label: 'เข้าโบสถ์', hint: 'ถอดรองเท้า เดินเข้าไปกราบพระในโบสถ์', icon: 'door', rect: { x: 116, y: 194, w: 24, h: 32 }, at: { x: HALL.x, y: 228 }, face: 'up', marker: { x: HALL.x, y: 190 }, near: 8 },
+      { id: 'job:sweep_leaves', label: 'กวาดใบโพธิ์', hint: 'อาสากวาดใบไม้ใต้ต้นโพธิ์', icon: 'broom', rect: { x: 198, y: 560, w: 48, h: 26 }, at: { x: 214, y: 590 }, face: 'up', marker: { x: 222, y: 562 } },
+      { id: 'job:water_plants', label: 'รดน้ำแปลงดอกไม้', hint: 'อาสารดน้ำดอกไม้ริมทางเดิน', icon: 'water', rect: { x: 146, y: 528, w: 14, h: 48 }, at: { x: 138, y: 552 }, face: 'right', marker: { x: 153, y: 526 } },
       { id: 'incense', label: 'กระถางธูปหน้าโบสถ์', hint: 'จุดธูปขอพร', icon: 'incense', rect: { x: 114, y: 258, w: 28, h: 28 }, at: { x: 128, y: 296 }, face: 'up', marker: { x: 128, y: 256 } },
       { id: 'donation', label: 'ตู้ทำบุญ', hint: 'ทำบุญค่าน้ำค่าไฟวัด', icon: 'coin', rect: { x: 163, y: 244, w: 18, h: 28 }, at: { x: 172, y: 280 }, face: 'up', marker: { x: 172, y: 242 } },
       { id: 'pond', label: 'บ่อปลาคาร์ฟ', hint: 'ให้อาหารปลา', icon: 'koi', rect: { x: 16, y: 360, w: 84, h: 56 }, at: { x: 104, y: 390 }, face: 'left', marker: { x: 56, y: 360 } },
@@ -470,9 +483,11 @@ export function watMap(): MapDef {
       { id: 'guardian', label: 'ท้าวเวสสุวรรณ', hint: 'ผู้พิทักษ์ขุมทรัพย์', icon: 'deity', rect: { x: 158, y: 448, w: 28, h: 56 }, at: { x: 172, y: 514 }, face: 'up', marker: { x: 172, y: 444 } },
       { id: 'alms', label: 'ลานตักบาตร', hint: 'ถวายภัตตาหารแด่พระสงฆ์', icon: 'bowl', rect: { x: 145, y: 578, w: 26, h: 18 }, at: { x: 150, y: 600 }, face: 'up', marker: { x: 157, y: 578 } },
       { id: 'flower_stall', label: 'ร้านยายศรี', hint: 'ดอกไม้ ธูปเทียน ของถวาย', icon: 'garland', rect: { x: 26, y: 554, w: 50, h: 46 }, at: { x: 52, y: 610 }, face: 'up', marker: { x: 50, y: 552 } },
+      { id: 'door:mart', label: '7-บุญ', hint: 'ซื้อวัตถุดิบ & ของใส่บาตร', icon: 'shop', rect: { x: 18, y: 668, w: 24, h: 30 }, at: { x: 30, y: 708 }, face: 'up', marker: { x: 30, y: 660 }, near: 10 },
       { id: 'gate', label: 'ประตูวัด', hint: 'กลับบ้าน', icon: 'map', rect: { x: 106, y: 568, w: 44, h: 74 }, at: { x: 128, y: 630 }, face: 'down', marker: { x: 128, y: 562 }, near: 12 },
     ],
     spawn: { x: 128, y: 304, face: 'up' },
+    entries: { 'wat:ubosot': { x: HALL.x, y: 236, face: 'down' }, mart: { x: 30, y: 710, face: 'down' } },
     pickupSpots: [
       { x: 136, y: 676 },
       { x: 110, y: 766 },
