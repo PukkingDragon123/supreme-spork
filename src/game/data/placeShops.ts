@@ -31,6 +31,11 @@ export const SNACKS: Snack[] = [
   { id: 'boiled_egg', name: 'ไข่ต้มแก้บน', desc: 'ไข่ต้มถวายหลวงพ่อโสธร แล้วนำกลับมากินเป็นสิริมงคล', icon: 'boiledegg', price: 10, buff: { kind: 'merit', mult: 1.1, minutes: 20 } },
   { id: 'coconut_sugar', name: 'น้ำตาลมะพร้าวแท้', desc: 'หวานหอมจากสวนแม่กลอง', icon: 'dessert', price: 15, buff: { kind: 'animal', mult: 1.15, minutes: 20 } },
   { id: 'dried_squid', name: 'ปลาหมึกย่าง', desc: 'หมึกแห้งย่างริมทะเลหัวหิน จิ้มน้ำจิ้มซีฟู้ด', icon: 'curry', price: 25, buff: { kind: 'coin', mult: 1.15, minutes: 15 } },
+  { id: 'mango_sticky', name: 'ข้าวเหนียวมะม่วงแปดริ้ว', desc: 'มะม่วงน้ำดอกไม้หวานฉ่ำ ราดกะทิ', icon: 'dessert', price: 30, buff: { kind: 'merit', mult: 1.2, minutes: 15 } },
+  { id: 'khanom_jak', name: 'ขนมจาก', desc: 'ขนมใบจากปิ้งหอม ๆ ของดีแปดริ้ว', icon: 'sticky', price: 15, buff: { kind: 'coin', mult: 1.15, minutes: 15 } },
+  { id: 'pomelo', name: 'ส้มโอนครชัยศรี', desc: 'ส้มโอหวานอมเปรี้ยว เนื้อกุ้งสวย', icon: 'fruit', price: 20, buff: { kind: 'animal', mult: 1.2, minutes: 15 } },
+  { id: 'kalamae', name: 'กะละแม', desc: 'กะละแมเหนียวนุ่มหอมกะทิ ของฝากสระบุรี', icon: 'dessert', price: 15, buff: { kind: 'merit', mult: 1.1, minutes: 20 } },
+  { id: 'sugarcane', name: 'อ้อยควั่น', desc: 'อ้อยหวานเย็น ถวายพระพิฆเนศก็ได้ กินเองก็ดี', icon: 'banana', price: 10, buff: { kind: 'coin', mult: 1.1, minutes: 20 } },
 ]
 
 export const SNACK_BY_ID: Record<string, Snack> = Object.fromEntries(SNACKS.map((s) => [s.id, s]))
@@ -49,6 +54,14 @@ export interface PlaceShop {
 /** Hand-authored stalls (the rest fall back to `genericShop`). */
 export const PLACE_SHOPS: Record<string, PlaceShop> = {
   mart: { id: 'mart', name: '7-บุญ ร้านสะดวกบุญ', npc: 'พนักงาน', greeting: 'สวัสดีค่ะ ยินดีต้อนรับค่ะ~ รับถุงไหมคะ', snacks: ['chayen', 'moo_ping'], mart: true },
+  pathom_chedi_khaolam: { id: 'pathom_chedi_khaolam', name: 'ข้าวหลามแม่ลำใย', npc: 'แม่ลำใย', greeting: 'ข้าวหลามร้อน ๆ ส้มโอหวาน ๆ จ้า', place: 'pathom_chedi', snacks: ['khao_lam', 'pomelo'] },
+  pathom_chedi_fairgame: { id: 'pathom_chedi_fairgame', name: 'ซุ้มปาเป้างานวัด', npc: 'พี่ตุ๊ก', greeting: 'ปาโดนลูกโป่งรับตุ๊กตาเลยจ้า!', place: 'pathom_chedi', snacks: ['chayen'] },
+  wat_sothon_eggs: { id: 'wat_sothon_eggs', name: 'ร้านไข่ต้มแก้บน', npc: 'ป้าจิ๋ม', greeting: 'ไข่ต้มถวายหลวงพ่อ แก้บนได้ครบ ๆ จ้า', place: 'wat_sothon', snacks: ['boiled_egg'] },
+  wat_sothon_market: { id: 'wat_sothon_market', name: 'ตลาดริมน้ำหน้าวัด', npc: 'พี่นก', greeting: 'ข้าวเหนียวมะม่วงแปดริ้วของแท้จ้า', place: 'wat_sothon', snacks: ['mango_sticky', 'khanom_jak'] },
+  wat_chulamanee_sugar: { id: 'wat_chulamanee_sugar', name: 'น้ำตาลมะพร้าวอัมพวา', npc: 'ยายปุ๋ย', greeting: 'น้ำตาลมะพร้าวแท้ ๆ จากสวนยายเอง', place: 'wat_chulamanee', snacks: ['coconut_sugar'] },
+  wat_samarn_ratwish: { id: 'wat_samarn_ratwish', name: 'ซุ้มเหรียญกระซิบหนู', npc: 'น้องแพร', greeting: 'หยอดเหรียญแล้วกระซิบหนูประจำวันเกิดนะคะ', place: 'wat_samarn', snacks: ['sugarcane'] },
+  wat_samarn_marigold: { id: 'wat_samarn_marigold', name: 'ร้านดาวเรืองถวายพระพิฆเนศ', npc: 'ป้าดวง', greeting: 'ดาวเรือง กล้วย อ้อย ของโปรดท่านครบจ้า', place: 'wat_samarn', snacks: ['sugarcane'] },
+  wat_phutthabat_souvenir: { id: 'wat_phutthabat_souvenir', name: 'ของฝากพระพุทธบาท', npc: 'ลุงเสริม', greeting: 'กะละแมสระบุรี ผ้าทอไทยวน แวะก่อนจ้า', place: 'wat_phutthabat', snacks: ['kalamae'] },
   wat_phra_kaew_icecream: { id: 'wat_phra_kaew_icecream', name: 'ไอติมกะทิป้าแต๋ว', npc: 'ป้าแต๋ว', greeting: 'ร้อนไหมลูก ไอติมกะทิสดชื่นใจจ้า', place: 'wat_phra_kaew', snacks: ['icecream_coconut', 'chayen'] },
 }
 

@@ -37,8 +37,8 @@ setTimeout(() => {
 }, 4000)
 if (import.meta.env.DEV) {
   // Handy hooks for smoke tests and debugging in the browser console.
-  import('./ui/store').then((m) => {
-    ;(window as unknown as Record<string, unknown>).__boondee = { ...m, game }
+  Promise.all([import('./ui/store'), import('./ui/TempleView')]).then(([m, tv]) => {
+    ;(window as unknown as Record<string, unknown>).__boondee = { ...m, game, travelTo: tv.travelTo, worldScene: tv.worldScene }
   })
   const q = new URLSearchParams(location.search)
   const act = q.get('act')
