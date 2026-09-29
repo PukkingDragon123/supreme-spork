@@ -3,7 +3,9 @@
 
 import type { MapDef } from '../../world'
 import { MAPS as CENTRAL } from './central'
+import { MAPS as HISTORIC } from './historic'
 
 export const PLACE_MAPS: Record<string, () => MapDef> = {
   ...CENTRAL,
+  ...HISTORIC,
 }

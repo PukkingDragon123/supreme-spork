@@ -62,6 +62,15 @@ export const PLACE_SHOPS: Record<string, PlaceShop> = {
   wat_samarn_ratwish: { id: 'wat_samarn_ratwish', name: 'ซุ้มเหรียญกระซิบหนู', npc: 'น้องแพร', greeting: 'หยอดเหรียญแล้วกระซิบหนูประจำวันเกิดนะคะ', place: 'wat_samarn', snacks: ['sugarcane'] },
   wat_samarn_marigold: { id: 'wat_samarn_marigold', name: 'ร้านดาวเรืองถวายพระพิฆเนศ', npc: 'ป้าดวง', greeting: 'ดาวเรือง กล้วย อ้อย ของโปรดท่านครบจ้า', place: 'wat_samarn', snacks: ['sugarcane'] },
   wat_phutthabat_souvenir: { id: 'wat_phutthabat_souvenir', name: 'ของฝากพระพุทธบาท', npc: 'ลุงเสริม', greeting: 'กะละแมสระบุรี ผ้าทอไทยวน แวะก่อนจ้า', place: 'wat_phutthabat', snacks: ['kalamae'] },
+  wat_mahathat_ayutthaya_rotisaimai: { id: 'wat_mahathat_ayutthaya_rotisaimai', name: 'โรตีสายไหมบังนิด', npc: 'บังนิด', greeting: 'โรตีสายไหมอยุธยาแท้ หวานละมุนครับ', place: 'wat_mahathat_ayutthaya', snacks: ['roti_saimai'] },
+  wat_mahathat_ayutthaya_souvenir: { id: 'wat_mahathat_ayutthaya_souvenir', name: 'ร้านกางเกงช้าง', npc: 'พี่เก๋', greeting: 'กางเกงช้างใส่สบาย ถ่ายรูปกับวัดสวยมากจ้า', place: 'wat_mahathat_ayutthaya', snacks: ['chayen'] },
+  wat_huay_mongkol_elephant: { id: 'wat_huay_mongkol_elephant', name: 'ร้านช้างถวายหลวงปู่ทวด', npc: 'ป้าศรี', greeting: 'ช้างไม้ พวงมาลัย อ้อยถวายจ้า', place: 'wat_huay_mongkol', snacks: ['sugarcane'] },
+  wat_huay_mongkol_squid: { id: 'wat_huay_mongkol_squid', name: 'หมึกย่างหัวหิน', npc: 'ลุงชัย', greeting: 'หมึกรีดร้อน ๆ น้ำจิ้มแซ่บจ้า', place: 'wat_huay_mongkol', snacks: ['dried_squid'] },
+  wat_yai_phitsanulok_kluaytak: { id: 'wat_yai_phitsanulok_kluaytak', name: 'กล้วยตากบางกระทุ่ม', npc: 'ยายแป้น', greeting: 'กล้วยตากน้ำผึ้งของดีพิษณุโลกจ้า', place: 'wat_yai_phitsanulok', snacks: ['kluay_tak'] },
+  lampang_luang_chickenbowl: { id: 'lampang_luang_chickenbowl', name: 'ชามตราไก่ลำปาง', npc: 'พี่แดง', greeting: 'ชามไก่ของแท้เมืองลำปางเจ้า', place: 'lampang_luang', snacks: ['khao_soi'] },
+  lampang_luang_khaotaen: { id: 'lampang_luang_khaotaen', name: 'ข้าวแต๋นน้ำแตงโม', npc: 'แม่อุ๊ย', greeting: 'ข้าวแต๋นกรอบ ๆ หวาน ๆ เจ้า', place: 'lampang_luang', snacks: ['khao_soi'] },
+  wat_phumin_cloth: { id: 'wat_phumin_cloth', name: 'ผ้าทอน่าน', npc: 'แม่คำ', greeting: 'ผ้าซิ่นลายน้ำไหล ทอมือเองเจ้า', place: 'wat_phumin', snacks: ['chayen'] },
+  wat_phumin_orange: { id: 'wat_phumin_orange', name: 'ส้มสีทองน่าน', npc: 'ลุงปั๋น', greeting: 'ส้มสีทองหวานฉ่ำเจ้า', place: 'wat_phumin', snacks: ['pomelo'] },
   wat_phra_kaew_icecream: { id: 'wat_phra_kaew_icecream', name: 'ไอติมกะทิป้าแต๋ว', npc: 'ป้าแต๋ว', greeting: 'ร้อนไหมลูก ไอติมกะทิสดชื่นใจจ้า', place: 'wat_phra_kaew', snacks: ['icecream_coconut', 'chayen'] },
 }
 
