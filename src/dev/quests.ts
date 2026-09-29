@@ -2,10 +2,11 @@
 // quest NPC and quest-giving shop on its map, with the floating markers, and
 // sanity-checks each spot (walkable feet and talk spot, reachable from the
 // spawn, not on top of another hotspot).
-//   ?only=<substring>   only maps whose id contains this
+//   ?only=<a>,<b>       only maps whose id contains one of these (end with "." for an exact id)
 //   ?scale=2|3          zoom (default 3)
 //   ?level=<n>          player level for the markers (default 1)
 //   ?full=<mapId>       the whole map with NPCs (scale 1)
+//   ?npcs=1             only the free-standing NPCs (skip shop givers)
 //   ?debug=1            overlay blocked cells and hotspot rects
 // window.__quests exposes the scenes and the problem list for scripted checks.
 
@@ -111,12 +112,12 @@ if (full) {
   crop(surf, sc.map.w / 2, sc.map.h / 2, sc.map.w, sc.map.h, full)
 } else {
   for (const id of [...maps].sort()) {
-    if (only && !id.includes(only)) continue
+    if (only && !only.split(',').some((o) => (o.endsWith('.') ? id === o.slice(0, -1) : id.includes(o)))) continue
     const sc = sceneFor(id)
     check(id, sc)
     const surf = render(sc)
     for (const h of sc.map.hotspots) {
-      if (!h.id.startsWith('npc:') && !givers.includes(h.id)) continue
+      if (!h.id.startsWith('npc:') && (q.has('npcs') || !givers.includes(h.id))) continue
       const mk = h.marker ?? { x: h.rect.x + h.rect.w / 2, y: h.rect.y - 4 }
       crop(surf, (h.at.x + mk.x) / 2, (h.at.y + mk.y) / 2, 110, Math.max(80, Math.abs(h.at.y - mk.y) + 40), `${id} · ${h.id}`)
     }
