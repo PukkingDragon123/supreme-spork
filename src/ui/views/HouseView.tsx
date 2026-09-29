@@ -14,7 +14,7 @@ import { nextStage } from '../../game/prayer'
 import { adsLeft, rewardAd } from '../../game/actions'
 import { ads } from '../../services/ads'
 import { toast } from '../../game/events'
-import { goTemple, houseEditing, openPanel, prayAtHome, prayStage } from '../store'
+import { goTemple, houseEditing, openActivity, openPanel, prayAtHome, prayStage } from '../store'
 import { PBtn, Slot, Tabs, Window } from '../components/kit'
 import { PT, TONE_TEXT } from '../pixeltext'
 import { sfx } from '../../engine/audio'
@@ -113,6 +113,10 @@ export function HouseView({ active }: { active: boolean }) {
       case 'door':
         sfx.open()
         goTemple()
+        break
+      case 'cook':
+        sfx.open()
+        openActivity('cook')
         break
       case 'bed':
         toast('นอนพักสักงีบ… สดชื่นแล้ว ไปวัดกันต่อ', 'bed')

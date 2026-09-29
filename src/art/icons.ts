@@ -4,6 +4,7 @@
 import { bake, type Surface } from '../engine/pixel'
 import { cached, outlineCanvas, spriteDataUrl, type Sprite } from '../engine/sprite'
 import { P } from './palette'
+import { foodIcon, hasFoodIcon } from './cooking'
 
 type Draw = (g: Surface) => void
 
@@ -724,6 +725,7 @@ export const ICON_NAMES = Object.keys(ICONS)
 
 export function iconSprite(name: string): Sprite {
   return cached(`icon:${name}`, () => {
+    if (!ICONS[name] && hasFoodIcon(name)) return foodIcon(name)
     const draw = ICONS[name] ?? ICONS.sparkle
     const c = bake(14, 14, draw)
     return outlineCanvas(c, k)

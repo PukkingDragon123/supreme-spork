@@ -23,7 +23,8 @@ import { Btn, Icon } from '../ui/components/common'
 import { sfx, haptic } from '../engine/audio'
 import { drawSky } from '../scenes/sky'
 
-const ALMS_ITEMS = ITEMS.filter((i) => i.category === 'alms').map((i) => i.id)
+const BOUGHT_ALMS = ITEMS.filter((i) => i.category === 'alms').map((i) => i.id)
+const DISH_ALMS = ITEMS.filter((i) => (i.category as string) === 'dish').map((i) => i.id)
 const PER_MONK = 3
 
 interface Monk {
@@ -285,6 +286,8 @@ export function AlmsActivity({ req }: { req: ActivityRequest }) {
   const scoopTimer = useRef<number | null>(null)
   const meritRef = useRef(0)
   const itemsRef = useRef(0)
+  // Home-cooked dishes you own come first: they are worth far more merit.
+  const ALMS_ITEMS = [...DISH_ALMS.filter((id) => count(id) > 0), ...BOUGHT_ALMS]
   const noItems = ALMS_ITEMS.every((id) => count(id) <= 0)
 
   useEffect(() => {
@@ -460,7 +463,7 @@ export function AlmsActivity({ req }: { req: ActivityRequest }) {
           </div>
         </div>
       )}
-      {buy && <QuickBuy ids={ALMS_ITEMS} title="ร้านของใส่บาตร" onClose={() => setBuy(false)} />}
+      {buy && <QuickBuy ids={BOUGHT_ALMS} title="ร้านของใส่บาตร" onClose={() => setBuy(false)} />}
       {result && <ResultCard r={result} onDone={closeActivity} />}
     </div>
   )

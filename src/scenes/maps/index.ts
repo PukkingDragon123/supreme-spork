@@ -7,12 +7,14 @@ import { shrineMap } from './shrine'
 import { riverMap } from './river'
 import { mountainMap } from './mountain'
 import { PLACE_MAPS } from './places'
+import { martMap } from './mart'
 
 const builders: Record<string, () => MapDef> = {
   wat: watMap,
   shrine: shrineMap,
   river: riverMap,
   mountain: mountainMap,
+  mart: martMap,
   ...PLACE_MAPS,
 }
 

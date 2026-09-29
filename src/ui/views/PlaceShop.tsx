@@ -7,7 +7,7 @@ import { game } from '../../game/state'
 import { SNACK_BY_ID, shopFor } from '../../game/data/placeShops'
 import { PLACE_BY_ID } from '../../game/data/places'
 import { OUTFITS } from '../../game/data/outfits'
-import { ITEMS } from '../../game/data/items'
+import { ITEM_BY_ID, MART_STOCK } from '../../game/data/items'
 import { addBuff, buyItem, buyOutfitAnywhere, equip, ownsOutfit, spendCoins } from '../../game/actions'
 import { openPanel, placeShopId } from '../store'
 import { PBtn, Tabs, Window } from '../components/kit'
@@ -25,7 +25,7 @@ export function PlaceShopWindow() {
   const s = game.value
   const lv = level.value.level
   const exclusives = OUTFITS.filter((o) => shop.place && (o as { shopOnly?: string }).shopOnly === shop.place)
-  const groceries = shop.mart ? ITEMS.filter((it) => (it.category === 'alms' || (it.category as string) === 'ingredient') && (it.price ?? 0) > 0) : []
+  const groceries = shop.mart ? MART_STOCK.map((id) => ITEM_BY_ID[id]).filter(Boolean) : []
   const tabs = [
     ...(groceries.length ? [{ id: 'grocery' as T, label: 'ของใช้/วัตถุดิบ', icon: 'bowl' }] : []),
     { id: 'snack' as T, label: 'ของกิน', icon: 'dessert' },

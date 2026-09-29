@@ -27,6 +27,8 @@ export type GameEvent =
   | 'login'
   | 'ad'
   | 'group_merit'
+  | 'job'
+  | 'cook'
 
 export interface QuestDef {
   id: string
@@ -42,6 +44,8 @@ export interface QuestDef {
 
 export const QUEST_POOL: QuestDef[] = [
   { id: 'q_alms', text: 'ตักบาตรพระ 1 รอบ', event: 'alms', target: 1, coins: 15, merit: 10 },
+  { id: 'q_job', text: 'ทำงานอาสาในวัด 1 งาน', event: 'job', target: 1, coins: 10, merit: 5 },
+  { id: 'q_job2', text: 'ทำงานอาสาในวัด 3 งาน', event: 'job', target: 3, coins: 20, merit: 10, level: 3 },
   { id: 'q_chant', text: 'สวดมนต์ 1 บท', event: 'chant', target: 1, coins: 10, merit: 5 },
   { id: 'q_chant2', text: 'สวดมนต์ 2 บท', event: 'chant', target: 2, coins: 15, merit: 8, level: 3 },
   { id: 'q_meditate', text: 'นั่งสมาธิรวม 1 นาที', event: 'meditate_sec', target: 60, coins: 12, merit: 6 },

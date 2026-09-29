@@ -878,9 +878,10 @@ export class WorldScene implements Scene {
     }
     for (const l of this.life) l.update?.(dt, t)
     this.map.ambient?.(this, dt, t)
-    if (this.isNight()) {
-      if (Math.random() < dt * 1.6) {
-        const r = pick(this.map.fireflies ?? this.map.wander)
+    if (this.isNight() && !this.map.indoor) {
+      const zones = this.map.fireflies?.length ? this.map.fireflies : this.map.wander
+      if (zones.length && Math.random() < dt * 1.6) {
+        const r = pick(zones)
         this.particles.add({ kind: 'firefly', x: rand(r.x, r.x + r.w), y: rand(r.y, r.y + r.h), vx: rand(-4, 4), vy: rand(-4, 2), max: rand(3, 6), color: '#fff3a6' })
       }
     }

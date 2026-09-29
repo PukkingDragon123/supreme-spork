@@ -38,6 +38,7 @@ export type Interact =
   | 'music'
   | 'aquarium'
   | 'cat'
+  | 'cook'
   | null
 
 export interface Furniture {
@@ -459,6 +460,47 @@ export const FURNITURE: Furniture[] = [
     tags: ['cosy', 'thai'],
   },
 ]
+
+// --- Kitchen (cooking unlocks at level 10) --------------------------------
+FURNITURE.push(
+  {
+    id: 'kitchen_stove',
+    name: 'เคาน์เตอร์ครัวเตาแก๊ส',
+    desc: 'เตาแก๊สสองหัวบนเคาน์เตอร์ไม้ แตะเพื่อทำอาหารใส่บาตร บุญแรงกว่าซื้อ!',
+    kind: 'floor',
+    w: 2,
+    h: 1,
+    recipe: { wood: 3, clay: 3, gold: 1 },
+    coins: 60,
+    level: 10,
+    interact: 'cook',
+    tags: ['cosy'],
+  },
+  {
+    id: 'kitchen_fridge',
+    name: 'ตู้เย็นสีพาสเทล',
+    desc: 'ตู้เย็นสองประตูสีมิ้นต์ ติดแม่เหล็กรูปวัดน่ารัก ๆ เก็บวัตถุดิบสดใหม่',
+    kind: 'floor',
+    w: 1,
+    h: 1,
+    recipe: { wood: 2, clay: 2 },
+    coins: 120,
+    level: 10,
+    tags: ['tall'],
+  },
+  {
+    id: 'rice_cooker',
+    name: 'หม้อหุงข้าวลายดอก',
+    desc: 'หม้อหุงข้าวลายดอกไม้แบบบ้านคุณยาย หุงข้าวหอมมะลิไว้ตักบาตรทุกเช้า',
+    kind: 'floor',
+    w: 1,
+    h: 1,
+    recipe: { clay: 2, flower: 1 },
+    coins: 40,
+    level: 10,
+    tags: ['thai'],
+  },
+)
 
 export const FURNITURE_BY_ID: Record<string, Furniture> = Object.fromEntries(FURNITURE.map((f) => [f.id, f]))
 

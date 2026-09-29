@@ -1,0 +1,507 @@
+/* Cooking activity (src/activities/cook). One art pixel = 2 CSS px. */
+
+.activity.cook {
+  background: #fbeed6;
+}
+
+/* ---------- locked card ---------- */
+
+.cook-locked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  padding: 4px 2px;
+}
+
+.cook-locked-art {
+  position: relative;
+  margin-top: 10px;
+  width: 250px;
+  height: 104px;
+}
+
+.cook-lock-dish {
+  position: absolute;
+  filter: grayscale(0.85) brightness(1.05);
+  opacity: 0.8;
+}
+
+.cook-lock-dish.a {
+  left: 0;
+  top: 18px;
+}
+.cook-lock-dish.b {
+  right: 0;
+  top: 18px;
+}
+.cook-lock-dish.c {
+  left: 73px;
+  top: 0;
+  filter: grayscale(0.5);
+  opacity: 1;
+}
+
+.cook-lock-badge {
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  transform: translateX(-50%);
+  animation: cook-bob 1.6s ease-in-out infinite;
+}
+
+@keyframes cook-bob {
+  50% {
+    transform: translate(-50%, -4px);
+  }
+}
+
+.cook-lock-bar {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cook-lock-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-align: left;
+  padding: 4px 8px;
+}
+
+/* ---------- recipe book ---------- */
+
+.win.cook-book .win-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cook-detail {
+  padding: 6px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cook-detail-head {
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.cook-detail-head > img {
+  flex-shrink: 0;
+  margin: -4px -4px -2px -6px;
+}
+
+.cook-merit {
+  margin-top: 2px;
+  gap: 0;
+}
+
+.cook-merit .chip {
+  font-size: 11px;
+}
+
+.cook-sub {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+
+.cook-ings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px 6px;
+}
+
+.cook-ing {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.2;
+  padding: 1px 2px;
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 0 0 2px rgba(122, 90, 62, 0.18);
+}
+
+.cook-ing.no {
+  background: rgba(232, 81, 74, 0.12);
+}
+
+.cook-ing-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cook-ing-n {
+  font-size: 12px;
+}
+
+.cook-ing.no .cook-ing-n {
+  color: var(--red);
+}
+
+.cook-ing-mark {
+  width: 14px;
+  display: inline-flex;
+}
+
+.cook-steps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+
+.cook-steps.book {
+  justify-content: flex-start;
+}
+
+.cook-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 18px;
+  background: var(--paper-2);
+  color: var(--ink-soft);
+  box-shadow: 0 -2px 0 0 var(--edge), 0 2px 0 0 var(--edge), -2px 0 0 0 var(--edge), 2px 0 0 0 var(--edge);
+}
+
+.cook-step b {
+  font-size: 11px;
+}
+
+.cook-step.now {
+  background: var(--gold-l);
+  color: var(--ink);
+  box-shadow: 0 -2px 0 0 var(--gold-d), 0 2px 0 0 var(--gold-d), -2px 0 0 0 var(--gold-d), 2px 0 0 0 var(--gold-d);
+  animation: cook-pulse 1s ease-in-out infinite;
+}
+
+.cook-step.done {
+  background: #d9f5c8;
+  color: var(--leaf-d);
+}
+
+@keyframes cook-pulse {
+  50% {
+    transform: translateY(-1px);
+  }
+}
+
+.cook-tip {
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.cook-mart-hint {
+  padding: 4px 8px;
+  line-height: 1.5;
+}
+
+.cook-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.cook-card {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+  min-height: 52px;
+}
+
+.cook-card.on {
+  border-image-source: var(--sk-card-gold);
+}
+
+.cook-card.locked img {
+  filter: grayscale(0.9);
+  opacity: 0.7;
+}
+
+.cook-card-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.cook-card-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.cook-card .chip {
+  font-size: 10px;
+  padding: 0 2px;
+  margin: 0;
+}
+
+/* ---------- cooking panel ---------- */
+
+.cook-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 8px 8px;
+}
+
+.cook-instr {
+  min-height: 22px;
+  display: flex;
+  justify-content: center;
+}
+
+.cook-instr .pt {
+  max-width: 100%;
+  height: auto;
+}
+
+.cook-order {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.cook-bottle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 5px 0 2px;
+  font-size: 11px;
+  background: var(--paper-2);
+  box-shadow: 0 0 0 2px var(--edge);
+}
+
+.cook-bottle img {
+  width: 12px;
+  height: 20px;
+}
+
+.cook-bottle.now {
+  background: var(--gold-l);
+  box-shadow: 0 0 0 2px var(--gold-d);
+  animation: cook-pulse 0.8s ease-in-out infinite;
+}
+
+.cook-bottle.miss {
+  background: #ffd6d0;
+  box-shadow: 0 0 0 2px var(--red);
+  animation: cook-shake 0.3s linear 2;
+}
+
+.cook-bottle.done {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+@keyframes cook-shake {
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+.cook-meter {
+  align-items: center;
+  gap: 6px;
+}
+
+.cook-hint {
+  margin: 0;
+  font-size: 12px;
+}
+
+.cook-timer {
+  height: 4px;
+  background: rgba(59, 38, 22, 0.15);
+}
+
+.cook-timer > span {
+  display: block;
+  height: 100%;
+  width: calc(var(--t, 1) * 100%);
+  background: var(--saffron);
+  transition: width 100ms linear;
+}
+
+/* ---------- grade pop ("เยี่ยมมาก!") ---------- */
+
+.cook-grade {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  animation: cook-pop 1.15s ease-out forwards;
+}
+
+.cook-grade::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 260px;
+  height: 150px;
+  transform: translate(-50%, -50%);
+  z-index: -1;
+  background: radial-gradient(ellipse at center, rgba(255, 250, 230, 0.95) 0 34%, rgba(255, 240, 180, 0.55) 48%, transparent 70%);
+}
+
+.cook-grade.perfect::before {
+  background: radial-gradient(ellipse at center, rgba(255, 246, 200, 0.98) 0 34%, rgba(255, 214, 90, 0.6) 50%, transparent 72%);
+}
+
+.cook-grade-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.cook-grade-avatar img {
+  display: block;
+}
+
+.cook-grade.perfect .cook-grade-avatar {
+  animation: cook-hop 0.35s ease-out 2;
+}
+
+@keyframes cook-hop {
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes cook-pop {
+  0% {
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0;
+  }
+  14% {
+    transform: translate(-50%, -50%) scale(1.18);
+    opacity: 1;
+  }
+  24% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  80% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -70%) scale(0.96);
+    opacity: 0;
+  }
+}
+
+/* ---------- result ---------- */
+
+.cook-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.cook-reveal {
+  position: relative;
+  width: 200px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cook-rays {
+  position: absolute;
+  inset: -20px;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 227, 122, 0.6) 0 12deg, transparent 12deg 24deg);
+  -webkit-mask-image: radial-gradient(circle, #000 20%, transparent 68%);
+  mask-image: radial-gradient(circle, #000 20%, transparent 68%);
+  animation: cook-spin 8s linear infinite;
+}
+
+.cook-reveal.gold .cook-rays {
+  background: repeating-conic-gradient(from 0deg, rgba(255, 196, 60, 0.85) 0 10deg, rgba(255, 246, 180, 0.4) 10deg 20deg);
+}
+
+@keyframes cook-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cook-reveal-dish {
+  position: relative;
+  animation: cook-dish-in 600ms cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+}
+
+@keyframes cook-dish-in {
+  from {
+    transform: scale(0.2) translateY(30px);
+    opacity: 0;
+  }
+}
+
+.cook-result-stars {
+  min-height: 32px;
+}
+
+.cook-result-stars .stars img {
+  animation: cook-star 280ms ease-out both;
+}
+
+@keyframes cook-star {
+  from {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.cook-chef {
+  font-size: 13px;
+  animation: cook-pulse 0.9s ease-in-out infinite;
+}
+
+.cook-alms-note {
+  padding: 4px 8px;
+  line-height: 1.5;
+  width: 100%;
+}
+
+.cook-alms-note img {
+  vertical-align: middle;
+}

@@ -2397,3 +2397,94 @@ export function materialSprite(id: MaterialId): Sprite {
     return outlineCanvas(inner, OUTLINE)
   })
 }
+
+// ---------------------------------------------------------------------------
+// Kitchen (cooking): stove counter (interact 'cook'), fridge and rice cooker.
+
+ART.kitchen_stove = {
+  up: 16,
+  draw(g, a) {
+    const { b } = a
+    // Wok simmering on the left burner, a kettle on the right.
+    g.ellipse(10, 10, 8, 3, '#3a3a46')
+    g.ellipse(10, 9.5, 6.5, 2, '#5a5a66')
+    g.ellipse(10, 9, 4, 1.2, '#a8704f')
+    g.px(8, 8, '#3f9a4a')
+    g.px(12, 9, '#e8413a')
+    g.rect(1, 9, 2, 2, '#c28e5c')
+    g.rect(22, 3, 7, 7, METAL.base)
+    g.hline(22, 28, 3, METAL.hi)
+    g.rect(24, 1, 3, 2, '#e8514a')
+    g.line(29, 5, 31, 3, METAL.dark)
+    // Steam.
+    g.px(9, 3, '#ffffff')
+    g.px(10, 1, '#ffffff')
+    g.px(26, 0, '#ffffff')
+    // Countertop with a stainless hob.
+    box(g, 0, 11, 32, 5, b - 16, OAK)
+    g.rect(3, 12, 26, 3, '#c9ced6')
+    g.hline(3, 28, 12, '#eef1f5')
+    // Cabinet doors and knobs.
+    g.rect(2, 19, 13, b - 21, OAK.top)
+    g.rect(17, 19, 13, b - 21, OAK.top)
+    g.hline(2, 14, 19, OAK.hi)
+    g.hline(17, 29, 19, OAK.hi)
+    g.px(13, 23, GOLD.base)
+    g.px(18, 23, GOLD.base)
+    for (const kx of [6, 10, 22, 26]) g.px(kx, 17, '#3a3648')
+    g.rect(0, b - 2, 32, 2, OAK.dark)
+  },
+}
+
+ART.kitchen_fridge = {
+  up: 30,
+  draw(g, a) {
+    const { b } = a
+    const M = { hi: '#e4fbf1', top: '#c8f0dd', mid: '#a9e3c8', dark: '#7fc8a6', deep: '#5aa585' }
+    g.rect(1, 0, 14, b, M.mid)
+    g.rect(1, 0, 14, 2, M.hi)
+    g.vline(1, 0, b - 1, M.hi)
+    g.vline(14, 2, b - 1, M.dark)
+    g.hline(1, 14, 13, M.deep)
+    g.rect(12, 4, 1, 6, '#fffaf0')
+    g.rect(12, 16, 1, 8, '#fffaf0')
+    // Cute magnets: a tiny temple and a heart.
+    g.rect(4, 5, 3, 2, '#f58f35')
+    g.px(5, 4, '#f58f35')
+    g.rect(4, 7, 3, 1, '#fffaf0')
+    g.px(7, 18, '#ff6f91')
+    g.px(8, 18, '#ff6f91')
+    g.px(7, 19, '#ff6f91')
+    g.px(8, 19, '#ff6f91')
+    g.rect(3, 22, 4, 5, '#fffaf0')
+    g.hline(3, 6, 23, '#9fc4ee')
+    g.rect(2, b - 2, 12, 2, M.deep)
+  },
+}
+
+ART.rice_cooker = {
+  up: 12,
+  draw(g, a) {
+    const { b } = a
+    // Little stool.
+    g.rect(1, 13, 14, 3, TEAK.top)
+    g.hline(1, 14, 13, TEAK.hi)
+    leg(g, 2, 16, b, TEAK)
+    leg(g, 12, 16, b, TEAK)
+    // Flowery cooker.
+    g.ellipse(8, 9, 6, 4.5, '#fffaf0')
+    g.rect(2, 6, 12, 4, '#fffaf0')
+    g.ellipse(8, 5, 6, 2.2, '#f0e6d6')
+    g.ellipse(8, 4.5, 5, 1.6, '#fffaf0')
+    g.rect(7, 2, 2, 2, '#e8514a')
+    for (const [x, y, c] of [
+      [4, 8, '#ff9fc0'],
+      [8, 10, '#ffd23f'],
+      [12, 8, '#ff9fc0'],
+    ] as [number, number, string][])
+      flowerDot(g, x, y, c, '#e8514a')
+    g.px(13, 11, '#6fcf8f')
+    g.px(4, 1, '#ffffff')
+    g.px(5, 0, '#ffffff')
+  },
+}

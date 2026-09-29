@@ -1,6 +1,6 @@
 // Consumable items bought with Boon Coins: alms food, offerings, animal food.
 
-export type ItemCategory = 'alms' | 'offering' | 'animal' | 'special'
+export type ItemCategory = 'alms' | 'offering' | 'animal' | 'special' | 'ingredient' | 'dish'
 
 export interface Item {
   id: string
@@ -15,6 +15,10 @@ export interface Item {
   /** Units received per purchase (e.g. a bag of 10 fish pellets). */
   pack?: number
   level?: number
+  /** Cooked dishes: id of the plain dish this 3★ "ฝีมือเชฟ" variant belongs to. */
+  base?: string
+  /** Cooked dishes: the 3★ gold variant (1.5× merit). */
+  gold?: boolean
 }
 
 export const ITEMS: Item[] = [
@@ -91,3 +95,95 @@ export const BOOSTS: Boost[] = [
   { id: 'boost_merit15', name: 'บุญเสริม x1.5', desc: 'ได้บุญเพิ่มครึ่งหนึ่ง 2 ชั่วโมง', price: 90, icon: 'boost2', buff: { kind: 'merit', mult: 1.5, minutes: 120 } },
   { id: 'boost_coin', name: 'ถุงเงินถุงทอง', desc: 'เหรียญจากภารกิจ +50% 1 ชั่วโมง', price: 50, icon: 'coinbag', buff: { kind: 'coin', mult: 1.5, minutes: 60 } },
 ]
+
+// ---------------------------------------------------------------------------
+// Cooking (unlocks at level 10): raw ingredients sold at the 7-บุญ mart and
+// home-cooked dishes. Dishes are offered in ตักบาตร like bought alms food but
+// are worth far more merit; a 3★ cook gives the "ฝีมือเชฟ" (gold) variant
+// with 1.5× merit. Recipes live in data/recipes.ts, rules in game/cooking.ts
+// and icons in art/cooking.ts (`foodIcon(id)`; each item's `icon` is its id).
+
+const ing = (id: string, name: string, desc: string, price: number, pack?: number): Item => ({
+  id,
+  name,
+  desc,
+  category: 'ingredient',
+  price,
+  merit: 0,
+  icon: id,
+  ...(pack ? { pack } : {}),
+})
+
+export const INGREDIENTS: Item[] = [
+  ing('ing_egg', 'ไข่ไก่สด', 'แพ็คละ 4 ฟอง ไข่ใหม่จากฟาร์ม ใช้ได้แทบทุกเมนู', 8, 4),
+  ing('ing_rice', 'ข้าวสารหอมมะลิ', 'ถุงละ 3 ถ้วย หุงแล้วหอมฟุ้งทั้งบ้าน', 6, 3),
+  ing('ing_sticky', 'ข้าวเหนียวเขี้ยวงู', 'แช่น้ำไว้แล้ว พร้อมนึ่ง แพ็คละ 2 ถ้วย', 6, 2),
+  ing('ing_pork', 'หมูสับ', 'หมูสับสดใหม่ แพ็คพอดีหนึ่งมื้อ', 10),
+  ing('ing_chicken', 'อกไก่สด', 'ไก่สดหั่นชิ้นพอดีคำ นุ่มไม่แห้ง', 10),
+  ing('ing_tofu', 'เต้าหู้ไข่', 'หลอดละ 2 แท่ง นุ่มละมุนลิ้น', 6, 2),
+  ing('ing_noodle', 'เส้นจันท์', 'เส้นผัดไทยเหนียวนุ่มจากจันทบุรี', 8),
+  ing('ing_basil', 'ใบกะเพรา', 'กะเพราป่ากลิ่นแรง กำละ 2 มื้อ', 4, 2),
+  ing('ing_chili', 'พริกขี้หนู', 'เผ็ดจี๊ดจ๊าด แพ็คละ 3 กำ', 3, 3),
+  ing('ing_garlic', 'กระเทียมไทย', 'กลีบเล็กหอมแรง แพ็คละ 3 หัว', 3, 3),
+  ing('ing_veg', 'ผักรวมสด', 'ผักกาด ต้นหอม ถั่วงอก มะเขือ สดกรอบ แพ็คละ 2', 5, 2),
+  ing('ing_coconut', 'กะทิสด', 'กะทิคั้นสดข้นมัน หอมมะพร้าว', 8),
+  ing('ing_paste', 'พริกแกงเขียวหวาน', 'พริกแกงตำเองสูตรคุณยาย', 8),
+  ing('ing_mango', 'มะม่วงน้ำดอกไม้', 'สุกเหลืองหวานหอม ลูกโต', 10),
+  ing('ing_flour', 'แป้งข้าวเหนียว', 'ใช้ปั้นบัวลอยและทำขนมครก แพ็คละ 2', 5, 2),
+  ing('ing_sugar', 'น้ำตาลปี๊บ', 'หวานหอมกลิ่นมะพร้าว แพ็คละ 3', 3, 3),
+  ing('ing_fishsauce', 'น้ำปลาแท้', 'ขวดเล็กเค็มกลมกล่อม ใช้ได้ 3 ครั้ง', 3, 3),
+  ing('ing_oil', 'น้ำมันพืช', 'ขวดเล็กใช้ได้ 4 ครั้ง', 4, 4),
+]
+
+/** The 3★ gold variant of a dish is worth this many times the plain dish. */
+export const GOLD_MERIT_MULT = 1.5
+
+const dish = (id: string, name: string, desc: string, merit: number): Item[] => [
+  { id, name, desc, category: 'dish', price: 0, merit, icon: id },
+  {
+    id: `${id}_gold`,
+    name: `${name} ฝีมือเชฟ`,
+    desc: `${desc} · ทำได้ 3 ดาว บุญพิเศษ!`,
+    category: 'dish',
+    price: 0,
+    merit: Math.round(merit * GOLD_MERIT_MULT),
+    icon: `${id}_gold`,
+    base: id,
+    gold: true,
+  },
+]
+
+/** Home-cooked dishes (plain + gold). Offer them in ตักบาตร for big merit. */
+export const DISHES: Item[] = [
+  ...dish('dish_kaijiao', 'ไข่เจียวฟูกรอบ', 'ไข่เจียวทอดฟูกรอบ ราดข้าวสวยร้อน ๆ', 18),
+  ...dish('dish_khaopad', 'ข้าวผัดไข่', 'ข้าวผัดหอมกระทะ เสิร์ฟกับแตงกวาและมะนาว', 20),
+  ...dish('dish_tomjued', 'ต้มจืดเต้าหู้หมูสับ', 'น้ำซุปใสหวานผัก เต้าหู้นุ่ม หมูสับก้อนกลม', 22),
+  ...dish('dish_khaotom', 'ข้าวต้มหมู', 'ข้าวต้มร้อน ๆ โรยกระเทียมเจียวและต้นหอม', 22),
+  ...dish('dish_kaprao', 'ผัดกะเพราหมูสับ', 'เมนูในดวงใจ หอมกะเพรา เผ็ดกำลังดี', 26),
+  ...dish('dish_khanomkrok', 'ขนมครก', 'ขนมครกหอมกะทิ กรอบนอกนุ่มใน', 26),
+  ...dish('dish_bualoy', 'บัวลอยสามสี', 'บัวลอยใบเตย อัญชัน ฟักทอง ในน้ำกะทิหอม', 28),
+  ...dish('dish_padthai', 'ผัดไทยห่อไข่', 'เส้นจันท์ผัดซอสมะขาม ห่อไข่สวยงาม', 30),
+  ...dish('dish_mango', 'ข้าวเหนียวมะม่วง', 'มะม่วงน้ำดอกไม้กับข้าวเหนียวมูนราดกะทิ', 32),
+  ...dish('dish_kiaowan', 'แกงเขียวหวานไก่', 'แกงเขียวหวานเข้มข้น ไก่นุ่ม หอมใบโหระพา', 36),
+]
+
+export const INGREDIENT_IDS = INGREDIENTS.map((i) => i.id)
+export const DISH_IDS = DISHES.map((i) => i.id)
+
+// Cooking items join the shared catalogue so the bag, buyItem/useItem and
+// the level-up checks treat them like any other consumable. The shop screen
+// and the alms tray filter by category, so neither lists them by accident.
+ITEMS.push(...INGREDIENTS, ...DISHES)
+for (const it of [...INGREDIENTS, ...DISHES]) ITEM_BY_ID[it.id] = it
+
+/** Gold (3★ "ฝีมือเชฟ") variant id of a dish. */
+export const goldDishId = (dishId: string) => (dishId.endsWith('_gold') ? dishId : `${dishId}_gold`)
+
+export const isDish = (id: string) => ITEM_BY_ID[id]?.category === 'dish'
+export const isIngredient = (id: string) => ITEM_BY_ID[id]?.category === 'ingredient'
+
+/** Ready-made alms food the 7-บุญ mart also stocks (ชุดตักบาตรพร้อมถวาย). */
+export const MART_ALMS = ['rice', 'sticky', 'curry', 'egg', 'dessert', 'banana', 'water', 'milk', 'redsoda', 'tea', 'sangkhathan']
+
+/** Everything sold at the 7-บุญ counter (hotspot `shop:mart`): alms food first, then ingredients. */
+export const MART_STOCK = [...MART_ALMS, ...INGREDIENT_IDS]
