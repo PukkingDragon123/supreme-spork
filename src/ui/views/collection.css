@@ -15,8 +15,9 @@
 
 .cbook-sum {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 0 4px;
 }
 
 .cbook-sum .grow {
