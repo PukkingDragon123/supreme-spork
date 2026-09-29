@@ -23,7 +23,7 @@ import { Coin, Icon } from './components/common'
 import { PBtn, Slot as SlotBtn, Tabs } from './components/kit'
 import { PT, TONE_TEXT } from './pixeltext'
 
-type Cat = 'body' | 'hair' | 'top' | 'bottom' | 'shoes' | 'acc'
+type Cat = 'body' | 'hair' | 'top' | 'bottom' | 'shoes' | 'acc' | 'suit'
 type Style = 'all' | 'school' | 'thai' | 'modern' | 'temple' | 'fun' | 'work'
 
 const CATS: { id: Cat; label: string; icon: string }[] = [
@@ -33,6 +33,7 @@ const CATS: { id: Cat; label: string; icon: string }[] = [
   { id: 'bottom', label: 'ท่อนล่าง', icon: 'shirt' },
   { id: 'shoes', label: 'รองเท้า', icon: 'paw' },
   { id: 'acc', label: 'ประดับ', icon: 'garland' },
+  { id: 'suit', label: 'ชุดมาสคอต', icon: 'paw' },
 ]
 
 const STYLES: { id: Style; label: string }[] = [
@@ -57,6 +58,7 @@ export function applyItem(look: AvatarLook, o: OutfitItem | null, slot: Slot | '
   else if (slot === 'hand') l.hand = o?.id ?? null
   else if (slot === 'shoes') l.shoes = o?.id ?? null
   else if ((slot as string) === 'back') l.back = o?.id ?? null
+  else if ((slot as string) === 'suit') l.suit = o?.id ?? null
   return l
 }
 
@@ -65,7 +67,7 @@ export function thumbFor(look: AvatarLook, slot: string): string {
   const s = dollSprite(look, 'stand', { view: slot === 'back' ? 'back' : 'front' })
   const H = s.h
   const [y0, y1] =
-    slot === 'hair' || slot === 'head' ? [0, 0.5] : slot === 'top' || slot === 'neck' || slot === 'hand' || slot === 'back' ? [0.2, 0.8] : slot === 'shoes' ? [0.72, 1] : [0.55, 1]
+    slot === 'suit' ? [0, 1] : slot === 'hair' || slot === 'head' ? [0, 0.5] : slot === 'top' || slot === 'neck' || slot === 'hand' || slot === 'back' ? [0.2, 0.8] : slot === 'shoes' ? [0.72, 1] : [0.55, 1]
   const top = Math.floor(H * y0)
   const h = Math.max(8, Math.ceil(H * y1) - top)
   const side = Math.max(h, s.w)
@@ -192,7 +194,7 @@ export function DressUp({ creating, onDone }: { creating?: boolean; onDone: () =
     }
   }
 
-  const slotsOf = (c: Cat): (Slot | 'shoes')[] => (c === 'acc' ? ['head', 'neck', 'hand', 'back' as Slot] : c === 'body' ? [] : [c as Slot | 'shoes'])
+  const slotsOf = (c: Cat): (Slot | 'shoes')[] => (c === 'acc' ? ['head', 'neck', 'hand', 'back' as Slot] : c === 'suit' ? ['suit' as Slot] : c === 'body' ? [] : [c as Slot | 'shoes'])
   const items = (c: Cat): OutfitX[] =>
     (OUTFITS as OutfitX[]).filter((o) => {
       if (!slotsOf(c).includes(o.slot as Slot)) return false
@@ -228,7 +230,7 @@ export function DressUp({ creating, onDone }: { creating?: boolean; onDone: () =
           )}
           {cat !== 'body' && (
             <div class="slot-grid dress-grid">
-              {(cat === 'acc' || cat === 'shoes') &&
+              {(cat === 'acc' || cat === 'shoes' || cat === 'suit') &&
                 slotsOf(cat).map((sl) => (
                   <SlotBtn key={`none-${sl}`} size={64} active={!look[sl as keyof AvatarLook]} onClick={() => pick(null, sl)} title={`ไม่ใส่ (${sl})`}>
                     <Icon name="close" size={22} />

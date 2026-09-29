@@ -56,6 +56,14 @@ export const SPECIAL_OFFERS: SpecialOffer[] = [
     pets: ['dragon'],
   },
   {
+    id: 'boondee.suit.legend',
+    name: 'แพ็กชุดมาสคอตในตำนาน',
+    desc: 'ชุดพญานาคเกล็ดประกาย + ชุดสิงโตเชิด + 200 คอยน์',
+    priceTHB: 149,
+    coins: 200,
+    outfits: ['suit_naga', 'suit_liondance'],
+  },
+  {
     id: 'boondee.set.khon',
     name: 'ชุดเทวดาโขนทอง',
     desc: 'ชฎาทอง + ปีกเทวดา + ออร่าทองเปล่งประกาย + 200 คอยน์',

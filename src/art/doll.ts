@@ -11,7 +11,7 @@
 import { createCanvas, mix } from '../engine/pixel'
 import { cached, outlineCanvas, type Sprite } from '../engine/sprite'
 import { HAIR_COLORS, P, SKIN_TONES } from './palette'
-import { OUTFIT_BY_ID, type BottomArt, type Pattern, type ShoeArt, type TopArt } from '../game/data/outfits'
+import { OUTFIT_BY_ID, SUIT_FACE_ACCS, suitGarments, type BottomArt, type Pattern, type ShoeArt, type SuitArt, type SuitKind, type TopArt } from '../game/data/outfits'
 import { lookKey, type AvatarLook } from './avatar'
 
 export type DollPose = 'stand' | 'wave' | 'wai' | 'happy' | 'think' | 'kneel' | 'kneelWai' | 'bow' | 'sit'
@@ -263,6 +263,26 @@ function patHD(p: Pattern | undefined, x: number, y: number): 0 | 1 | 2 | 3 {
     }
     case 'bands':
       return y === 28 || y === 29 ? 1 : y === 31 ? 2 : 0
+    case 'scale': {
+      // overlapping half-round scales with the odd golden glint
+      const ty = Math.floor(y / 3)
+      const tx = (x + (ty % 2) * 2) % 4
+      if ((x * 7 + y * 3) % 31 === 0) return 2
+      return (y % 3 === 2 && tx !== 0) || (y % 3 === 1 && (tx === 0 || tx === 3)) ? 1 : 0
+    }
+    case 'wave': {
+      // stepped zig-zag bands (ซิ่นลายน้ำไหล)
+      const band = Math.floor(y / 4)
+      const ry = y % 4
+      if (ry === 3) return 0
+      const zig = (x + band * 2) % 8
+      const h = zig < 4 ? zig : 7 - zig
+      return h === ry ? (band % 2 ? 2 : 1) : 0
+    }
+    case 'grill':
+      // diagonal char marks + a few fatty highlights
+      if ((x + y) % 6 === 0 && y % 5 !== 0) return 1
+      return (x * 3 + y * 2) % 23 === 0 ? 2 : 0
     default:
       return 0
   }
@@ -286,6 +306,8 @@ interface Res {
   hand: string | null
   back: string | null
   bare: boolean
+  /** Worn full-body suit, if any. */
+  suit: SuitArt | null
 }
 
 function resolve(look: AvatarLook, bare: boolean): Res {
@@ -293,6 +315,9 @@ function resolve(look: AvatarLook, bare: boolean): Res {
   const hc = HAIR_COLORS[look.hairColor] ?? HAIR_COLORS[0]
   const sk: Mat = { l: tone.l, b: tone.b, s: mix(tone.b, tone.d, 0.6), d: mix(tone.d, INK, 0.4) }
   const acc = (id: string | null | undefined) => (id ? OUTFIT_BY_ID[id]?.acc ?? null : null)
+  const suit = (look.suit && OUTFIT_BY_ID[look.suit]?.suit) || null
+  const g = suit ? suitGarments(suit) : null
+  const headAcc = acc(look.head)
   return {
     g: look.gender === 'm' ? 'm' : 'f',
     face: look.face ?? 0,
@@ -307,15 +332,18 @@ function resolve(look: AvatarLook, bare: boolean): Res {
       stub: mix(hc.b, tone.b, 0.22),
       stub2: mix(hc.b, tone.b, 0.4),
     },
-    top: OUTFIT_BY_ID[look.top]?.top ?? OUTFIT_BY_ID.top_white.top!,
-    bottom: OUTFIT_BY_ID[look.bottom]?.bottom ?? OUTFIT_BY_ID.bot_khaki.bottom!,
-    shoes: look.shoes ? OUTFIT_BY_ID[look.shoes]?.shoes ?? null : null,
+    top: g?.top ?? OUTFIT_BY_ID[look.top]?.top ?? OUTFIT_BY_ID.top_white.top!,
+    bottom: g?.bottom ?? OUTFIT_BY_ID[look.bottom]?.bottom ?? OUTFIT_BY_ID.bot_khaki.bottom!,
+    shoes: g?.shoes ?? (look.shoes ? OUTFIT_BY_ID[look.shoes]?.shoes ?? null : null),
     hair: OUTFIT_BY_ID[look.hair]?.hair ?? 'bob',
-    head: acc(look.head),
+    // hoods and headdresses hide hats; glasses and face paint stay
+    head: suit && headAcc && !SUIT_FACE_ACCS.has(headAcc) ? null : headAcc,
     neck: acc(look.neck),
     hand: acc(look.hand),
     back: acc(look.back),
-    bare,
+    // onesie booties stay on when kneeling at the temple
+    bare: bare && !g?.shoes,
+    suit,
   }
 }
 
@@ -1666,6 +1694,8 @@ function drawArm(b: Buf, r: Res, arm: ArmDef, side: 1 | -1) {
       }
     }
   }
+  const pawM = r.suit?.paws ? mat(r.suit.paws) : null
+  const paw = new Layer()
   if (a.hand !== 'none') {
     const h = HANDS[a.hand]
     const hx = Math.floor(a.w[0]) + (side === 1 ? h.ax : -h.ax - h.rows[0].length + 1)
@@ -1674,11 +1704,13 @@ function drawArm(b: Buf, r: Res, arm: ArmDef, side: 1 | -1) {
       for (let i = 0; i < row.length; i++) {
         const ch = side === 1 ? row[i] : row[row.length - 1 - i]
         if (ch === '.') continue
-        skin.put(hx + i, hy + j, ch === 'h' ? r.sk.s : r.sk.b)
+        if (pawM) paw.put(hx + i, hy + j, ch === 'h' ? pawM.s : pawM.b)
+        else skin.put(hx + i, hy + j, ch === 'h' ? r.sk.s : r.sk.b)
       }
     })
   }
   commit(b, skin, r.sk.d, TAG.skin)
+  if (pawM) commit(b, paw, pawM.d, TAG.cloth)
   commit(b, cloth, sleeve.d, TAG.cloth)
   if (r.neck === 'prajiad' && side === 1) {
     // red cloth armband (ประเจียด) tied round the upper arm, tails hanging
@@ -2152,6 +2184,8 @@ const GRAPHICS: Record<string, string[]> = {
   // บุญ / มา
   boonma: ['1.1..1...1.1', '1.1..1.1.111', '111.11.1.1.1', '...1....11.1', '..2.........', '...1..1.11..', '...1..1..1..', '...11.1..1..', '...1.11..1..'],
   // ไม่ + chilli / เผ็ด
+  // a fighting rooster like the statues at Ai Khai's shrine
+  aikhai: ['.22.....', '.111...3', '211.1.33', '.11111.3', '..11113.', '..1111..', '...2.2..'],
   maiphet: ['11.....2....', '.1.1..1..33.', '.1.1..1.222.', '.1.1.11.22..', '.1.11.1.2...', '11..........', '.......1....', '1.1...1.111.', '1.1...1...1.', '1.1.1.1.1.1.', '11.1.1..111.'],
 }
 
@@ -2608,9 +2642,10 @@ function drawHeadAcc(b: Buf, _r: Res, key: string | null, view: DollView, dy: nu
   const front = view === 'front'
   switch (key) {
     case 'glasses':
-    case 'sunglasses': {
+    case 'sunglasses':
+    case 'mirrorshades': {
       if (!front || stage !== 'over') return
-      const k = '#4a3246'
+      const k = key === 'mirrorshades' ? '#8a8496' : '#4a3246'
       for (const x0 of [9, 18]) {
         for (let i = 0; i < 5; i++) {
           b.put(x0 + i, 14 + dy, k)
@@ -2623,6 +2658,11 @@ function drawHeadAcc(b: Buf, _r: Res, key: string | null, view: DollView, dy: nu
         if (key === 'sunglasses') {
           for (let y = 15; y <= 19; y++) for (let x = x0 + (y === 15 || y === 19 ? 1 : 0); x <= x0 + 4 - (y === 15 || y === 19 ? 1 : 0); x++) b.put(x, y + dy, y <= 16 ? '#4d4466' : '#2e2840')
           b.put(x0 + 1, 15 + dy, '#9fd0ff')
+        } else if (key === 'mirrorshades') {
+          // chrome lenses with a rainbow sheen
+          const MR = ['#f4f8ff', '#cfe0f5', '#a9c2e6', '#ffc4e6', '#8fb0dc']
+          for (let y = 15; y <= 19; y++) for (let x = x0 + (y === 15 || y === 19 ? 1 : 0); x <= x0 + 4 - (y === 15 || y === 19 ? 1 : 0); x++) b.put(x, y + dy, MR[(y - 15 + (x - x0 === 3 ? 1 : 0)) % MR.length])
+          b.put(x0 + 1, 15 + dy, '#ffffff')
         } else b.put(x0 + 1, 15 + dy, '#e6f6ff')
       }
       b.put(14, 16 + dy, k)
@@ -3185,7 +3225,7 @@ function drawHeadAccNew(b: Buf, r: Res, key: string, view: DollView, dy: number,
     }
   }
   void r
-  return false
+  return drawSouvenirHead(b, key, view, dy, stage)
 }
 
 /** Surgical mask – drawn after the face, before the front hair. */
@@ -3243,7 +3283,7 @@ function drawBodyAccNew(b: Buf, key: string, view: DollView, dy: number): boolea
     case 'prajiad':
       return true
   }
-  return false
+  return drawSouvenirNeck(b, key, view, dy)
 }
 
 // ---- hand-held --------------------------------------------------------------
@@ -3373,7 +3413,7 @@ function drawHandItemNew(b: Buf, key: string, hx: number, hy: number, mirror: bo
       break
     }
     default:
-      return false
+      return drawSouvenirHand(b, key, hx, hy, mirror)
   }
   commit(b, L, line, TAG.deco)
   return true
@@ -3853,12 +3893,23 @@ function drawBow(b: Buf, r: Res) {
   const code = r.hair === 'jook' || r.hair === 'buzz' ? 'k' : '#'
   const rows = crownRows.map((row, j) => ((r.hair === 'jook' && j < 2) ? row : row.replace(/#/g, code)))
   const crownY = 29 - rows.length + (tall ? 0 : 0)
-  commit(b, hairLayer(r, def, { y: crownY, rows }, 0, 0, 'back'), r.hr.d, TAG.hair)
-  if (r.hair === 'bun') for (let x = 13; x <= 18; x++) b.put(x, crownY + 2, def.accent ?? P.red, TAG.hair)
+  if (r.suit && hoodedR(r)) {
+    // the hood's crown instead of hair
+    const hs = r.suit
+    const hm = mat(hs.main, hs.shade)
+    const HR = crownRows.slice(-6)
+    commit(b, rowsLayer(HR, 0, 29 - HR.length, (_ch, x, y) => clothCol(hm, hs.pattern, hs.patternColor, hs.patternColor2, x, y, x >= 21, x <= 11 && y <= 25)), hm.d, TAG.cloth)
+    drawSuitBow(b, r, 'crown')
+  } else {
+    commit(b, hairLayer(r, def, { y: crownY, rows }, 0, 0, 'back'), r.hr.d, TAG.hair)
+    if (r.hair === 'bun') for (let x = 13; x <= 18; x++) b.put(x, crownY + 2, def.accent ?? P.red, TAG.hair)
+    if (r.suit) drawSuitCrownBow(b, r)
+  }
   // forearms flat on the floor either side of the head
   const armCov = t.jacket || t.sleeve === 'long'
+  const hmat = handMat(r)
   commit(b, rowsLayer(BOW_ARMS, 0, 27, (ch, x, y) => {
-    if (ch === 'H' || ch === 'h') return ch === 'h' ? r.sk.s : r.sk.b
+    if (ch === 'H' || ch === 'h') return ch === 'h' ? hmat.s : hmat.b
     return armCov ? clothCol(sleeve, t.pattern, t.patternColor, t.patternColor2, x, y, ch === 'a') : ch === 'a' ? r.sk.s : r.sk.b
   }), armCov ? sleeve.d : r.sk.d, TAG.cloth)
   // rounded back
@@ -3901,8 +3952,9 @@ function drawBow(b: Buf, r: Res) {
     for (const [x, y] of [[14, 37], [13, 36], [17, 37], [18, 36], [14, 39], [17, 39], [15, 40], [16, 40]] as Pt[]) put(b, x, y, st)
   }
   if (t.extra === 'likay' || t.extra === 'khon') for (let x = 7; x <= 24; x++) if (b.tag(x, 39) === TAG.cloth) put(b, x, 39, (x % 3 === 0 ? '#fff3a6' : t.extraColor ?? P.gold))
+  if (r.suit) drawSuitBow(b, r, 'back')
   // long hair spilling forward over the shoulders / a tail on the back
-  if (r.hair === 'ponytail' || r.hair === 'braid') {
+  if ((r.hair === 'ponytail' || r.hair === 'braid') && !hoodedR(r)) {
     const Lh = new Layer()
     for (let y = 28; y <= 34; y++) for (let x = 14; x <= 17; x++) Lh.put(x, y, x === 14 ? r.hr.l : x === 17 ? r.hr.s : (y % 3 === 0 && r.hair === 'braid') ? r.hr.s : r.hr.b)
     commit(b, Lh, r.hr.d, TAG.hair)
@@ -3916,6 +3968,1243 @@ function drawBow(b: Buf, r: Res) {
     return low ? mix(sh.sole ?? sh.shade, INK, 0.2) : sh.sole ?? sh.shade
   })
   commit(b, F, r.bare ? r.sk.d : mix(sh.sole ?? sh.shade, INK, 0.5), TAG.cloth)
+  if (r.suit) {
+    drawSuitTail(b, r, 'back', 'bow')
+    if (r.suit.shimmer) drawSuitShimmer(b)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Full-body suits (ชุดมาสคอต). The suit's synthetic top / bottom / booties go
+// through the normal pipeline, so every pose works; these add the hood (which
+// replaces the hair and frames the face), belly, tail, spikes...
+// Palette codes: m s l d suit main/shade/light/dark, b B L belly, a A e accent,
+// c C accent2, w W white, k K ink, p P pink, r R red, y Y gold, G g rooster
+// green, n N brown, f F h hair.
+
+type SPal = Record<string, string>
+
+function suitPalD(r: Res, s: SuitArt): SPal {
+  const m = mat(s.main, s.shade)
+  const bm = mat(s.belly ?? mix(s.main, '#ffffff', 0.6))
+  const am = mat(s.accent ?? s.shade)
+  const cm = mat(s.accent2 ?? '#fffaf0')
+  return {
+    m: m.b, s: m.s, l: m.l, d: m.d,
+    b: bm.b, B: bm.s, L: bm.l,
+    a: am.b, A: am.s, e: am.l,
+    c: cm.b, C: cm.s,
+    w: '#fffaf0', W: '#ffffff', k: EYE_K, K: INK,
+    p: P.pink, P: P.pinkD, r: P.red, R: P.redD, y: P.gold, Y: P.goldD,
+    G: '#2f5a4a', g: '#4a8a70', n: '#8a5a3c', N: '#5a3a28',
+    f: r.hr.b, F: r.hr.s, h: r.hr.l,
+  }
+}
+
+const hoodedR = (r: Res) => !!r.suit && r.suit.head !== 'crown'
+
+// Hood geometry in stand coordinates.
+const HOOD_E = { x: 15.5, y: 14.6, rx: 12.4, ry: 11.2 }
+const OPEN_E = { x: 15.5, y: 19.3, rx: 8.7, ry: 6.8 }
+const ell = (x: number, y: number, e: { x: number; y: number; rx: number; ry: number }, grow = 0) =>
+  ((x + 0.5 - e.x) / (e.rx + grow)) ** 2 + ((y + 0.5 - e.y) / (e.ry + grow)) ** 2 <= 1
+const inHood = (x: number, y: number, e = HOOD_E) => y <= 24 && ell(x, y, e)
+/** Per-kind hood outline (a banana is tall and pointy). */
+const HOOD_SHAPE: Partial<Record<SuitKind, { x: number; y: number; rx: number; ry: number }>> = {
+  banana: { x: 15.5, y: 13.6, rx: 11.8, ry: 12.8 },
+}
+const inOpening = (x: number, y: number) => ell(x, y, OPEN_E)
+
+/** Paint a row map with palette codes (optionally mirrored), committed with `line`. */
+function smap(b: Buf, rows: string[], ox: number, oy: number, pal: SPal, line: string | null, opts: { mirror?: boolean; pair?: boolean; behind?: boolean; tag?: number } = {}) {
+  const L = opts.pair ? pairLayer(rows, ox, oy, pal) : mapLayer(rows, ox, oy, pal, !!opts.mirror)
+  if (opts.behind) commitBehind(b, L, line, opts.tag ?? TAG.deco)
+  else commit(b, L, line, opts.tag ?? TAG.deco)
+}
+
+/** A tapering tube along a polyline (tails). */
+function tubeLayer(pts: Pt[], r0: number, r1: number, col: (t: number, oy: number, nd: number, x: number, y: number) => string | null, L = new Layer()): Layer {
+  const lens: number[] = []
+  let total = 0
+  for (let i = 1; i < pts.length; i++) {
+    const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])
+    lens.push(l)
+    total += l
+  }
+  const xs = pts.map((p) => p[0])
+  const ys = pts.map((p) => p[1])
+  const R = Math.max(r0, r1) + 1
+  for (let y = Math.floor(Math.min(...ys) - R); y <= Math.ceil(Math.max(...ys) + R); y++) {
+    for (let x = Math.floor(Math.min(...xs) - R); x <= Math.ceil(Math.max(...xs) + R); x++) {
+      let best = { d: 1e9, t: 0, oy: 0 }
+      let acc = 0
+      for (let i = 1; i < pts.length; i++) {
+        const u = segInfo(x + 0.5, y + 0.5, pts[i - 1], pts[i])
+        if (u.d < best.d) best = { d: u.d, t: (acc + u.t * lens[i - 1]) / (total || 1), oy: u.oy }
+        acc += lens[i - 1]
+      }
+      const rad = r0 + (r1 - r0) * best.t
+      if (best.d > rad) continue
+      const c = col(best.t, best.oy / Math.max(rad, 0.01), best.d / Math.max(rad, 0.01), x, y)
+      if (c) L.put(x, y, c)
+    }
+  }
+  return L
+}
+
+/** Point and upward normal at parameter t along a polyline. */
+function alongPath(pts: Pt[], t: number): { p: Pt; n: Pt } {
+  const lens: number[] = []
+  let total = 0
+  for (let i = 1; i < pts.length; i++) {
+    lens.push(Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]))
+    total += lens[i - 1]
+  }
+  let want = t * total
+  for (let i = 1; i < pts.length; i++) {
+    if (want <= lens[i - 1] || i === pts.length - 1) {
+      const k = lens[i - 1] ? Math.min(1, want / lens[i - 1]) : 0
+      const a = pts[i - 1]
+      const c = pts[i]
+      const dx = (c[0] - a[0]) / (lens[i - 1] || 1)
+      const dyy = (c[1] - a[1]) / (lens[i - 1] || 1)
+      // normal pointing "up" (negative y)
+      let n: Pt = [dyy, -dx]
+      if (n[1] > 0) n = [-n[0], -n[1]]
+      return { p: [a[0] + (c[0] - a[0]) * k, a[1] + (c[1] - a[1]) * k], n }
+    }
+    want -= lens[i - 1]
+  }
+  return { p: pts[pts.length - 1], n: [0, -1] }
+}
+
+// ---- tails -------------------------------------------------------------------
+
+
+interface TailDef {
+  pts: Pt[]
+  low?: Pt[]
+  r0: number
+  r1: number
+}
+
+const TAILS: Partial<Record<SuitKind, TailDef>> = {
+  trex: { pts: [[0, 0], [3, 5], [8, 9], [13, 9]], low: [[0, 0], [5, 3], [10, 4], [14, 2]], r0: 3.4, r1: 0.9 },
+  shark: { pts: [[0, 0], [4, 4], [8, 6]], low: [[0, 0], [5, 2], [9, 2]], r0: 2.4, r1: 1.4 },
+  cat: { pts: [[0, 0], [5, 3], [10, 1], [12, -5], [10, -10]], low: [[0, 0], [6, 2], [11, 0], [13, -5], [11, -9]], r0: 1.4, r1: 1.4 },
+  penguin: { pts: [[0, 0], [1, 3]], r0: 2.2, r1: 0.7 },
+  elephant: { pts: [[0, 0], [1, 4], [3, 7]], low: [[0, 0], [4, 2], [7, 2]], r0: 0.8, r1: 0.7 },
+  liondance: { pts: [[0, 0], [4, 4], [9, 5], [12, 1]], low: [[0, 0], [5, 2], [10, 2], [13, -1]], r0: 2.6, r1: 1.9 },
+  naga: { pts: [[0, 0], [3, 6], [9, 9], [14, 7], [15, 2], [12, -1]], low: [[0, 0], [4, 3], [10, 4], [14, 2], [14, -2], [11, -3]], r0: 3.1, r1: 0.9 },
+}
+
+function seatFor(view: DollView, legs: LegsKind): Pt {
+  if (legs === 'stand') return [15.5, view === 'back' ? 36 : 37]
+  if (legs === 'bow') return [15.5, 45]
+  return [15.5, legs === 'sitF' || legs === 'sitB' ? 45 : 44]
+}
+
+/** Tail: behind the doll in front view, over the body in back view / bow. */
+function drawSuitTail(b: Buf, r: Res, view: DollView, legs: LegsKind) {
+  const s = r.suit!
+  const pal = suitPalD(r, s)
+  const low = legs !== 'stand'
+  const [sx, sy] = seatFor(view, legs)
+  const behind = view === 'front'
+  const put = (L: Layer) => (behind ? commitBehind(b, L, pal.d) : commit(b, L, pal.d, TAG.deco))
+  const m = mat(s.main, s.shade)
+  if (s.kind === 'bunny') {
+    // a cotton-ball tail only shows from behind
+    if (behind) return
+    const L = new Layer()
+    for (let y = -4; y <= 4; y++)
+      for (let x = -4; x <= 4; x++) {
+        const d = Math.hypot(x + 0.5, y + 0.5)
+        if (d > 3.3) continue
+        L.put(sx + x, sy + y - (low ? 1 : 0), (x + y) % 3 === 0 && d > 1.5 ? '#f0dde4' : d < 1.6 && y < 0 ? '#ffffff' : x + y > 2 ? '#ecd6de' : '#fffaf5')
+      }
+    commit(b, L, '#d8b4c2', TAG.deco)
+    return
+  }
+  if (s.kind === 'chicken') {
+    const fans: [Pt[], string, string][] = [
+      [[[0, 0], [6, -2], [10, -8], [9, -14]], pal.G, pal.g],
+      [[[0, 0], [7, 0], [12, -4], [14, -10]], pal.r, pal.R],
+      [[[0, 0], [6, 2], [12, 1], [15, -4]], pal.G, pal.g],
+      [[[0, 0], [5, 3], [10, 4], [13, 2]], pal.y, pal.Y],
+    ]
+    for (const [pts, c1, c2] of fans) {
+      const P2 = pts.map(([x, y]) => [sx + x, sy - 2 + (low ? y * 0.55 : y)] as Pt)
+      put(tubeLayer(P2, 1.6, 0.8, (_t, oy) => (oy > 0.2 ? c2 : c1)))
+    }
+    return
+  }
+  const def = TAILS[s.kind]
+  if (!def) return
+  const rel = low ? def.low ?? def.pts.map(([x, y]) => [x, y * 0.35] as Pt) : def.pts
+  const pts = rel.map(([x, y]) => [sx + x, sy + y] as Pt)
+  const bellyUnder = s.kind === 'trex' || s.kind === 'naga'
+  const L = tubeLayer(pts, def.r0, def.r1, (t, oy, nd, x, y) => {
+    if (s.kind === 'cat') {
+      if (t > 0.9) return pal.b
+      return Math.floor(t * 14) % 3 === 0 ? pal.c : oy > 0.3 ? m.s : m.b
+    }
+    if (s.kind === 'liondance') {
+      const fur = (x * 3 + y * 5) % 7
+      return t > 0.82 ? (fur < 3 ? pal.W : pal.c) : fur === 0 ? pal.y : fur < 3 ? pal.c : oy > 0.4 ? pal.C : pal.c
+    }
+    if (s.kind === 'elephant') return oy > 0 ? m.s : m.b
+    if (bellyUnder && oy > 0.45) return (x + y) % 3 === 0 ? pal.B : pal.b
+    if (s.kind === 'naga') {
+      const hit = patHD('scale', x, y)
+      if (hit === 1) return mix(pal.m, s.patternColor ?? pal.l, 0.6)
+    }
+    return oy < -0.45 && nd > 0.3 ? m.l : oy > 0.25 ? m.s : m.b
+  })
+  if (s.kind === 'elephant') {
+    const e = pts[pts.length - 1]
+    for (const [x, y] of [[0, 0], [1, 0], [0, 1], [1, 1], [0, 2], [-1, 1]] as Pt[]) L.put(e[0] + x, e[1] + y, '#6a5f7a')
+  }
+  if (s.kind === 'shark') {
+    // crescent tail fin
+    const e = pts[pts.length - 1]
+    const FIN = low ? ['..mm', '.mm.', 'mm..', '.mm.', '..mm'] : ['...m', '..mm', '.mm.', 'mm..', '.mm.', '..ms', '...s']
+    mapLayer(FIN, Math.round(e[0]), Math.round(e[1]) - Math.floor(FIN.length / 2), { m: m.b, s: m.s }, false, L)
+  }
+  put(L)
+  // spikes / fins along the top of the tail
+  if (s.kind === 'trex' || s.kind === 'naga') {
+    const S = new Layer()
+    const n = s.kind === 'trex' ? 5 : 6
+    for (let i = 0; i < n; i++) {
+      const t = 0.12 + (i / n) * 0.8
+      const { p, n: nn } = alongPath(pts, t)
+      const rad = def.r0 + (def.r1 - def.r0) * t
+      const h = s.kind === 'trex' ? 2.6 - i * 0.35 : 2
+      for (let k = 0; k <= h; k += 0.5) {
+        const w = (1 - k / (h + 0.6)) * 1.3
+        for (let q = -w; q <= w; q += 0.5) {
+          const x = p[0] + nn[0] * (rad + k) + -nn[1] * q
+          const y = p[1] + nn[1] * (rad + k) + nn[0] * q
+          S.put(x, y, q > 0.2 ? pal.A : pal.a)
+        }
+      }
+    }
+    behind ? commitBehind(b, S, mix(pal.A, INK, 0.4)) : commit(b, S, mix(pal.A, INK, 0.4), TAG.deco)
+  }
+}
+
+// ---- hood ------------------------------------------------------------------
+
+/** Pixels of the hood right next to the face opening (width 1 or 2). */
+function rimAt(x: number, y: number, w: number) {
+  return inHood(x, y) && !inOpening(x, y) && ell(x, y, OPEN_E, w)
+}
+
+function drawSuitHood(b: Buf, r: Res, view: DollView, dy: number) {
+  const s = r.suit!
+  const pal = suitPalD(r, s)
+  const m = mat(s.main, s.shade)
+  const front = view === 'front'
+  const k = s.kind
+  if (s.head === 'crown') {
+    drawSuitCrown(b, r, view, dy)
+    return
+  }
+  // things behind / above the hood
+  suitHoodBits(b, r, pal, view, dy, 'behind')
+  const L = new Layer()
+  const he = HOOD_SHAPE[k] ?? HOOD_E
+  for (let y = 0; y <= 26; y++) {
+    for (let x = 0; x < IW; x++) {
+      if (!inHood(x, y, he)) continue
+      if (k === 'banana' && y < 6 && Math.abs(x + 0.5 - 15.5) > (y + 1) * 1.6) continue
+      if (front && inOpening(x, y)) continue
+      const nx = (x + 0.5 - he.x) / he.rx
+      const ny = (y + 0.5 - he.y) / he.ry
+      const shade = nx > 0.62 || nx + ny * 0.6 > 0.95
+      const light = nx + ny < -0.95 && nx < -0.25
+      let c = clothCol(m, s.pattern, s.patternColor, s.patternColor2, x, y, shade, light)
+      if (k === 'liondance' && !shade) c = light ? m.l : m.b
+      L.put(x, y + dy, c)
+    }
+  }
+  commit(b, L, m.d, TAG.cloth)
+  if (!front) {
+    suitHoodBits(b, r, pal, view, dy, 'over')
+    return
+  }
+  // hair fringe peeking out
+  if (SUIT_FRINGE.has(k)) {
+    const F = new Layer()
+    for (let y = 11; y <= 14; y++)
+      for (let x = 6; x <= 25; x++) {
+        if (!inOpening(x, y)) continue
+        if (y === 14 && x % 3 === 0) continue
+        if (y === 14 && (x < 10 || x > 21)) continue
+        F.put(x, y + dy, y === 12 && x >= 11 && x <= 14 ? r.hr.l : x >= 20 ? r.hr.s : r.hr.b)
+      }
+    commit(b, F, r.hr.d, TAG.hair)
+    for (const i of F.m.keys()) {
+      const x = i % IW
+      const y = Math.floor(i / IW)
+      if (b.tag(x, y + 1) === TAG.face) b.put(x, y + 1, r.sk.s, TAG.face)
+    }
+  }
+  // rim around the face
+  const rim = SUIT_RIM[k]
+  if (rim) {
+    const R = new Layer()
+    for (let y = 8; y <= 26; y++)
+      for (let x = 4; x <= 27; x++) {
+        if (!rimAt(x, y, rim.w)) continue
+        const c = rim.col(pal, x, y, r)
+        if (c) R.put(x, y + dy, c)
+      }
+    commit(b, R, rim.line ? rim.line(pal) : null, TAG.cloth)
+  }
+  suitHoodBits(b, r, pal, view, dy, 'over')
+}
+
+const SUIT_FRINGE = new Set<SuitKind>(['frog', 'cat', 'penguin', 'bunny', 'chicken', 'elephant', 'durian', 'banana', 'mango', 'moopin', 'naga'])
+
+const SUIT_RIM: Partial<Record<SuitKind, { w: number; col: (p: SPal, x: number, y: number, r: Res) => string | null; line?: (p: SPal) => string }>> = {
+  // shark: pink gums with white teeth pointing into the mouth
+  shark: { w: 1.6, col: (p, x, y) => (inOpening(x, y + 1) || inOpening(x, y - 1) ? (x % 2 === 0 ? p.W : p.c) : p.c), line: (p) => mix(p.c, INK, 0.4) },
+  penguin: { w: 2.2, col: (p) => p.b },
+  banana: { w: 1.5, col: (p, x, y) => ((x + y) % 5 === 0 ? p.B : p.b) },
+  liondance: { w: 2.4, col: (p, x, y) => ((x * 3 + y * 5) % 7 === 0 ? p.y : (x + y) % 3 === 0 ? p.C : p.c), line: (p) => mix(p.C, INK, 0.3) },
+  trex: { w: 0.9, col: (p, x, y) => (y < 16 ? ((x + 1) % 3 === 0 ? null : p.c) : null) },
+}
+
+/** Kind-specific hood decorations. 'behind' = poking out behind the hood edge. */
+function suitHoodBits(b: Buf, r: Res, p: SPal, view: DollView, dy: number, stage: 'behind' | 'over') {
+  const s = r.suit!
+  const front = view === 'front'
+  const k = s.kind
+  const Y = (y: number) => y + dy
+  const beh = stage === 'behind'
+  switch (k) {
+    case 'trex': {
+      if (beh) {
+        smap(b, ['..aa..', '.aaAa.', 'aaaAAa', 'aaaAAa'], 13, Y(0), p, mix(p.A, INK, 0.4))
+        if (!front) return
+        return
+      }
+      if (front) {
+        // eye bumps on top, nostrils, teeth along the brim
+        smap(b, ['dd....', '.ddd..', '..kWk.', '..kkk.', '...k..'], 6, Y(5), p, null, { pair: true })
+        for (const x of [13, 14, 17, 18]) b.put(x, Y(9), x === 13 || x === 18 ? p.d : p.s, TAG.cloth)
+        for (let x = 9; x <= 22; x++) {
+          let y0 = 11
+          while (y0 < 18 && !inOpening(x, y0)) y0++
+          if (y0 >= 17) continue
+          b.put(x, Y(y0), '#ffffff', TAG.deco)
+          if (x % 3 !== 2) b.put(x, Y(y0 + 1), x % 3 === 0 ? '#e6e9f2' : '#ffffff', TAG.deco)
+        }
+      } else {
+        for (const y of [5, 10, 15, 20]) smap(b, ['.aa.', 'aaAa', '.aA.'], 14, Y(y), p, mix(p.A, INK, 0.4))
+      }
+      return
+    }
+    case 'shark': {
+      if (beh) {
+        smap(b, front ? ['..m.', '.mm.', '.mms', 'mmms', 'mmms'] : ['..m.', '.ml.', '.mls', 'mmls', 'mmms'], 14, Y(-1), p, p.d)
+        return
+      }
+      if (front) {
+        for (const x of [5, 26]) {
+          b.put(x, Y(13), p.k, TAG.deco)
+          b.put(x, Y(14), p.k, TAG.deco)
+          b.put(x + (x < 16 ? 1 : -1), Y(13), p.W, TAG.deco)
+        }
+        for (const [x, y] of [[4, 17], [4, 18], [6, 18], [6, 19], [4, 20]] as Pt[]) {
+          b.put(x, Y(y), p.d, TAG.deco)
+          b.put(31 - x, Y(y), p.d, TAG.deco)
+        }
+      } else {
+        for (let y = 5; y <= 14; y++) b.put(16, Y(y), p.s, TAG.deco)
+      }
+      return
+    }
+    case 'frog': {
+      if (beh) return
+      const EYE = ['..mmmm..', '.mwwwwm.', 'mwwWwwwm', 'mwwkkkwm', 'mwwkkkwm', '.mwwkwm.', '..mmmm..']
+      const EYEB = ['..mmmm..', '.mmmmmm.', 'mmmlmmmm', 'mmllmmms', 'mmmmmmms', '.mmmmss.', '..ssss..']
+      smap(b, front ? EYE : EYEB, 5, Y(-1), p, p.d, { pair: true })
+      if (front) {
+        for (const x of [5, 6]) {
+          b.put(x, Y(20), p.p, TAG.deco)
+          b.put(31 - x, Y(20), p.p, TAG.deco)
+        }
+      } else {
+        for (const [x, y] of [[9, 12], [10, 12], [21, 9], [14, 17], [15, 17], [20, 19]] as Pt[]) b.put(x, Y(y), p.s, TAG.deco)
+      }
+      return
+    }
+    case 'cat': {
+      if (beh) return
+      const EAR = front ? ['m.....', 'mm....', 'mam...', 'maam..', 'maaamm', 'mmmmmm'] : ['m.....', 'mm....', 'mmm...', 'mmmm..', 'mmmmmm', 'mmmmmm']
+      smap(b, EAR, 4, Y(0), p, p.d, { pair: true })
+      const stripes: Pt[] = front ? [[13, 6], [13, 7], [15, 5], [15, 6], [16, 5], [16, 6], [18, 6], [18, 7], [4, 15], [5, 15], [4, 18], [26, 15], [27, 15], [27, 18]] : [[13, 6], [13, 7], [15, 5], [15, 6], [16, 5], [16, 6], [18, 6], [18, 7], [10, 12], [11, 12], [20, 12], [21, 12], [15, 16], [16, 16], [8, 18], [23, 18]]
+      for (const [x, y] of stripes) b.put(x, Y(y), p.c, TAG.deco)
+      if (front) {
+        const wk = '#8a4a2a'
+        for (const [x, y] of [[3, 17], [4, 17], [5, 18], [3, 20], [4, 20], [5, 20]] as Pt[]) {
+          b.put(x, Y(y), wk, TAG.deco)
+          b.put(31 - x, Y(y), wk, TAG.deco)
+        }
+      }
+      return
+    }
+    case 'penguin': {
+      if (beh || !front) return
+      smap(b, ['.aaaa.', 'aeaaaa', '.aAAa.', '..AA..'], 13, Y(8), p, mix(p.A, INK, 0.4))
+      for (const x of [10, 20]) {
+        b.put(x, Y(8), p.k, TAG.deco)
+        b.put(x + 1, Y(8), p.k, TAG.deco)
+        b.put(x, Y(9), p.k, TAG.deco)
+        b.put(x + 1, Y(9), p.k, TAG.deco)
+        b.put(x, Y(8), p.W, TAG.deco)
+      }
+      return
+    }
+    case 'bunny': {
+      if (beh) return
+      const UP = ['.mm.', 'mppm', 'mppm', 'mppm', 'mppm', 'mpps', 'mpps', 'mmss', '.ms.']
+      const FLOP = ['...mmmmm..', '..mppppmm.', '.mppmmmmss', 'mppm...ss.', 'mpm.......', 'mps.......', 'mms.......', '.ms.......']
+      const UPB = UP.map((row) => row.replace(/p/g, 'm'))
+      const FLOPB = FLOP.map((row) => row.replace(/p/g, 'm'))
+      smap(b, front ? UP : UPB, front ? 8 : 20, Y(-1), p, p.d, { mirror: !front })
+      smap(b, front ? FLOP : FLOPB, front ? 18 : 4, Y(0), p, p.d, { mirror: !front })
+      return
+    }
+    case 'chicken': {
+      if (beh) {
+        smap(b, ['..a...a...', '.aAa.aAa.a', 'aaaaaaaaaa', '.aaaaaaaa.', '..aaaaaa..'], 11, Y(0), p, p.R)
+        return
+      }
+      if (front) {
+        smap(b, ['.cccc.', 'cWcccC', '.cCCC.', '..CC..'], 13, Y(8), p, mix(p.C, INK, 0.4))
+        smap(b, ['aa', 'aA', '.A'], 15, Y(12), p, p.R)
+        for (const x of [10, 20]) {
+          b.put(x, Y(8), p.k, TAG.deco)
+          b.put(x + 1, Y(8), p.k, TAG.deco)
+          b.put(x + 1, Y(9), p.k, TAG.deco)
+          b.put(x, Y(9), p.k, TAG.deco)
+        }
+      }
+      return
+    }
+    case 'elephant': {
+      if (beh) return
+      const EAR = front
+        ? ['..mmmm.', '.mmmmmm', 'mmppppm', 'mppppmm', 'mppppmm', 'mppppmm', 'mppppmm', 'mmpppmm', '.mmppmm', '..mmmmm', '...mmm.']
+        : ['..ssss.', '.ssmmms', 'ssmmmms', 'smmmmms', 'smmmmms', 'smmmmms', 'smmmmms', 'ssmmmms', '.ssmmms', '..sssss', '...sss.']
+      smap(b, EAR, 0, Y(8), p, p.d, { pair: true })
+      if (front) {
+        smap(b, ['.lms.', '.lms.', '.lds.', '.lms.', '.lds.', '.lmms', '..lmm', '...ls'], 13, Y(4), p, p.d)
+        for (const x of [10, 20]) {
+          b.put(x, Y(8), p.k, TAG.deco)
+          b.put(x + 1, Y(8), p.k, TAG.deco)
+          b.put(x, Y(9), p.k, TAG.deco)
+          b.put(x + 1, Y(9), p.k, TAG.deco)
+          b.put(x, Y(8), p.W, TAG.deco)
+        }
+        smap(b, ['w.', 'ww'], 11, Y(11), p, '#b9b4c8')
+        smap(b, ['.w', 'ww'], 19, Y(11), p, '#b9b4c8')
+      }
+      return
+    }
+    case 'durian': {
+      if (beh) {
+        // husk spikes all round the hood
+        const S = new Layer()
+        for (let i = 0; i < 16; i++) {
+          const a = (i / 16) * Math.PI * 2
+          if (Math.sin(a) > 0.75) continue
+          for (let k2 = 0; k2 <= 2; k2 += 0.5) {
+            const w = (1 - k2 / 2.4) * 1.2
+            for (let q = -w; q <= w; q += 0.5) {
+              const ex = HOOD_E.x + Math.cos(a) * (HOOD_E.rx + k2) - Math.sin(a) * q
+              const ey = HOOD_E.y + Math.sin(a) * (HOOD_E.ry + k2) + Math.cos(a) * q
+              if (ey > 24) continue
+              S.put(ex, ey + dy, q > 0.3 ? p.d : p.s)
+            }
+          }
+        }
+        commit(b, S, mix(p.d, INK, 0.3), TAG.deco)
+        smap(b, ['.n..', '.nn.', '.nN.', 'nnNN'], 14, Y(0), p, p.N)
+        return
+      }
+      return
+    }
+    case 'banana': {
+      if (beh) return
+      // the fruit's tip, and a few soft flesh strands
+      smap(b, ['.N', 'nN'], 15, Y(0), p, p.N)
+      for (const x of front ? [10, 21] : [10, 16, 21]) for (let y = 5; y <= 9; y++) b.put(x, Y(y), mix(p.m, p.s, 0.5), TAG.deco)
+      return
+    }
+    case 'mango': {
+      if (beh) return
+      // a big scored mango lying on the head + a leaf
+      const M = new Layer()
+      for (let y = -1; y <= 8; y++)
+        for (let x = 6; x <= 26; x++) {
+          const u = (x + 0.5 - 16) / 9.2
+          const v = (y + 0.5 - 4.5 - u * 1.2) / 3.6
+          if (u * u + v * v > 1) continue
+          const score = (x + y) % 4 === 0 || (x - y + 40) % 4 === 0
+          M.put(x, y + dy, v > 0.55 ? p.A : score && v > -0.6 ? mix(p.a, p.A, 0.55) : v < -0.5 && u < 0.2 ? p.e : p.a)
+        }
+      commit(b, M, mix(p.A, INK, 0.35), TAG.deco)
+      smap(b, ['..cc.', '.cCcc', 'cCcc.', 'cc...'], 22, Y(-1), p, mix(p.C, INK, 0.4))
+      // coconut cream drips and mung beans on the rice
+      for (const [x, y] of (front ? [[7, 9], [7, 10], [24, 9], [24, 10], [24, 11], [10, 8], [21, 8]] : [[8, 9], [8, 10], [22, 9], [15, 9], [15, 10], [15, 11]]) as Pt[]) b.put(x, Y(y), '#ffffff', TAG.deco)
+      for (const [x, y] of (front ? [[6, 13], [25, 15], [5, 19], [26, 21]] : [[10, 14], [20, 13], [14, 18], [24, 19], [7, 17]]) as Pt[]) b.put(x, Y(y), p.y, TAG.deco)
+      return
+    }
+    case 'moopin': {
+      if (beh) {
+        const S = new Layer()
+        for (let y = -1; y <= 6; y++) {
+          S.put(15, y + dy, '#f3e3b8')
+          S.put(16, y + dy, y % 3 === 0 ? '#c9ae72' : '#e0c890')
+        }
+        commit(b, S, '#9a7a45', TAG.deco)
+        return
+      }
+      const streak: Pt[] = front ? [[8, 8], [9, 8], [10, 7], [20, 7], [21, 7], [22, 8], [6, 13], [25, 13]] : [[8, 9], [9, 9], [10, 8], [20, 8], [21, 8], [13, 15], [14, 15], [18, 18], [19, 18]]
+      for (const [x, y] of streak) b.put(x, Y(y), p.c, TAG.deco)
+      for (const [x, y] of [[11, 5], [12, 5], [19, 10]] as Pt[]) b.put(x, Y(y), mix(p.l, '#ffffff', 0.4), TAG.deco)
+      return
+    }
+    case 'liondance': {
+      if (beh) {
+        smap(b, ['..aa..', '.aeaA.', '.aaaA.', 'aaaaAA'], 13, Y(-1), p, mix(p.A, INK, 0.4))
+        return
+      }
+      // fluffy fur band along the top
+      const Fz = new Layer()
+      for (let x = 5; x <= 26; x++) {
+        let y0 = 0
+        while (y0 < 12 && !inHood(x, y0)) y0++
+        const h = 2 + ((x * 7) % 3)
+        for (let y = y0 - 1; y <= y0 + h - 1; y++) Fz.put(x, y + dy, (x + y) % 4 === 0 ? p.C : (x * 3 + y) % 7 === 0 ? p.y : p.c)
+      }
+      commit(b, Fz, mix(p.C, INK, 0.3), TAG.deco)
+      if (front) {
+        const EYE = ['kkkk..', 'kwwwwk', 'wwWkkw', 'wwkkkw', '.wwww.']
+        smap(b, EYE, 6, Y(6), p, p.K, { pair: true })
+        smap(b, ['.ww.', 'wWcw', 'wccw', '.ww.'], 14, Y(8), { ...p, w: '#c9d6ea', c: '#e6f0fb' }, '#8a96b0')
+        for (const x of [2, 28]) smap(b, ['yy', 'yY'], x, Y(12), p, p.Y)
+      } else {
+        smap(b, ['.yy.', 'yyyY', '.YY.'], 14, Y(12), p, p.Y)
+      }
+      return
+    }
+    case 'yak': {
+      if (beh) return
+      // tiered crown (มงกุฎ) on the hood
+      const g = mat('#ffd54f', '#e9a53a')
+      const CR = [
+        '.......gg.......',
+        '......gGgg......',
+        '......gggs......',
+        '.....gGrggs.....',
+        '.....gggggs.....',
+        '....gGgggggs....',
+        '...ggGggeggss...',
+        '..gggggggggggs..',
+        '.gGrgggegggrggs.',
+        'ssssssssssssssss',
+      ]
+      smap(b, CR, 8, Y(-1), { g: g.b, G: g.l, s: g.s, r: P.red, e: '#5ee0a0' }, g.d)
+      if (front) {
+        // bulging giant eyes and red brows on the hood, tusks by the chin
+        smap(b, ['rrr...', '.www..', 'wwkkw.', '.www..'], 8, Y(9), { ...p, r: P.red }, p.K, { pair: true })
+        for (const [x, y] of [[10, 22], [10, 21], [11, 20]] as Pt[]) {
+          b.put(x, Y(y), '#ffffff', TAG.deco)
+          b.put(31 - x, Y(y), '#ffffff', TAG.deco)
+        }
+        for (const x of [2, 28]) smap(b, ['gg', 'gG', 'gg', '.r', '.g'], x, Y(14), { g: g.b, G: g.l, r: P.red }, g.d)
+      }
+      return
+    }
+    case 'naga': {
+      if (beh) {
+        const CREST = ['.......a......', '......aa...a..', '.....aea..aa..', '....aeaa.aea..', '...aeaAaaeaa.a', '..aaaAAaaAaaaa', '.aaaAAAaAAaaa.']
+        smap(b, CREST, 9, Y(-1), p, mix(p.A, INK, 0.4))
+        return
+      }
+      if (front) {
+        smap(b, ['.kkk.', 'kWWkk', 'kWkkk', '.kkk.'], 8, Y(7), p, null, { pair: true })
+        for (const [x, y] of [[3, 21], [2, 22], [2, 23], [3, 24]] as Pt[]) {
+          b.put(x, Y(y), p.a, TAG.deco)
+          b.put(31 - x, Y(y), p.a, TAG.deco)
+        }
+      } else {
+        for (const y of [6, 11, 16]) smap(b, ['.aa.', 'aeaA', '.aA.'], 14, Y(y), p, mix(p.A, INK, 0.4))
+      }
+      return
+    }
+  }
+}
+
+/** Headdresses of the `crown` suits (the hair stays visible). */
+function drawSuitCrown(b: Buf, r: Res, view: DollView, dy: number) {
+  const s = r.suit!
+  if (s.kind === 'ramkaebon') {
+    drawHeadAcc(b, r, 'chada', view, dy, 'over')
+    return
+  }
+  if (s.kind === 'nangkwak') {
+    const g = mat('#ffd54f', '#e9a53a')
+    const CR = ['....gg....', '...gGgs...', '...grgs...', '..gGggss..', '.gggrgggs.', 'gGgggggggs', 'srsgsgsrss']
+    smap(b, CR, 11, dy + 1, { g: g.b, G: g.l, s: g.s, r: P.red }, g.d)
+    if (view === 'front') {
+      // red flower tucked by the ear
+      smap(b, ['.rr.', 'rRyr', '.rr.'], 23, dy + 11, { r: '#e8514a', R: '#ff8a7a', y: '#ffd54f' }, '#7e2436')
+    }
+  }
+}
+
+/** The headdress peeking over the hair on the prostration mound. */
+function drawSuitCrownBow(b: Buf, r: Res) {
+  const g = mat('#ffd54f', '#e9a53a')
+  const tall = r.suit!.kind === 'ramkaebon'
+  const CR = tall ? ['..gg..', '..gg..', '.gGgs.', '.gggs.', 'gGrggs', 'ssssss'] : ['.gg.', 'gGgs', 'grgs', 'ssss']
+  smap(b, CR, tall ? 13 : 14, tall ? 17 : 20, { g: g.b, G: g.l, s: g.s, r: P.red }, g.d)
+}
+
+// ---- body --------------------------------------------------------------------
+
+function ellLayer(cx: number, cy: number, rx: number, ry: number, col: (x: number, y: number, u: number, v: number) => string | null, L = new Layer()): Layer {
+  for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++)
+    for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+      const u = (x + 0.5 - cx) / rx
+      const v = (y + 0.5 - cy) / ry
+      if (u * u + v * v > 1) continue
+      const c = col(x, y, u, v)
+      if (c) L.put(x, y, c)
+    }
+  return L
+}
+
+/** Peel flaps hanging from the waist (pale inside curling over, yellow outside, brown tips). */
+function drawBananaFlaps(b: Buf, p: SPal, y0: number) {
+  const line = mix(p.C, INK, 0.4)
+  smap(b, ['...bbb', '..bbbc', '.bbccc', '.bccC.', 'bccC..', 'ccC...', 'cC....', 'nn....'], 4, y0, p, line, { pair: true })
+  smap(b, ['.bbbbbb.', 'bbbbbbbb', '.cccccC.', '.ccccCC.', '..cccC..', '..cccC..', '...cC...', '...cC...', '...nn...'], 12, y0, p, line)
+}
+
+/** Belly, chest trims and back spikes over the suit's torso. */
+function drawSuitBody(b: Buf, r: Res, view: DollView, dy: number, pd: PoseDef) {
+  const s = r.suit!
+  const p = suitPalD(r, s)
+  const front = view === 'front'
+  const Y = (y: number) => y + dy
+  const k = s.kind
+  const standing = pd.legs === 'stand'
+  // the belly patch stretches over the legs only when standing
+  const belly = (rx: number, ry: number, cy: number, col: (x: number, y: number, u: number, v: number) => string | null) => {
+    const L = ellLayer(15.5, Y(cy), rx, ry, col)
+    // stops at the crotch when standing, at the suit's hem when kneeling / sitting
+    const yMax = Y(standing ? 37 : 36)
+    for (const i of [...L.m.keys()]) {
+      const x = i % IW
+      const y = Math.floor(i / IW)
+      if (y > yMax || b.c[i] === null || b.tag(x, y) !== TAG.cloth) L.m.delete(i)
+    }
+    commit(b, L, mix(p.B, INK, 0.25), TAG.cloth)
+  }
+  if (front) {
+    switch (k) {
+      case 'trex':
+        belly(4.6, 6.2, 33, (_x, y, u) => ((y - dy) % 3 === 0 ? p.B : u > 0.55 ? p.B : p.b))
+        // tiny T-rex arms with claws
+        smap(b, ['.mm..', 'mmmm.', 'smmmw', '..w.w'], 8, Y(28), p, p.d, { pair: true })
+        break
+      case 'shark':
+      case 'frog':
+      case 'bunny':
+      case 'cat':
+        belly(k === 'shark' ? 5 : 4.4, k === 'shark' ? 6.6 : 5.6, 33, (_x, _y, u) => (u > 0.6 ? p.B : p.b))
+        if (k === 'shark') for (const x of [12, 19]) b.put(x, Y(27), p.d, TAG.deco)
+        break
+      case 'penguin':
+        belly(5.6, 8, 33, (_x, _y, u, v) => (u + v * 0.3 > 0.7 ? p.B : p.b))
+        break
+      case 'chicken':
+      case 'liondance': {
+        if (k === 'liondance') belly(4.2, 5.5, 31, (x, y) => ((x + y) % 4 === 0 ? p.Y : (x * 3 + y) % 5 === 0 ? p.e : p.b))
+        // golden neck cape (hackles) / fur collar
+        const C = new Layer()
+        for (let y = 24; y <= 29; y++)
+          for (let x = 8; x <= 23; x++) {
+            const edge = 27 + ((x * 5) % 3) - (Math.abs(x - 15.5) > 6 ? 1 : 0)
+            if (y > edge) continue
+            if (b.c[y * IW + x + dy * IW] === null) continue
+            C.put(x, Y(y), k === 'liondance' ? ((x + y) % 3 === 0 ? p.C : p.c) : y === edge ? p.B : (x + y) % 4 === 0 ? p.L : p.b)
+          }
+        commit(b, C, mix(k === 'liondance' ? p.C : p.B, INK, 0.3), TAG.cloth)
+        break
+      }
+      case 'durian': {
+        belly(4.2, 5, 31, (x, y, u, v) => (u * u + v * v > 0.7 ? p.s : (x + y) % 4 === 0 ? p.B : (x * 3 - y) % 5 === 0 ? p.c : p.b))
+        break
+      }
+      case 'banana':
+        drawBananaFlaps(b, p, Y(32))
+        break
+      case 'mango': {
+        for (const [x, y] of [[12, 25], [12, 26], [19, 25], [19, 26], [19, 27], [15, 25], [16, 25]] as Pt[]) b.put(x, Y(y), '#ffffff', TAG.cloth)
+        for (const [x, y] of [[13, 29], [18, 31], [14, 33], [20, 28], [11, 31]] as Pt[]) b.put(x, Y(y), p.y, TAG.cloth)
+        break
+      }
+      case 'moopin': {
+        for (const y of [28, 33]) for (let x = 8; x <= 23; x++) if (b.tag(x, Y(y)) === TAG.cloth) b.put(x, Y(y), p.d, TAG.cloth)
+        for (const [x, y] of [[12, 26], [13, 26], [18, 30], [11, 35]] as Pt[]) b.put(x, Y(y), mix(p.l, '#ffffff', 0.4), TAG.cloth)
+        break
+      }
+      case 'yak': {
+        const g = mat('#ffd54f', '#e9a53a')
+        // กรองคอ collar, ทับทรวง pendant, belt
+        const C = new Layer()
+        for (let x = 10; x <= 21; x++) {
+          C.put(x, Y(24), (x + 1) % 3 === 0 ? P.red : g.b)
+          C.put(x, Y(25), x % 2 ? g.l : g.b)
+          if (x >= 12 && x <= 19) C.put(x, Y(26), g.s)
+        }
+        mapLayer(['.gg.', 'gGrg', 'grgg', '.gs.'], 14, Y(27), { g: g.b, G: g.l, r: P.red, s: g.s }, false, C)
+        for (let x = 9; x <= 22; x++) {
+          C.put(x, Y(34), x === 15 || x === 16 ? P.red : g.b)
+          C.put(x, Y(35), g.s)
+        }
+        for (const i of [...C.m.keys()]) if (b.c[i] === null) C.m.delete(i)
+        commit(b, C, g.d, TAG.cloth)
+        break
+      }
+      case 'naga':
+        belly(3.8, 6.6, 33, (_x, y) => ((y - dy) % 3 === 0 ? p.B : p.b))
+        break
+      case 'nangkwak':
+      case 'ramkaebon': {
+        const g = mat('#ffd54f', '#e9a53a')
+        const C = new Layer()
+        for (let x = 12; x <= 19; x++) C.put(x, Y(24), x % 2 ? g.l : g.b)
+        for (let x = 13; x <= 18; x++) C.put(x, Y(25), g.b)
+        C.put(15, Y(26), P.red)
+        C.put(16, Y(26), g.s)
+        commit(b, C, g.d, TAG.deco)
+        break
+      }
+    }
+    return
+  }
+  // back view
+  switch (k) {
+    case 'trex':
+      for (const y of [26, 31]) smap(b, ['.aa.', 'aaAa', '.aA.'], 14, Y(y), p, mix(p.A, INK, 0.4))
+      break
+    case 'naga':
+      for (const y of [26, 31]) smap(b, ['.aa.', 'aeaA', '.aA.'], 14, Y(y), p, mix(p.A, INK, 0.4))
+      break
+    case 'elephant': {
+      // ผ้าคลุมหลังช้าง: red saddle cloth with a gold border and tassels
+      const L = new Layer()
+      for (let y = 25; y <= 34; y++)
+        for (let x = 10; x <= 21; x++) {
+          const border = y === 25 || y === 34 || x === 10 || x === 21
+          const dia = Math.abs(x - 15.5) + Math.abs(y - 29.5) < 3
+          L.put(x, Y(y), border ? (x + y) % 2 ? P.gold : P.goldD : dia ? ((x + y) % 2 ? P.gold : '#fff3a6') : (x + y) % 4 === 0 ? P.redD : p.c)
+        }
+      for (const x of [10, 13, 18, 21]) {
+        L.put(x, Y(35), P.gold)
+        L.put(x, Y(36), P.goldD)
+      }
+      commit(b, L, P.redDD, TAG.deco)
+      break
+    }
+    case 'chicken':
+    case 'liondance': {
+      const C = new Layer()
+      for (let y = 24; y <= 29; y++)
+        for (let x = 8; x <= 23; x++) {
+          const edge = 28 + ((x * 5) % 3) - (Math.abs(x - 15.5) > 6 ? 2 : 0)
+          if (y > edge || b.c[(y + dy) * IW + x] === null) continue
+          C.put(x, Y(y), k === 'liondance' ? ((x + y) % 3 === 0 ? p.C : p.c) : y === edge ? p.B : (x + y) % 4 === 0 ? p.L : p.b)
+        }
+      commit(b, C, mix(k === 'liondance' ? p.C : p.B, INK, 0.3), TAG.cloth)
+      break
+    }
+    case 'banana':
+      drawBananaFlaps(b, p, Y(32))
+      break
+    case 'durian':
+      for (const [x, y] of [[8, 27], [23, 29], [7, 33], [24, 34]] as Pt[]) smap(b, ['.d', 'dd'], x, Y(y), p, null)
+      break
+    case 'moopin':
+      for (const y of [28, 33]) for (let x = 8; x <= 23; x++) if (b.tag(x, Y(y)) === TAG.cloth) b.put(x, Y(y), p.d, TAG.cloth)
+      break
+    case 'yak': {
+      const g = mat('#ffd54f', '#e9a53a')
+      for (let x = 10; x <= 21; x++) {
+        put(b, x, Y(24), g.b)
+        put(b, x, Y(34), g.b)
+        put(b, x, Y(35), g.s)
+      }
+      break
+    }
+    case 'nangkwak':
+    case 'ramkaebon':
+      for (let x = 13; x <= 18; x++) put(b, x, Y(24), '#ffd54f')
+      break
+  }
+}
+
+/** Premium glints on the suit (only on cloth pixels). */
+function drawSuitShimmer(b: Buf) {
+  const pts: Pt[] = [[7, 9], [22, 6], [5, 17], [26, 19], [11, 28], [20, 31], [9, 36], [22, 40], [14, 44], [18, 25]]
+  for (const [x, y] of pts) {
+    if (b.tag(x, y) !== TAG.cloth) continue
+    b.put(x, y, '#ffffff', TAG.cloth)
+    if (b.tag(x + 1, y) === TAG.cloth) b.put(x + 1, y, '#dffcef', TAG.cloth)
+  }
+}
+
+/** Suit bits on the prostration mound (hood crown, spikes, cape, saddle, tail). */
+function drawSuitBow(b: Buf, r: Res, stage: 'crown' | 'back') {
+  const s = r.suit!
+  const p = suitPalD(r, s)
+  const k = s.kind
+  if (stage === 'crown') {
+    // features on the hood crown (crown rows ≈ 23..28, centre x 15.5)
+    switch (k) {
+      case 'trex':
+        smap(b, ['..aa..', '.aaAa.', 'aaaAAa'], 13, 20, p, mix(p.A, INK, 0.4))
+        break
+      case 'shark':
+        smap(b, ['..m.', '.ml.', '.mls', 'mmls'], 14, 19, p, p.d)
+        break
+      case 'frog':
+        smap(b, ['.mmm.', 'mmlmm', 'mmmms', '.sss.'], 8, 21, p, p.d, { pair: true })
+        break
+      case 'cat':
+        smap(b, ['m...', 'mm..', 'mmm.', 'mmmm'], 8, 21, p, p.d, { pair: true })
+        break
+      case 'bunny':
+        smap(b, ['.mm.', 'mmmm', 'mmmm', 'mmms', '.ms.'], 10, 19, p, p.d)
+        smap(b, ['.mm.', 'mmmm', 'mmms', '.ss.'], 18, 20, p, p.d)
+        break
+      case 'chicken':
+        smap(b, ['.a..a..a.', 'aAaaAaaAa', '.aaaaaaa.'], 11, 20, p, p.R)
+        break
+      case 'elephant':
+        smap(b, ['.ss.', 'smms', 'smms', 'smms', '.ss.'], 5, 24, p, p.d, { pair: true })
+        break
+      case 'durian':
+        smap(b, ['.n.', 'nnN'], 14, 21, p, p.N)
+        for (const x of [8, 11, 20, 23]) smap(b, ['.d.', 'ddd'], x, 22, p, null)
+        break
+      case 'banana':
+        smap(b, ['.N', 'nN'], 15, 21, p, p.N)
+        break
+      case 'mango':
+        smap(b, ['.....cc', '.aaaaCc', 'aaeaaaa', 'aaaaaAA', '.AAAAA.'], 11, 20, p, mix(p.A, INK, 0.35))
+        break
+      case 'moopin': {
+        const S = new Layer()
+        for (let y = 17; y <= 24; y++) {
+          S.put(15, y, '#f3e3b8')
+          S.put(16, y, '#e0c890')
+        }
+        commit(b, S, '#9a7a45', TAG.deco)
+        break
+      }
+      case 'liondance':
+        smap(b, ['.aa.', 'aeaA', 'aaAA'], 14, 20, p, mix(p.A, INK, 0.4))
+        for (let x = 9; x <= 22; x++) b.put(x, 23 + (x % 2), (x + 1) % 3 ? p.c : p.C, TAG.deco)
+        break
+      case 'yak': {
+        const g = mat('#ffd54f', '#e9a53a')
+        smap(b, ['...gg...', '..gGgs..', '..gggs..', '.gGrggs.', 'gggggggs', 'ssssssss'], 12, 18, { g: g.b, G: g.l, s: g.s, r: P.red }, g.d)
+        break
+      }
+      case 'naga':
+        smap(b, ['...a....', '..aa..a.', '.aea.aa.', 'aeaAaeaa', 'aaAAaaAa'], 12, 19, p, mix(p.A, INK, 0.4))
+        break
+    }
+    return
+  }
+  // on the rounded back
+  switch (k) {
+    case 'trex':
+    case 'naga':
+      for (const y of [30, 35]) smap(b, ['.aa.', k === 'naga' ? 'aeaA' : 'aaAa', '.aA.'], 14, y, p, mix(p.A, INK, 0.4))
+      break
+    case 'elephant': {
+      const L = new Layer()
+      for (let y = 31; y <= 38; y++)
+        for (let x = 10; x <= 21; x++) {
+          const border = y === 31 || y === 38 || x === 10 || x === 21
+          L.put(x, y, border ? ((x + y) % 2 ? P.gold : P.goldD) : Math.abs(x - 15.5) + Math.abs(y - 34.5) < 2.6 ? P.gold : p.c)
+        }
+      commit(b, L, P.redDD, TAG.deco)
+      break
+    }
+    case 'chicken':
+    case 'liondance':
+      for (let x = 8; x <= 23; x++) for (let y = 28; y <= 30 + ((x * 5) % 2); y++) if (b.tag(x, y) === TAG.cloth) b.put(x, y, k === 'liondance' ? ((x + y) % 3 ? p.c : p.C) : (x + y) % 4 ? p.b : p.L, TAG.cloth)
+      break
+    case 'durian':
+      for (const [x, y] of [[6, 33], [25, 33], [8, 29], [23, 29], [7, 38], [24, 38]] as Pt[]) smap(b, ['.d.', 'ddd'], x, y, p, null)
+      break
+    case 'banana':
+      drawBananaFlaps(b, p, 37)
+      break
+    case 'moopin':
+      for (const y of [32, 37]) for (let x = 6; x <= 25; x++) if (b.tag(x, y) === TAG.cloth) b.put(x, y, p.d, TAG.cloth)
+      break
+    case 'mango':
+      for (const [x, y] of [[12, 31], [19, 33], [15, 36], [10, 36], [21, 38]] as Pt[]) b.put(x, y, p.y, TAG.cloth)
+      break
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Place-exclusive souvenirs (sold only at that place's shop).
+
+function drawSouvenirHead(b: Buf, key: string, view: DollView, dy: number, stage: 'under' | 'over'): boolean {
+  const L = new Layer()
+  const front = view === 'front'
+  const Y = (y: number) => y + dy
+  const done = (line: string | null) => commit(b, L, line, TAG.deco)
+  const map = (rows: string[], ox: number, oy: number, pal: Record<string, string>, mirror = false) => mapLayer(rows, ox, Y(oy), pal, mirror, L)
+  const pair = (rows: string[], ox: number, oy: number, pal: Record<string, string>) => pairLayer(rows, ox, Y(oy), pal, L)
+  const g = mat('#ffd54f', '#e9a53a')
+  switch (key) {
+    case 'yakhat': {
+      // a cap shaped like a guardian giant's head, gold crown on top
+      if (stage !== 'over') return true
+      const f = mat('#d8584a', '#b23d3f')
+      for (let y = 2; y <= 11; y++) {
+        const w = [6, 8, 9, 10, 10, 11, 11, 11, 11, 11][y - 2]
+        for (let x = 16 - w; x <= 15 + w; x++) L.put(x, Y(y), x >= 14 + w ? f.s : y <= 4 && x < 12 ? f.l : f.b)
+      }
+      map(['.......gg.......', '......gGgs......', '......grgs......', '.....gGgggs.....', '....ggggggss....', '..gGgrgggrggss..', 'ssssssssssssssss'], 8, -2, { g: g.b, G: g.l, s: g.s, r: P.red })
+      if (front) {
+        pair(['kkk...', '.www..', 'wwkkw.', '.www..'], 8, 5, { k: '#6e2433', w: '#fffaf0' })
+        for (let x = 11; x <= 20; x++) L.put(x, Y(10), '#6e2433')
+        for (const x of [12, 19]) {
+          L.put(x, Y(9), '#ffffff')
+          L.put(x, Y(8), '#ffffff')
+        }
+        pair(['gg', 'gG', '.g'], 3, 10, { g: g.b, G: g.l })
+      } else {
+        for (let x = 6; x <= 25; x++) L.put(x, Y(10), x % 3 === 0 ? P.red : g.b)
+      }
+      done('#7e2436')
+      return true
+    }
+    case 'massageband': {
+      if (stage !== 'over') return true
+      for (let x = 5; x <= 26; x++) for (let y = 9; y <= 11; y++) L.put(x, Y(y), y === 11 ? '#dfe3ee' : x >= 24 ? '#e6e9f2' : '#fbfcff')
+      // herbal compress ball (ลูกประคบ) tucked by the knot
+      const kx = front ? 23 : 4
+      map(['..tt..', '.tTtt.', 'tTtttd', 'ttttdd', '.tddd.', '..ww..', '.w..w.'], kx, 4, { t: '#c9c08a', T: '#e6dfaa', d: '#a09a62', w: '#fbfcff' }, !front)
+      if (!front) map(['.ww.ww.', 'w..w..w', '..w..w.'], 12, 11, { w: '#fbfcff' })
+      done('#8a8496')
+      return true
+    }
+    case 'chadaprang': {
+      if (stage !== 'over') return true
+      // corncob prang tower in stone with porcelain flowers, gold tip
+      const st = mat('#eadfcb', '#cdbc9f')
+      const PR = [
+        '.....gg.....',
+        '....gGgg....',
+        '....sSss....',
+        '....s1sd....',
+        '...sSs2sd...',
+        '...tttttt...',
+        '..sS3ss1sd..',
+        '..s1ss2ssd..',
+        '..tttttttt..',
+        '.sSs2ss3ssd.',
+        'gggggggggggg',
+        'rgrgrgrgrgrg',
+      ]
+      map(PR, 10, -1, { g: g.b, G: g.l, s: st.b, S: st.l, d: st.s, t: mix(st.s, INK, 0.2), '1': '#ff9fc0', '2': '#5aa9e8', '3': '#ffd54f', r: P.red })
+      const EAR = ['..s.', '.sS.', 'sSs.', 's1s.', '.ss.', '..s.', '..r.']
+      pair(EAR, 1, 10, { s: st.b, S: st.l, '1': '#5aa9e8', r: P.red })
+      done(st.s)
+      return true
+    }
+    case 'ngobpomelo': {
+      if (stage !== 'over') return true
+      const lt = '#e6d9a0'
+      const md = '#c9b878'
+      const dk = '#9a8a52'
+      for (let y = 0; y <= 6; y++) {
+        const w = [3, 5, 7, 8, 9, 10, 10][y]
+        for (let x = 16 - w; x <= 15 + w; x++) L.put(x, Y(y + 1), (x + y) % 3 === 0 ? md : x >= 13 + w ? md : lt)
+      }
+      for (let x = 1; x <= 30; x++) L.put(x, Y(8), x % 2 ? lt : md)
+      for (let x = 0; x <= 31; x++) L.put(x, Y(9), x >= 26 ? dk : md)
+      for (let x = 6; x <= 25; x++) L.put(x, Y(7), '#6cc36a')
+      // a little pomelo with leaves on the brim
+      map(['...ll.', '.ppPl.', 'pppPp.', 'ppppd.', '.pdd..'], front ? 22 : 5, 3, { p: '#d6e87a', P: '#f3f8c8', d: '#a8c04a', l: '#43905a' }, !front)
+      done(dk)
+      return true
+    }
+    case 'ratears': {
+      if (stage !== 'over') return true
+      const E = ['..oooo..', '.oOOOOo.', 'oOppppOo', 'oOppppOo', 'oOpPppOo', 'oOppppOo', '.oOppOo.', '..oooo..']
+      pair(E, 3, -1, { o: '#8f86a6', O: '#b8b0cc', p: '#ffb3cf', P: '#ffe0ea' })
+      for (let x = 8; x <= 23; x++) L.put(x, Y(front ? 5 : 6), x % 2 ? '#8f86a6' : '#a8a0bc')
+      done('#5a5270')
+      return true
+    }
+    case 'pineapple': {
+      if (stage !== 'over') return true
+      const y1 = '#ffc93c'
+      const y2 = '#f0a92a'
+      for (let y = 3; y <= 11; y++) {
+        const w = [7, 9, 10, 11, 11, 11, 11, 11, 10][y - 3]
+        for (let x = 16 - w; x <= 15 + w; x++) {
+          const dia = (x + y) % 4 === 0 || (x - y + 40) % 4 === 0
+          L.put(x, Y(y), dia ? '#c07a1f' : x >= 13 + w ? y2 : (x + y) % 4 === 2 && (x - y + 40) % 4 === 2 ? '#fff0a0' : y1)
+        }
+      }
+      map(['..l..l..l..', '.lLl.lL.lLl', '..lLllLlL..', '.llLLLLLll.', 'lLlLLLLlLl.'], 10, -2, { l: '#43905a', L: '#86c95f' })
+      done('#8a5a1f')
+      return true
+    }
+    case 'doibeanie': {
+      if (stage !== 'over') return true
+      const r1 = '#c0392f'
+      const r2 = '#8e2533'
+      for (let y = 2; y <= 11; y++) {
+        const w = [6, 8, 9, 10, 11, 11, 12, 12, 12, 12][y - 2]
+        for (let x = 16 - w; x <= 15 + w; x++) {
+          let c = x >= 14 + w ? r2 : (x + y) % 2 === 0 ? '#d24a3f' : r1
+          if (y >= 9) c = y === 10 && x % 4 === 1 ? '#c0392f' : y === 9 && x % 4 === 3 ? '#e6e9f2' : '#fbfcff'
+          if (y === 6 && x % 4 === 2) c = '#fbfcff'
+          if (y === 5 && x % 4 === 2) c = '#e6e9f2'
+          L.put(x, Y(y), c)
+        }
+      }
+      map(['.www.', 'wWwww', 'wwwwd', '.wdd.'], 14, -1, { w: '#fbfcff', W: '#ffffff', d: '#dfe3ee' })
+      done('#6e2433')
+      return true
+    }
+    case 'carriagehat': {
+      if (stage !== 'over') return true
+      const hb = mat('#9a6a45', '#6e4a35')
+      for (let y = 1; y <= 8; y++) {
+        const w = [5, 7, 8, 8, 8, 8, 9, 9][y - 1]
+        for (let x = 16 - w; x <= 15 + w; x++) L.put(x, Y(y), y === 1 && (x === 15 || x === 16) ? hb.s : x >= 14 + w ? hb.s : y <= 3 && x < 13 ? hb.l : hb.b)
+      }
+      for (let x = 7; x <= 24; x++) {
+        L.put(x, Y(7), x === 21 ? '#ffd54f' : '#e8514a')
+        L.put(x, Y(8), '#b8343f')
+      }
+      for (let x = 1; x <= 30; x++) L.put(x, Y(9), x >= 26 ? hb.s : hb.b)
+      for (let x = 0; x <= 31; x++) L.put(x, Y(10), x <= 2 || x >= 29 ? hb.b : hb.s)
+      if (!front) map(['rr.', '.rr', '.r.'], 20, 8, { r: '#e8514a' })
+      done(hb.d)
+      return true
+    }
+    case 'gamecock': {
+      if (stage !== 'over') return true
+      // a fighting rooster riding on the head: comb, beak, wattle, rainbow tail
+      const bm = mat('#e0703a', '#b8542a')
+      // tail feathers arching up behind
+      map(['...GG.', '..GaaG', '.GayaG', 'GGa.G.', 'Ga....', 'G.....'], front ? 21 : 5, 0, { G: '#2f5a4a', a: '#e8514a', y: '#ffd54f' }, !front)
+      // the rooster's head as a cap, golden hackles round the rim
+      for (let y = 2; y <= 11; y++) {
+        const w = [5, 7, 8, 9, 9, 10, 10, 10, 10, 10][y - 2]
+        for (let x = 16 - w; x <= 15 + w; x++) L.put(x, Y(y), y >= 10 ? ((x + y) % 2 ? '#ffd54f' : '#f2a33a') : x >= 14 + w ? bm.s : (x + y) % 4 === 0 ? '#f2a33a' : y <= 4 && x < 13 ? bm.l : bm.b)
+      }
+      map(['.a..a..a.', 'aAa.aAaaA', 'aaaaaaaaa', '.aaaaaaa.'], 11, -1, { a: '#e8514a', A: '#ff8a7a' })
+      if (front) {
+        pair(['.kk', 'kWk', 'kkk'], 10, 4, { k: '#2a1a2c', W: '#ffffff' })
+        map(['.yyyy.', 'yWyyyY', '.yyYY.', '..YY..'], 13, 7, { y: '#ffd54f', Y: '#e9a53a', W: '#fff3a6' })
+        map(['rr', 'rR', '.R'], 15, 11, { r: '#e8514a', R: '#b8343f' })
+      }
+      done('#7e3a1f')
+      return true
+    }
+    case 'beachhat': {
+      if (stage !== 'over') return true
+      const bl = mat('#6fc7e8', '#3f9fcb')
+      for (let y = 1; y <= 7; y++) {
+        const w = [6, 8, 9, 9, 9, 10, 10][y - 1]
+        for (let x = 16 - w; x <= 15 + w; x++) {
+          const fl = patHD('hawaii', x + 3, y + 2)
+          L.put(x, Y(y), fl === 1 ? '#ff9fc0' : fl === 2 ? '#fffaf0' : x >= 14 + w ? bl.s : bl.b)
+        }
+      }
+      for (let x = 5; x <= 26; x++) L.put(x, Y(8), '#fffaf0')
+      for (let y = 9; y <= 11; y++) {
+        const w = 12 + (y - 9)
+        for (let x = 16 - w; x <= 15 + w; x++) L.put(x, Y(y), y === 11 ? bl.s : (x + y) % 5 === 0 ? '#ff9fc0' : bl.l)
+      }
+      done(bl.d)
+      return true
+    }
+  }
+  return false
+}
+
+function drawSouvenirNeck(b: Buf, key: string, view: DollView, dy: number): boolean {
+  const L = new Layer()
+  const front = view === 'front'
+  const Y = (y: number) => y + dy
+  const map = (rows: string[], ox: number, oy: number, pal: Record<string, string>, mirror = false) => mapLayer(rows, ox, Y(oy), pal, mirror, L)
+  // thin strings of beads read better without the auto line: shading is painted in
+  const done = () => commit(b, L, null, TAG.deco)
+  switch (key) {
+    case 'marigoldbig': {
+      // fat garland of marigold pompoms with a rose-and-jasmine tassel
+      const pts: Pt[] = front
+        ? [[10, 24], [10, 26], [11, 28], [13, 29], [15, 30], [17, 30], [19, 29], [21, 28], [22, 26], [22, 24]]
+        : [[10, 24], [12, 25], [14, 26], [16, 26], [18, 26], [20, 25], [22, 24]]
+      pts.forEach(([x, y], i) => map(['.oo.', 'oyOo', 'oOod', '.dd.'], x - 2, y - 1, { o: i % 2 ? '#f58f35' : '#ff9f3a', y: '#ffd23f', O: '#ffbb66', d: '#c8571f' }))
+      if (front) map(['.rr.', 'rRrR', '.rr.', '.ww.', '.gw.', '.w..', '.w..'], 14, 31, { r: '#e8514a', R: '#ff8a7a', w: '#fffaf0', g: '#6cc36a' })
+      done()
+      return true
+    }
+    case 'goldchain': {
+      const g = '#ffd23f'
+      const G = '#e9a53a'
+      const D = '#b8742a'
+      if (!front) {
+        for (let x = 10; x <= 21; x++) {
+          L.put(x, Y(24), x % 2 ? g : G)
+          L.put(x, Y(25), x % 2 ? D : g)
+        }
+        done()
+        return true
+      }
+      // chunky curb links down to a big "96.5%" gold plate
+      for (let i = 0; i <= 6; i++) {
+        for (const [x0, s] of [[10, 1], [21, -1]] as Pt[]) {
+          const x = x0 + i * s
+          L.put(x, Y(24 + i), i % 2 ? g : '#fff3a6')
+          L.put(x + s, Y(24 + i), i % 2 ? D : G)
+        }
+      }
+      map(['.DDDD.', 'DgggGD', 'DgWWGD', 'DgggGD', '.DDDD.'], 13, 30, { g, G, D, W: '#fff3a6' })
+      done()
+      return true
+    }
+    case 'moneygarland': {
+      const cols = ['#ff9fc0', '#6cc36a', '#9fd0ff', '#b98ae6']
+      const pts: Pt[] = front
+        ? [[10, 24], [11, 26], [12, 28], [14, 29], [17, 29], [19, 28], [20, 26], [21, 24]]
+        : [[10, 24], [13, 25], [16, 25], [19, 25], [21, 24]]
+      pts.forEach(([x, y], i) => map(['ccw', 'cdc'], x - 1, y, { c: cols[i % 4], d: mix(cols[i % 4], INK, 0.3), w: '#ffffff' }))
+      if (front) {
+        // fan of folded notes
+        map(['.a.b.c.', 'aabbccd', 'Aabbcd.', '.Abcd..', '...w...', '...w...'], 12, 30, { a: cols[0], A: mix(cols[0], INK, 0.25), b: cols[1], c: cols[2], d: cols[3], w: '#ffd54f' })
+      }
+      done()
+      return true
+    }
+    case 'nagascale': {
+      const gr = '#2fa88a'
+      const gd = '#1f7a64'
+      const g = '#ffd54f'
+      if (!front) {
+        for (let x = 10; x <= 21; x++) {
+          L.put(x, Y(24), x % 2 ? gr : g)
+          L.put(x, Y(25), gd)
+        }
+        done()
+        return true
+      }
+      for (let i = 0; i <= 5; i++) {
+        for (const [x0, s] of [[10, 1], [21, -1]] as Pt[]) {
+          L.put(x0 + i * s, Y(24 + i), i % 2 ? g : gr)
+          L.put(x0 + i * s + s, Y(24 + i), gd)
+        }
+      }
+      // little naga-head pendant with a gold crest
+      map(['.g.g.', 'gGgGg', 'dtttd', 'tWktt', 'ttttd', '.tdd.', '..g..'], 13, 29, { g, G: '#fff3a6', t: gr, d: gd, W: '#ffffff', k: '#2a1a2c' })
+      done()
+      return true
+    }
+    case 'pakaomasash': {
+      // ผ้าขาวม้า draped from one shoulder to the other hip
+      const c1 = '#e8514a'
+      const c2 = '#3d63b5'
+      for (let i = 0; i < 12; i++) {
+        const y = 24 + i
+        const xc = front ? 11 + i : 20 - i
+        for (let k = 0; k <= 3; k++) {
+          const x = xc + (front ? k - 1 : 1 - k)
+          const a = (x + y) % 3 === 0
+          const bb = (x - y + 60) % 3 === 0
+          L.put(x, Y(y), k === 3 ? '#8e2533' : a && bb ? '#fffaf0' : a || bb ? c2 : c1)
+        }
+      }
+      map(['rb', 'br', '.r', '.b', '.r'], front ? 22 : 8, 35, { r: c1, b: c2 })
+      done()
+      return true
+    }
+    case 'yantmedal': {
+      const cord = '#c0392f'
+      if (!front) {
+        for (let x = 11; x <= 20; x++) L.put(x, Y(24), x % 2 ? cord : '#8e2533')
+        done()
+        return true
+      }
+      for (let i = 0; i <= 4; i++) {
+        L.put(11 + i, Y(24 + i), cord)
+        L.put(20 - i, Y(24 + i), cord)
+      }
+      // big round medal with a yant pattern
+      map(['..DDDD..', '.DgggYD.', 'DgkYYkgD', 'DgYkkYgD', 'DgkYYkgD', 'DgYkkYgD', '.DgggGD.', '..DDDD..'], 12, 28, { D: '#8a5a1f', g: '#ffd54f', Y: '#fff3a6', G: '#e9a53a', k: '#b8742a' })
+      done()
+      return true
+    }
+  }
+  return false
+}
+
+function drawSouvenirHand(b: Buf, key: string, hx: number, hy: number, mirror: boolean): boolean {
+  const L = new Layer()
+  const p = (x: number, y: number, c: string) => L.put(mirror ? IW - 1 - (hx + x) : hx + x, hy + y, c)
+  const map = (rows: string[], ox: number, oy: number, pal: Record<string, string>) => {
+    rows.forEach((row, j) => {
+      for (let i = 0; i < row.length; i++) {
+        const ch = row[i]
+        if (ch !== '.' && pal[ch]) p(ox + i, oy + j, pal[ch])
+      }
+    })
+  }
+  let line: string = INK
+  switch (key) {
+    case 'karipap':
+      // golden curry puff with a crimped edge
+      map(['..cc.c.c.', '.oooooooc', 'oOoooooo.', 'oooOoooo.', '.ooooood.', '..dddd...'], -3, -5, { o: '#f0b458', O: '#ffd98a', c: '#d0883a', d: '#c07a3a' })
+      line = '#8a5a2a'
+      break
+    case 'pakbung':
+      // a plate of stir-fried morning glory mid-flight
+      map(['.g..G..g.', 'gGg.gG.gG', '.gGgGgGg.', '..r.gG.r.', '...gGg...', '....g....'], -3, -18, { g: '#43905a', G: '#86c95f', r: '#e8514a' })
+      map(['.....g...', '....G....'], -3, -12, { g: '#43905a', G: '#86c95f' })
+      map(['wwwwwww', '.ddddd.'], -2, -1, { w: '#fbfcff', d: '#c9d6ea' })
+      line = '#2f6f4b'
+      break
+    default:
+      return false
+  }
+  commit(b, L, line, TAG.deco)
+  return true
 }
 
 // ---------------------------------------------------------------------------
@@ -3938,7 +5227,7 @@ function compose(look: AvatarLook, pose: DollPose, view: DollView, blink: boolea
 
   if (view === 'front') {
     // hair & hood behind the body
-    drawHairParts(b, r, hair.behind, dy, 'behind')
+    if (!hoodedR(r)) drawHairParts(b, r, hair.behind, dy, 'behind')
     if (handFree && r.hand === 'umbrella') drawHandItem(b, r.hand, view, handPos[0], handPos[1], 'behind')
     if (r.top.collar === 'hood') {
       const hc = mat(r.top.main, r.top.shade)
@@ -3973,6 +5262,10 @@ function compose(look: AvatarLook, pose: DollPose, view: DollView, blink: boolea
   if (view === 'front') drawTopFront(b, r, dy)
   else drawTopBack(b, r, dy)
   if (pd.legs === 'stand') drawMuayBand(b, r, dy, view)
+  if (r.suit) {
+    drawSuitBody(b, r, view, dy, pd)
+    if (view === 'back') drawSuitTail(b, r, view, pd.legs)
+  }
   drawBackItem(b, r, view, dy, 'body')
   const waistAcc = r.neck === 'waistsash'
   if (waistAcc) drawBodyAcc(b, r, r.neck, view, dy)
@@ -3989,12 +5282,15 @@ function compose(look: AvatarLook, pose: DollPose, view: DollView, blink: boolea
     drawFace(b, r, dy, pd.expr, blink)
     if (r.neck === 'mask') drawMask(b, dy)
     drawHeadAcc(b, r, r.head, view, dy, 'under')
-    drawHairParts(b, r, hair.front, dy, 'front')
-    if (!hair.ears) {
-      // (ears are covered by the side locks for most styles)
+    if (hoodedR(r)) drawSuitHood(b, r, view, dy)
+    else {
+      drawHairParts(b, r, hair.front, dy, 'front')
+      if (r.suit) drawSuitCrown(b, r, view, dy)
     }
-  } else {
+  } else if (hoodedR(r)) drawSuitHood(b, r, view, dy)
+  else {
     drawHairParts(b, r, hair.back, dy, 'back')
+    if (r.suit) drawSuitCrown(b, r, view, dy)
   }
   drawHeadAcc(b, r, r.head, view, dy, 'over')
 
@@ -4004,20 +5300,31 @@ function compose(look: AvatarLook, pose: DollPose, view: DollView, blink: boolea
   if (view === 'back' && pd.legs === 'stand' && r.hand && r.hand !== 'yam' && r.hand !== 'umbrella') drawHandItem(b, r.hand, view, handPos[0], handPos[1], 'over', true)
   drawBackItem(b, r, view, dy, 'top')
   drawBackItem(b, r, view, dy, 'behind')
+  if (r.suit) {
+    if (view === 'front') drawSuitTail(b, r, view, pd.legs)
+    if (r.suit.shimmer) drawSuitShimmer(b)
+  }
   return b
 }
 
+/** Skin of the hands, or the suit's mitten paws. */
+function handMat(r: Res): Mat {
+  return r.suit?.paws ? mat(r.suit.paws) : r.sk
+}
+
 function drawWaiHands(b: Buf, r: Res, dy: number) {
+  const h = handMat(r)
   const rows = ['.HH.', 'HHHh', 'HHHh', 'HHhh', 'HHhh', 'HHhh']
-  const L = rowsLayer(rows, 14, 24 + dy, (ch) => (ch === 'h' ? r.sk.s : r.sk.b))
-  commit(b, L, r.sk.d, TAG.skin)
-  b.put(15, 26 + dy, r.sk.s, TAG.skin)
-  b.put(15, 27 + dy, r.sk.s, TAG.skin)
+  const L = rowsLayer(rows, 14, 24 + dy, (ch) => (ch === 'h' ? h.s : h.b))
+  commit(b, L, h.d, TAG.skin)
+  b.put(15, 26 + dy, h.s, TAG.skin)
+  b.put(15, 27 + dy, h.s, TAG.skin)
 }
 
 function drawLapHands(b: Buf, r: Res, dy: number) {
+  const h = handMat(r)
   const rows = ['.HHHHHH.', 'HHHHHHHh', '.hhhhhh.']
-  commit(b, rowsLayer(rows, 12, 32 + dy, (ch) => (ch === 'h' ? r.sk.s : r.sk.b)), r.sk.d, TAG.skin)
+  commit(b, rowsLayer(rows, 12, 32 + dy, (ch) => (ch === 'h' ? h.s : h.b)), h.d, TAG.skin)
 }
 
 // ---------------------------------------------------------------------------

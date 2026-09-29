@@ -4,11 +4,15 @@
 
 import { DAY_COLORS } from '../../art/palette'
 
-/** `back` = worn on the back (wings, backpacks, auras, flags). */
-export type Slot = 'hair' | 'top' | 'bottom' | 'shoes' | 'head' | 'neck' | 'hand' | 'back'
+/**
+ * `back` = worn on the back (wings, backpacks, auras, flags).
+ * `suit` = full-body costume (ชุดมาสคอต / kigurumi) that visually replaces the
+ * top and bottom (and the hair, for hooded suits) while it is worn.
+ */
+export type Slot = 'hair' | 'top' | 'bottom' | 'shoes' | 'head' | 'neck' | 'hand' | 'back' | 'suit'
 
-/** Shop grouping for the wardrobe UI. */
-export type OutfitCategory = 'school' | 'thai' | 'modern' | 'temple' | 'accessory' | 'fun' | 'work'
+/** Shop grouping for the wardrobe UI. `costume` = full-body suits. */
+export type OutfitCategory = 'school' | 'thai' | 'modern' | 'temple' | 'accessory' | 'fun' | 'work' | 'costume'
 
 export type Pattern =
   | 'none'
@@ -38,6 +42,12 @@ export type Pattern =
   | 'stars'
   /** Three bold bands across the chest (shop uniform polo). */
   | 'bands'
+  /** Overlapping scales (พญานาค). */
+  | 'scale'
+  /** Stepped flowing-water zig-zags (ซิ่นลายน้ำไหล เมืองน่าน). */
+  | 'wave'
+  /** Diagonal grill marks (หมูปิ้ง). */
+  | 'grill'
 
 export type Collar =
   /** Round tee neckline. */
@@ -115,7 +125,7 @@ export interface TopArt {
   number?: string
   numberColor?: string
   /** Chest print. The Thai-word keys are funny slogan tees. */
-  graphic?: 'lotus' | 'boon' | 'heart' | 'elephant' | 'star' | 'hiw' | 'yakuan' | 'boonma' | 'maiphet'
+  graphic?: 'lotus' | 'boon' | 'heart' | 'elephant' | 'star' | 'hiw' | 'yakuan' | 'boonma' | 'maiphet' | 'aikhai'
   graphicColor?: string
   graphicColor2?: string
   /** Open jacket / cardigan layered over this top (main/shade = inner tee). */
@@ -196,6 +206,56 @@ export interface ShoeArt {
   glow?: string[]
 }
 
+/** Art key of a full-body suit (hood, face frame, tail... in both renderers). */
+export type SuitKind =
+  | 'trex'
+  | 'shark'
+  | 'frog'
+  | 'cat'
+  | 'penguin'
+  | 'bunny'
+  | 'chicken'
+  | 'elephant'
+  | 'durian'
+  | 'banana'
+  | 'mango'
+  | 'moopin'
+  | 'liondance'
+  | 'yak'
+  | 'nangkwak'
+  | 'naga'
+  | 'ramkaebon'
+
+/**
+ * Full-body costume. The renderers turn it into a synthetic top + bottom (see
+ * `suitGarments`) so every pose works, then paint the hood, belly, tail,
+ * spikes... for `kind` on top.
+ */
+export interface SuitArt {
+  kind: SuitKind
+  main: string
+  shade: string
+  /** Tummy patch / muzzle / inner ears. */
+  belly?: string
+  /** Spikes, comb, fins, gold trims. */
+  accent?: string
+  accent2?: string
+  pattern?: Pattern
+  patternColor?: string
+  patternColor2?: string
+  /** `hood` (default) covers the hair and frames the face; `crown` keeps the hair and adds a headdress. */
+  head?: 'hood' | 'crown'
+  /** Garment overrides for dress-type costumes (sabai, sarong...). */
+  top?: Partial<TopArt>
+  bottom?: Partial<BottomArt>
+  /** Mitten paws in this colour instead of bare hands. */
+  paws?: string
+  /** Booties that replace the worn shoes. */
+  feet?: ShoeArt
+  /** Premium sparkle overlay. */
+  shimmer?: boolean
+}
+
 export interface OutfitItem {
   id: string
   slot: Slot
@@ -218,8 +278,44 @@ export interface OutfitItem {
   hair?: string
   /** Accessory art key for head/neck/hand/back slots. */
   acc?: string
+  /** Full-body costume art for slot 'suit'. */
+  suit?: SuitArt
+  /**
+   * Place id (see data/places.ts) whose shop NPC sells this item. Place-only
+   * items are hidden from the general shop.
+   */
+  shopOnly?: string
   tags?: string[]
 }
+
+/** The synthetic garments a suit is drawn with (shared by both renderers). */
+export function suitGarments(s: SuitArt): { top: TopArt; bottom: BottomArt; shoes: ShoeArt | null } {
+  const top: TopArt = {
+    main: s.main,
+    shade: s.shade,
+    sleeve: 'long',
+    pattern: s.pattern,
+    patternColor: s.patternColor,
+    patternColor2: s.patternColor2,
+    collar: 'none',
+    fit: 'oversized',
+    hem: 'long',
+    ...s.top,
+  }
+  const bottom: BottomArt = {
+    kind: 'pants',
+    main: s.main,
+    shade: s.shade,
+    pattern: s.pattern,
+    patternColor: s.patternColor,
+    patternColor2: s.patternColor2,
+    ...s.bottom,
+  }
+  return { top, bottom, shoes: s.feet ?? null }
+}
+
+/** Head accessories that still show with a hooded suit (glasses, face paint). */
+export const SUIT_FACE_ACCS: ReadonlySet<string> = new Set(['glasses', 'sunglasses', 'heartshades', 'nerdglasses', 'dinsor', 'mirrorshades'])
 
 const W = '#fffaf0'
 const WS = '#e6dccb'
@@ -780,6 +876,445 @@ const LIFESTYLE: OutfitItem[] = [
   { id: 'back_aura', slot: 'back', name: 'ออร่าบุญทอง', desc: 'รัศมีบุญเปล่งประกายรอบกาย ใครเห็นก็อนุโมทนา', price: 0, premium: true, acc: 'aura', category: 'temple' },
   { id: 'back_flag', slot: 'back', name: 'ธงหางปลา', desc: 'ธงหางปลาสีสด ปักหลังแห่ผ้าป่าขบวนใหญ่', price: 70, level: 2, acc: 'flag', category: 'temple' },
   { id: 'back_oxygen', slot: 'back', name: 'ถังออกซิเจนอวกาศ', desc: 'เป้ถังคู่สำหรับเดินอวกาศ มีไฟกะพริบด้วย', price: 140, level: 8, acc: 'oxygen', category: 'fun', tags: ['set:astro'] },
+]
+
+// ======================================================================
+// Full-body suits (ชุดมาสคอต / ชุดตัวตลก). The face always stays visible.
+
+const bootie = (main: string, shade: string, sole?: string, accent?: string): ShoeArt => ({ kind: 'shoe', main, shade, sole: sole ?? shade, accent: accent ?? main })
+
+const SUITS: OutfitItem[] = [
+  {
+    id: 'suit_trex',
+    slot: 'suit',
+    name: 'ชุดไดโนเสาร์ทีเร็กซ์',
+    desc: 'แขนสั้นกุดพนมมือไม่ถึงอก แต่ใจบุญใหญ่เท่าตัว แฮ่~',
+    price: 450,
+    level: 4,
+    category: 'costume',
+    suit: { kind: 'trex', main: '#7ccf5e', shade: '#56a84a', belly: '#f4f1a8', accent: '#ffb347', accent2: '#fffaf0', feet: bootie('#56a84a', '#43905a', '#2f6f4b', '#fffaf0') },
+    tags: ['suit', 'tail'],
+  },
+  {
+    id: 'suit_shark',
+    slot: 'suit',
+    name: 'ชุดฉลามน้อย',
+    desc: 'โผล่หน้าออกมาจากปากฉลาม ดู ดู ดู ดู~ ฉลามสายบุญไม่กัดใคร',
+    price: 360,
+    level: 3,
+    category: 'costume',
+    suit: { kind: 'shark', main: '#6f9fd8', shade: '#4f7fbe', belly: '#fbfcff', accent: '#fffaf0', accent2: '#ff8fa8', feet: bootie('#4f7fbe', '#3d63b5') },
+    tags: ['suit', 'tail'],
+  },
+  {
+    id: 'suit_frog',
+    slot: 'suit',
+    name: 'ชุดกบเขียว',
+    desc: 'อ๊บ อ๊บ! ตาโปนมองเห็นบุญได้ไกลทั้งสองข้าง',
+    price: 180,
+    category: 'costume',
+    suit: { kind: 'frog', main: '#8fd06c', shade: '#62a94b', belly: '#eaf6bb', accent: '#ff9fc0', feet: bootie('#62a94b', '#4a8f3a') },
+    tags: ['suit'],
+  },
+  {
+    id: 'suit_cat',
+    slot: 'suit',
+    name: 'ชุดแมวส้ม',
+    desc: 'แมวส้มทั้งโลกแชร์สมองก้อนเดียวกัน วันนี้ถึงคิวเราถือ เหมียว~',
+    price: 240,
+    category: 'costume',
+    suit: { kind: 'cat', main: '#f5a653', shade: '#d98535', belly: '#fff1d6', accent: '#ffb3cf', accent2: '#e07f30', paws: '#fff1d6', feet: bootie('#fff1d6', '#f0d9b0', '#e0bb8a', '#ffb3cf') },
+    tags: ['suit', 'tail'],
+  },
+  {
+    id: 'suit_penguin',
+    slot: 'suit',
+    name: 'ชุดเพนกวิน',
+    desc: 'เดินต้วมเต้ม ๆ ไปตักบาตร แอร์เย็นแค่ไหนก็ไม่หนาว',
+    price: 240,
+    level: 2,
+    category: 'costume',
+    suit: { kind: 'penguin', main: '#3f4466', shade: '#2d3150', belly: '#fbfcff', accent: '#ffb347', paws: '#3f4466', feet: bootie('#ffb347', '#f58f35', '#d0661f') },
+    tags: ['suit', 'tail'],
+  },
+  {
+    id: 'suit_bunny',
+    slot: 'suit',
+    name: 'ชุดกระต่ายชมพู',
+    desc: 'หูยาวฟังบทสวดได้ชัดทุกคำ กระโดดดึ๋ง ๆ ไปถวายแครอท',
+    price: 220,
+    category: 'costume',
+    suit: { kind: 'bunny', main: '#ffd6e0', shade: '#f2b1c6', belly: '#fffaf5', accent: '#ff9fc0', feet: bootie('#fffaf5', '#f0dde4', '#e8c4d2', '#ff9fc0') },
+    tags: ['suit', 'tail'],
+  },
+  {
+    id: 'suit_chicken',
+    slot: 'suit',
+    name: 'ชุดไก่ชนแก้บน',
+    desc: 'ไก่ปูนปั้นหน้าศาลไอ้ไข่มาเกิดใหม่ เอ้กอี้เอ้กเอ้ก~ ขอแล้วได้ไว ๆ',
+    price: 260,
+    category: 'costume',
+    suit: { kind: 'chicken', main: '#fbfcff', shade: '#dde2ee', belly: '#f2a33a', accent: '#e8514a', accent2: '#ffd54f', feet: bootie('#ffd54f', '#e9a53a', '#b8742a') },
+    tags: ['suit', 'tail', 'aikhai'],
+  },
+  {
+    id: 'suit_elephant',
+    slot: 'suit',
+    name: 'ชุดช้างน้อย',
+    desc: 'หูปุ๊กปิ๊กโบกไปมา มีผ้าคลุมหลังลายไทยแบบช้างแห่ขบวนบุญ',
+    price: 320,
+    level: 3,
+    category: 'costume',
+    suit: { kind: 'elephant', main: '#b9b4d6', shade: '#958fb8', belly: '#e6e2f5', accent: '#ffc4d8', accent2: '#c0392f', feet: bootie('#958fb8', '#7a74a0', '#625867', '#fffaf0') },
+    tags: ['suit', 'tail'],
+  },
+  {
+    id: 'suit_durian',
+    slot: 'suit',
+    name: 'ชุดทุเรียนหมอนทอง',
+    desc: 'ราชาผลไม้! หอมจนเพื่อนวิ่งหนี ห้ามพกขึ้นรถไฟฟ้านะ',
+    price: 350,
+    level: 5,
+    category: 'costume',
+    suit: { kind: 'durian', main: '#a3c34a', shade: '#7f9f30', pattern: 'thai', patternColor: '#6f8a26', patternColor2: '#d6e87a', belly: '#ffd24a', accent: '#6e4a35', accent2: '#ffe98a', feet: bootie('#7f9f30', '#6f8a26') },
+    tags: ['suit', 'food'],
+  },
+  {
+    id: 'suit_banana',
+    slot: 'suit',
+    name: 'ชุดกล้วยหอม',
+    desc: 'ปอกเปลือกออกมาเจอหน้ายิ้ม ๆ โพแทสเซียมเต็มร้อย ลื่นล้มก็ยังยิ้ม',
+    price: 180,
+    category: 'costume',
+    // half-peeled: creamy flesh on top, yellow peel legs and flaps hanging from the waist
+    suit: {
+      kind: 'banana',
+      main: '#fff1c2',
+      shade: '#ead394',
+      belly: '#fffaf0',
+      accent: '#6e4a35',
+      accent2: '#ffe066',
+      bottom: { kind: 'pants', main: '#ffe066', shade: '#e9c23a' },
+      feet: bootie('#8a5a3c', '#6e4a35', '#4a3128'),
+    },
+    tags: ['suit', 'food'],
+  },
+  {
+    id: 'suit_mango',
+    slot: 'suit',
+    name: 'ชุดข้าวเหนียวมะม่วง',
+    desc: 'มะม่วงอกร่องบนหัว ข้าวเหนียวมูนราดกะทิ โรยถั่วทองกรุบ ๆ',
+    price: 280,
+    category: 'costume',
+    suit: {
+      kind: 'mango',
+      main: '#fbf6e6',
+      shade: '#e6dcc0',
+      pattern: 'knit',
+      patternColor: '#ffffff',
+      belly: '#fffdf5',
+      accent: '#ffc93c',
+      accent2: '#5ea653',
+      bottom: { kind: 'pants', main: '#5ea653', shade: '#43905a', pattern: 'stripes', patternColor: '#86c95f' },
+    },
+    tags: ['suit', 'food'],
+  },
+  {
+    id: 'suit_moopin',
+    slot: 'suit',
+    name: 'ชุดหมูปิ้ง',
+    desc: 'หมูปิ้งไม้ละสิบ เสียบไม้ทะลุหัว หอมกรุ่นก่อนตักบาตรตอนเช้า',
+    price: 160,
+    level: 2,
+    category: 'costume',
+    suit: { kind: 'moopin', main: '#c0703e', shade: '#96512c', pattern: 'grill', patternColor: '#6e3520', patternColor2: '#e8a766', accent: '#ecd49a', accent2: '#e8a766', feet: bootie('#96512c', '#6e3520') },
+    tags: ['suit', 'food'],
+  },
+  {
+    id: 'suit_liondance',
+    slot: 'suit',
+    name: 'ชุดเชิดสิงโตมังกรทอง',
+    desc: 'ตุ้ง แช่ ตุ้ง แช่! ขนฟูตาโตกะพริบได้ ความเฮงพุ่งทะลุหลังคา',
+    price: 0,
+    premium: true,
+    category: 'costume',
+    suit: { kind: 'liondance', main: '#e8514a', shade: '#b8343f', pattern: 'dots', patternColor: '#ffd54f', belly: '#ffd54f', accent: '#ffd54f', accent2: '#fffaf0', paws: '#fffaf0', feet: bootie('#b8343f', '#8e2533', '#7e2436', '#ffd54f') },
+    tags: ['suit', 'tail'],
+  },
+  {
+    id: 'suit_yak',
+    slot: 'suit',
+    name: 'ชุดยักษ์วัดแจ้ง',
+    desc: 'ยักษ์ใจดีเฝ้าประตูวัด ตัวเขียวเขี้ยวงอนแต่ขี้อายสุด ๆ',
+    price: 520,
+    level: 6,
+    category: 'costume',
+    suit: { kind: 'yak', main: '#4fae6a', shade: '#378a52', belly: '#ffd54f', accent: '#ffd54f', accent2: '#fffaf0', feet: bootie('#ffd54f', '#e9a53a', '#b8742a') },
+    tags: ['suit'],
+  },
+  {
+    id: 'suit_nangkwak',
+    slot: 'suit',
+    name: 'ชุดแม่นางกวัก',
+    desc: 'ชุดไทยแดงทองสวมมงกุฎ กวักเงินกวักทอง เรียกลูกค้าเรียกบุญ',
+    price: 399,
+    level: 5,
+    category: 'costume',
+    suit: {
+      kind: 'nangkwak',
+      head: 'crown',
+      main: '#d8343f',
+      shade: '#a82632',
+      accent: '#ffd54f',
+      accent2: '#e9a53a',
+      top: { trim: '#ffd54f', sleeve: 'none', pattern: 'thai', patternColor: '#e9a53a', extra: 'sabai', extraColor: '#ffd54f', fit: 'fitted', hem: 'tucked' },
+      bottom: { kind: 'sarong', pattern: 'thai', patternColor: '#e9a53a', hem: '#ffd54f', belt: '#ffd54f', buckle: '#fff3a6' },
+    },
+    tags: ['suit', 'lucky'],
+  },
+  {
+    id: 'suit_naga',
+    slot: 'suit',
+    name: 'ชุดพญานาคมรกต',
+    desc: 'เกล็ดเขียวมรกตเปล่งประกาย หงอนทองพลิ้วไหว ผู้พิทักษ์แห่งลำน้ำโขง',
+    price: 0,
+    premium: true,
+    category: 'costume',
+    suit: { kind: 'naga', main: '#2fa88a', shade: '#20806a', pattern: 'scale', patternColor: '#6fe0c0', patternColor2: '#ffd54f', belly: '#ffe9a6', accent: '#ffd54f', accent2: '#e9a53a', shimmer: true, feet: bootie('#20806a', '#176152', '#0f4a3e', '#ffd54f') },
+    tags: ['suit', 'tail'],
+  },
+]
+
+// ======================================================================
+// Place-exclusive souvenirs: sold only by the shop NPC at that place.
+
+const SOUVENIRS: OutfitItem[] = [
+  // วัดพระแก้ว
+  {
+    id: 'top_chitralada_gold',
+    slot: 'top',
+    shopOnly: 'wat_phra_kaew',
+    name: 'ชุดไทยจิตรลดาปักทอง',
+    desc: 'ไหมเขียวมรกตปักดิ้นทองรอบคอ สง่างามสมกับวัดพระแก้ว',
+    price: 320,
+    category: 'thai',
+    gender: 'f',
+    top: { main: '#2f8f6a', shade: '#236e52', sleeve: 'long', pattern: 'thai', patternColor: '#e9b949', patternColor2: '#fff3a6', collar: 'mandarin', collarColor: '#ffd54f', placket: 'buttons', buttonColor: '#ffd54f', cuff: '#ffd54f', fit: 'fitted', hem: 'tucked' },
+    tags: ['souvenir'],
+  },
+  { id: 'head_yakhat', slot: 'head', shopOnly: 'wat_phra_kaew', name: 'หมวกยักษ์วัดพระแก้ว', desc: 'หน้ายักษ์ทวารบาลตาโตเขี้ยวงอน ใส่แล้วดุนิด ๆ แต่น่ารักมาก', price: 260, acc: 'yakhat', category: 'fun', tags: ['souvenir'] },
+  // วัดโพธิ์
+  {
+    id: 'top_watpho_tiles',
+    slot: 'top',
+    shopOnly: 'wat_pho',
+    name: 'เสื้อลายกระเบื้องวัดโพธิ์',
+    desc: 'ลายดอกกระเบื้องเคลือบสีสด แบบพระมหาเจดีย์สี่รัชกาล',
+    price: 160,
+    category: 'thai',
+    top: { main: '#3a8fb8', shade: '#2c6f92', sleeve: 'short', pattern: 'floral', patternColor: '#ffd54f', patternColor2: '#fffaf0', collar: 'camp', collarColor: '#5aa9d0', placket: 'buttons', buttonColor: '#fffaf0', hem: 'out' },
+    tags: ['souvenir'],
+  },
+  { id: 'head_massage', slot: 'head', shopOnly: 'wat_pho', name: 'ผ้าคาดหัวหมอนวด', desc: 'ผ้าขาวคาดหัวเหน็บลูกประคบสมุนไพร นวดแผนไทยสูตรวัดโพธิ์', price: 90, acc: 'massageband', category: 'thai', tags: ['souvenir'] },
+  // วัดอรุณ
+  { id: 'head_chada_prang', slot: 'head', shopOnly: 'wat_arun', name: 'ชฎาพระปรางค์', desc: 'ชฎายอดทรงพระปรางค์ ประดับกระเบื้องสีเหมือนวัดอรุณยามเย็น', price: 300, acc: 'chadaprang', category: 'thai', tags: ['souvenir'] },
+  {
+    id: 'top_thai_rental',
+    slot: 'top',
+    shopOnly: 'wat_arun',
+    name: 'ชุดไทยให้เช่า',
+    desc: 'สไบชมพูติดป้ายร้านเช่า ชั่วโมงละ 200 ถ่ายกับพระปรางค์ให้คุ้ม!',
+    price: 120,
+    category: 'thai',
+    gender: 'f',
+    top: { main: '#ffc4d8', shade: '#f59abb', trim: '#ffd54f', sleeve: 'none', pattern: 'silk', patternColor: '#ffe0ea', extra: 'sabai', extraColor: '#e9b949', collar: 'none', pin: '#5aa9e8', fit: 'fitted', hem: 'tucked' },
+    tags: ['souvenir'],
+  },
+  // ศาลพระพรหม
+  { id: 'neck_marigold_big', slot: 'neck', shopOnly: 'erawan', name: 'พวงมาลัยดาวเรืองยักษ์', desc: 'มาลัยดาวเรืองพวงโตถวายท่านพรหม ส้มสดจนแสบตา', price: 120, acc: 'marigoldbig', category: 'temple', tags: ['souvenir'] },
+  {
+    id: 'top_nangram',
+    slot: 'top',
+    shopOnly: 'erawan',
+    name: 'ชุดนางรำหน้าศาลพรหม',
+    desc: 'ชุดเขียวขลิบทองแบบนางรำแก้บน รำงาม ๆ ถวายท่านพรหม',
+    price: 220,
+    category: 'thai',
+    gender: 'f',
+    top: { main: '#4fae6a', shade: '#378a52', trim: '#ffd54f', sleeve: 'none', pattern: 'sequin', patternColor: '#fff3a6', patternColor2: '#ffd54f', extra: 'khon', extraColor: '#ffd54f', collar: 'none', fit: 'fitted', hem: 'tucked' },
+    tags: ['souvenir'],
+  },
+  // ภูเขาทอง
+  {
+    id: 'top_344',
+    slot: 'top',
+    shopOnly: 'golden_mount',
+    name: 'เสื้อพิชิต 344 ขั้น',
+    desc: 'หลักฐานว่าเดินขึ้นภูเขาทองครบทุกขั้น (หอบนิดหน่อย)',
+    price: 100,
+    category: 'fun',
+    top: { main: '#ffd54f', shade: '#e9a53a', sleeve: 'short', collar: 'crew', graphic: 'star', graphicColor: '#fffaf0', graphicColor2: '#e8514a', number: '344', numberColor: '#8e2533', hem: 'out' },
+    tags: ['souvenir'],
+  },
+  // วัดไตรมิตร
+  { id: 'neck_goldchain', slot: 'neck', shopOnly: 'wat_traimit', name: 'สร้อยทองเยาวราช', desc: 'สร้อยทองเส้นโตจากเยาวราช วิ้งเหมือนหลวงพ่อทองคำ', price: 200, acc: 'goldchain', category: 'fun', tags: ['souvenir'] },
+  // พระปฐมเจดีย์
+  { id: 'head_ngob_pomelo', slot: 'head', shopOnly: 'pathom_chedi', name: 'หมวกงอบลายส้มโอ', desc: 'งอบสานติดลูกส้มโอนครชัยศรี หวานอมเปรี้ยวน่าหยิก', price: 110, acc: 'ngobpomelo', category: 'thai', tags: ['souvenir'] },
+  // วัดจุฬามณี
+  { id: 'neck_money_garland', slot: 'neck', shopOnly: 'wat_chulamanee', name: 'พวงมาลัยแบงก์', desc: 'มาลัยพับแบงก์สีเขียวชมพู ขอท้าวเวสสุวรรณให้รวย ๆ ปัง ๆ', price: 199, acc: 'moneygarland', category: 'fun', tags: ['souvenir'] },
+  // วัดพระพุทธบาท
+  { id: 'hand_karipap', slot: 'hand', shopOnly: 'wat_phutthabat', name: 'กะหรี่ปั๊บสระบุรี', desc: 'กะหรี่ปั๊บไส้ไก่ร้อน ๆ ของฝากขากลับจากกราบรอยพระพุทธบาท', price: 80, acc: 'karipap', category: 'fun', tags: ['souvenir'] },
+  // อยุธยา
+  {
+    id: 'top_ayutthaya',
+    slot: 'top',
+    shopOnly: 'wat_mahathat_ayutthaya',
+    name: 'ชุดไทยอยุธยาโบราณ',
+    desc: 'ห่มสไบแบบออเจ้า เดินชมวัดเก่าเหมือนหลุดมาจากละคร',
+    price: 240,
+    category: 'thai',
+    gender: 'f',
+    top: { main: '#a8d8c0', shade: '#7fb89e', sleeve: 'none', pattern: 'silk', patternColor: '#cdebdc', extra: 'sabai', extraColor: '#c0508e', collar: 'none', fit: 'fitted', hem: 'tucked' },
+    tags: ['souvenir', 'set:ayutthaya'],
+  },
+  {
+    id: 'bot_ayutthaya',
+    slot: 'bottom',
+    shopOnly: 'wat_mahathat_ayutthaya',
+    name: 'โจงกระเบนออเจ้า',
+    desc: 'โจงผ้าลายอย่างสีครามทอง นุ่งแล้วหลุดปาก "ออเจ้า" ทันที',
+    price: 180,
+    category: 'thai',
+    bottom: { kind: 'jong', main: '#3d4f8f', shade: '#2c3a6e', pattern: 'thai', patternColor: '#e9b949', hem: '#e9b949' },
+    tags: ['souvenir', 'set:ayutthaya'],
+  },
+  // วัดโสธร
+  {
+    id: 'suit_ramkaebon',
+    slot: 'suit',
+    shopOnly: 'wat_sothon',
+    name: 'ชุดรำแก้บน',
+    desc: 'ชุดนางรำเลื่อมทองพร้อมชฎา รำถวายหลวงพ่อโสธรขอบคุณที่ประทานพร',
+    price: 260,
+    category: 'costume',
+    suit: {
+      kind: 'ramkaebon',
+      head: 'crown',
+      main: '#e8709e',
+      shade: '#c24f7e',
+      accent: '#ffd54f',
+      accent2: '#e9a53a',
+      top: { trim: '#ffd54f', sleeve: 'none', pattern: 'sequin', patternColor: '#fff3a6', patternColor2: '#ffd54f', extra: 'khon', extraColor: '#ffd54f', fit: 'fitted', hem: 'tucked' },
+      bottom: { kind: 'sarong', main: '#8a3a9c', shade: '#66287a', pattern: 'thai', patternColor: '#ffd54f', hem: '#ffd54f', belt: '#ffd54f', buckle: '#e8514a' },
+    },
+    tags: ['souvenir', 'suit'],
+  },
+  // วัดสมานรัตนาราม
+  { id: 'head_rat_ears', slot: 'head', shopOnly: 'wat_samarn', name: 'หมวกหนูพระพิฆเนศ', desc: 'หูหนูกลมโตแบบหนูบริวาร กระซิบขอพรได้ทั้งสองหู', price: 120, acc: 'ratears', category: 'accessory', tags: ['souvenir'] },
+  // วัดห้วยมงคล
+  { id: 'head_pineapple', slot: 'head', shopOnly: 'wat_huay_mongkol', name: 'หมวกสับปะรดปราณบุรี', desc: 'สับปะรดหวานฉ่ำจากประจวบฯ ใส่แล้วหัวหินก็ไม่ร้อน', price: 130, acc: 'pineapple', category: 'fun', tags: ['souvenir'] },
+  // พระพุทธชินราช
+  { id: 'hand_pakbung', slot: 'hand', shopOnly: 'wat_yai_phitsanulok', name: 'ผักบุ้งลอยฟ้า', desc: 'ผัดผักบุ้งโยนข้ามหัวแบบพิษณุโลก รับให้ทันนะ!', price: 90, acc: 'pakbung', category: 'fun', tags: ['souvenir'] },
+  // ดอยสุเทพ
+  {
+    id: 'top_hilltribe',
+    slot: 'top',
+    shopOnly: 'doi_suthep',
+    name: 'เสื้อปักลายชาวดอย',
+    desc: 'เสื้อฝ้ายปักแถบลายสีสดจากตลาดบนดอย งานมือทุกฝีเข็ม',
+    price: 180,
+    category: 'thai',
+    top: { main: '#35304a', shade: '#262236', trim: '#e8514a', sleeve: 'long', pattern: 'bands', patternColor: '#e8514a', patternColor2: '#ffd54f', collar: 'mandarin', collarColor: '#e8514a', cuff: '#5ea653', stripe: '#ffd54f', hem: 'out' },
+    tags: ['souvenir'],
+  },
+  { id: 'head_doi_beanie', slot: 'head', shopOnly: 'doi_suthep', name: 'หมวกไหมพรมดอย', desc: 'บีนนี่ถักมือลายเกล็ดหิมะ ปอมปอมฟู ๆ ขึ้นดอยตอนเช้าก็อุ่น', price: 90, acc: 'doibeanie', category: 'accessory', tags: ['souvenir'] },
+  // ลำปางหลวง
+  { id: 'head_carriage', slot: 'head', shopOnly: 'lampang_luang', name: 'หมวกคนขับรถม้า', desc: 'หมวกปีกกว้างผูกผ้าแดง ก๊อบแก๊บ ๆ พาเที่ยวเมืองลำปาง', price: 150, acc: 'carriagehat', category: 'thai', tags: ['souvenir'] },
+  // วัดร่องขุ่น
+  {
+    id: 'top_white_artist',
+    slot: 'top',
+    shopOnly: 'wat_rong_khun',
+    name: 'ชุดศิลปินขาว',
+    desc: 'เสื้อคลุมศิลปินขาวทั้งตัว ติดกระจกวิบวับเหมือนวัดร่องขุ่น',
+    price: 260,
+    category: 'modern',
+    top: { main: '#fbfcff', shade: '#d6deee', trim: '#c9d6ea', sleeve: 'long', pattern: 'sequin', patternColor: '#cfe4fb', patternColor2: '#ffffff', collar: 'mandarin', collarColor: '#e6f0fb', placket: 'buttons', buttonColor: '#b9c8e0', pocket: 'lower2', hem: 'long' },
+    tags: ['souvenir'],
+  },
+  { id: 'head_mirror_shades', slot: 'head', shopOnly: 'wat_rong_khun', name: 'แว่นกระจกเงา', desc: 'เลนส์ปรอทสะท้อนแสง มองวัดขาวกลางแดดก็ไม่แสบตา', price: 110, acc: 'mirrorshades', category: 'accessory', tags: ['souvenir'] },
+  // วัดห้วยปลากั้ง
+  {
+    id: 'top_qipao',
+    slot: 'top',
+    shopOnly: 'wat_huay_pla_kang',
+    name: 'ชุดกี่เพ้าแดงทอง',
+    desc: 'กี่เพ้าผ้าต่วนแดงปักดอกโบตั๋นทอง ไหว้เจ้าแม่กวนอิมรับความเฮง',
+    price: 260,
+    category: 'thai',
+    gender: 'f',
+    top: { main: '#d8343f', shade: '#a82632', trim: '#ffd54f', sleeve: 'short', pattern: 'floral', patternColor: '#ffd54f', patternColor2: '#ff9fc0', collar: 'mandarin', collarColor: '#ffd54f', pin: '#ffd54f', cuff: '#ffd54f', fit: 'fitted', hem: 'long' },
+    tags: ['souvenir'],
+  },
+  // วัดภูมินทร์
+  {
+    id: 'bot_sin_nan',
+    slot: 'bottom',
+    shopOnly: 'wat_phumin',
+    name: 'ผ้าซิ่นลายน้ำไหลเมืองน่าน',
+    desc: 'ซิ่นทอมือลายน้ำไหลพลิ้ว ๆ นุ่งไปกระซิบรักหน้าจิตรกรรมปู่ม่านย่าม่าน',
+    price: 200,
+    category: 'thai',
+    gender: 'f',
+    bottom: { kind: 'sarong', main: '#c0392f', shade: '#8e2533', pattern: 'wave', patternColor: '#ffd54f', patternColor2: '#2e3a6b', hem: '#2e2a3a' },
+    tags: ['souvenir'],
+  },
+  // ย่าโม
+  {
+    id: 'top_korat',
+    slot: 'top',
+    shopOnly: 'ya_mo',
+    name: 'เสื้อไหมลายโคราช',
+    desc: 'ไหมปักธงชัยสีม่วงลายหมี่ ใส่แล้วสง่าแบบลูกหลานย่าโม',
+    price: 220,
+    category: 'thai',
+    top: { main: '#6a4bb0', shade: '#4f358c', sleeve: 'short', pattern: 'mudmee', patternColor: '#ffd54f', patternColor2: '#ff9fc0', collar: 'mandarin', collarColor: '#ffd54f', placket: 'buttons', buttonColor: '#ffd54f', hem: 'out' },
+    tags: ['souvenir'],
+  },
+  // คำชะโนด
+  { id: 'neck_naga_scale', slot: 'neck', shopOnly: 'kham_chanod', name: 'สร้อยเกล็ดนาค', desc: 'สร้อยลายเกล็ดพญานาคเขียวทอง ของที่ระลึกจากเมืองบาดาล', price: 180, acc: 'nagascale', category: 'temple', tags: ['souvenir'] },
+  // พระธาตุพนม
+  { id: 'neck_pakaoma_isan', slot: 'neck', shopOnly: 'that_phanom', name: 'ผ้าขาวม้าอีสานพาดบ่า', desc: 'ผ้าขาวม้าทอมือพาดเฉียงบ่า สไตล์บ่าวสาวริมฝั่งโขง', price: 80, acc: 'pakaomasash', category: 'thai', tags: ['souvenir'] },
+  // นครศรีธรรมราช
+  { id: 'neck_yant_medal', slot: 'neck', shopOnly: 'nst_mahathat', name: 'สร้อยเหรียญยันต์ปักษ์ใต้', desc: 'เหรียญกลมโตลายยันต์ห้อยเชือกแดง เฮงแบบคนใต้', price: 190, acc: 'yantmedal', category: 'temple', tags: ['souvenir'] },
+  // ไอ้ไข่
+  { id: 'head_gamecock', slot: 'head', shopOnly: 'ai_khai', name: 'หมวกไก่ชน', desc: 'ไก่ชนหงอนแดงแบบรูปปั้นหน้าศาลไอ้ไข่ เอ้กอี้เอ้กเอ้ก!', price: 160, acc: 'gamecock', category: 'fun', tags: ['souvenir', 'aikhai'] },
+  {
+    id: 'top_aikhai',
+    slot: 'top',
+    shopOnly: 'ai_khai',
+    name: 'เสื้อไอ้ไข่',
+    desc: 'เสื้อสกรีน "ไอ้ไข่" ตัวโต ขอให้โชคดีทันใจ ใส่แล้วถูกหวย (มั้ง)',
+    price: 99,
+    category: 'fun',
+    top: { main: '#e8514a', shade: '#b8343f', sleeve: 'short', collar: 'crew', graphic: 'aikhai', graphicColor: '#fffaf0', graphicColor2: '#ffd54f', hem: 'out' },
+    tags: ['souvenir', 'aikhai'],
+  },
+  // วัดฉลอง
+  {
+    id: 'top_baba',
+    slot: 'top',
+    shopOnly: 'wat_chalong',
+    name: 'ชุดบาบ๋าภูเก็ต',
+    desc: 'เสื้อลูกไม้ฉลุติดเข็มกลัดโกสังทอง สไตล์เพอรานากันเมืองภูเก็ต',
+    price: 280,
+    category: 'thai',
+    gender: 'f',
+    top: { main: '#ffd6e0', shade: '#f0b0c4', trim: '#fff2f6', sleeve: 'long', pattern: 'lace', patternColor: '#fff2f6', collar: 'v', placket: 'buttons', buttonColor: '#ffd54f', fit: 'fitted', hem: 'out' },
+    tags: ['souvenir'],
+  },
+  // พระใหญ่ภูเก็ต
+  { id: 'head_beach_hat', slot: 'head', shopOnly: 'phuket_big_buddha', name: 'หมวกชายหาดภูเก็ต', desc: 'บักเก็ตลายดอกชบา กันแดดอันดามันบนยอดเขานาคเกิด', price: 100, acc: 'beachhat', category: 'modern', tags: ['souvenir'] },
 ]
 
 export const OUTFITS: OutfitItem[] = [
@@ -1501,8 +2036,24 @@ export const OUTFITS: OutfitItem[] = [
   { id: 'hand_umbrella', slot: 'hand', name: 'ร่มบ่อสร้าง', desc: 'ร่มกระดาษลายดอกจากเชียงใหม่', price: 90, level: 3, acc: 'umbrella', category: 'thai' },
 
   ...LIFESTYLE,
+  ...SUITS,
+  ...SOUVENIRS,
 ]
 
 export const OUTFIT_BY_ID: Record<string, OutfitItem> = Object.fromEntries(OUTFITS.map((o) => [o.id, o]))
 
 export const STARTER_OUTFITS = OUTFITS.filter((o) => o.starter).map((o) => o.id)
+
+/** Every full-body suit, in shop order. */
+export const SUIT_IDS = OUTFITS.filter((o) => o.slot === 'suit').map((o) => o.id)
+
+/** Place id -> ids of the souvenirs only its shop NPC sells. */
+export const SHOP_ONLY_BY_PLACE: Record<string, string[]> = OUTFITS.reduce<Record<string, string[]>>((acc, o) => {
+  if (o.shopOnly) (acc[o.shopOnly] ??= []).push(o.id)
+  return acc
+}, {})
+
+/** Items the general fashion shop may list (not premium-only, not place-only). */
+export function inGeneralShop(o: OutfitItem): boolean {
+  return !o.premium && !o.shopOnly
+}

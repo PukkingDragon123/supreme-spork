@@ -17,7 +17,7 @@ import { useState } from 'preact/hooks'
 import { petsForShop, RARITY, perkText } from '../../game/data/pets'
 import { petIcon } from '../../art/pets'
 import { spriteDataUrl } from '../../engine/sprite'
-import { OUTFITS } from '../../game/data/outfits'
+import { OUTFITS, inGeneralShop } from '../../game/data/outfits'
 import { thumbFor, applyItem } from '../DressUp'
 import { sfx } from '../../engine/audio'
 
@@ -250,20 +250,22 @@ function PetShop() {
   )
 }
 
-type FashionCat = 'all' | 'school' | 'thai' | 'modern' | 'fun' | 'accessory'
+type FashionCat = 'all' | 'costume' | 'school' | 'thai' | 'modern' | 'fun' | 'accessory'
 
 function FashionShop() {
   const s = game.value
   const lv = level.value.level
   const [cat, setCat] = useState<FashionCat>('all')
-  const items = OUTFITS.filter((o) => !o.premium && !ownsOutfit(o.id) && o.price > 0 && !(o as { shopOnly?: string }).shopOnly).filter((o) => {
+  const items = OUTFITS.filter((o) => inGeneralShop(o) && !ownsOutfit(o.id) && o.price > 0).filter((o) => {
     const c = (o as { category?: string }).category ?? 'modern'
     if (cat === 'all') return true
+    if (cat === 'costume') return c === 'costume'
     if (cat === 'accessory') return ['head', 'neck', 'hand', 'shoes', 'back'].includes(o.slot as string)
     return c === cat || (cat === 'fun' && c === 'work')
   })
   const cats: [FashionCat, string][] = [
     ['all', 'ทั้งหมด'],
+    ['costume', 'ชุดมาสคอต'],
     ['school', 'ชุดนักเรียน'],
     ['thai', 'ไทย ๆ'],
     ['modern', 'สตรีท'],

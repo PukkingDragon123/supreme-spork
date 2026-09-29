@@ -1,5 +1,6 @@
 // Dev-only HD doll preview: open /dev-doll.html while running `npm run dev`.
-// Query params: ?s=poses|faces|hair|items|looks|new|sets (comma separated, default all) &z=4
+// Query params: ?s=poses|faces|hair|items|looks|new|sets|suits|suitsmall|exclusives
+// (comma separated, default all) &z=4
 // &slot=top (filter the new-items section) &ids=a,b (inspect items large)
 import { dollSprite, dollPortrait, dollDefaultLook, FACE_STYLES, type DollPose } from '../art/doll'
 import { avatarSprite, type AvatarLook, type Pose, type View } from '../art/avatar'
@@ -250,5 +251,84 @@ if (ids) {
       [dollSprite(m, 'stand', { view: 'back' }), Z],
       [avatarSprite(f, 'front', 'stand'), Z],
     ])
+  }
+}
+
+// ?s=suits – every full-body suit on both genders: doll stand / wave / back /
+// kneelWai / back kneel / bow / sit · small front / back / side / wai / back
+// kneel / bow. &only=suit_trex,suit_shark narrows the list.
+const only = params.get('only')?.split(',')
+if (want('suits')) {
+  const suits = OUTFITS.filter((o) => o.slot === 'suit' && (!only || only.includes(o.id)))
+  title(`suits (${suits.length}): doll stand / wave / back / kneelWai / back kneel / bow / sit · small front / back / side / wai / back kneel / bow`)
+  for (const o of suits) {
+    const r = row()
+    for (const [g, base] of [
+      ['f', { ...F, hair: 'hair_bob', hairColor: 1 }],
+      ['m', { ...M, skin: 2 }],
+    ] as [string, AvatarLook][]) {
+      const l = { ...base, suit: o.id }
+      cell(r, `${o.id} ${o.name} (${g})`, [
+        [dollSprite(l, 'stand'), Z],
+        [dollSprite(l, 'wave'), Z],
+        [dollSprite(l, 'stand', { view: 'back' }), Z],
+        [dollSprite(l, 'kneelWai'), Z],
+        [dollSprite(l, 'kneel', { view: 'back', barefoot: true }), Z],
+        [dollSprite(l, 'bow', { view: 'back', barefoot: true }), Z],
+        [dollSprite(l, 'sit'), Z],
+        [avatarSprite(l, 'front', 'stand'), Z],
+        [avatarSprite(l, 'back', 'stand'), Z],
+        [avatarSprite(l, 'side', 'walk1'), Z],
+        [avatarSprite(l, 'front', 'wai'), Z],
+        [avatarSprite(l, 'back', 'kneel', { barefoot: true }), Z],
+        [avatarSprite(l, 'back', 'bow', { barefoot: true }), Z],
+      ])
+    }
+  }
+}
+
+// ?s=suitsmall – the world sprite only, big, for pixel work.
+if (want('suitsmall')) {
+  const suits = OUTFITS.filter((o) => o.slot === 'suit' && (!only || only.includes(o.id)))
+  title('suits – small sprite: front / back / side / walk / wai / sit / back kneel / back sit / bow')
+  const r = row()
+  for (const o of suits) {
+    const l: AvatarLook = { ...F, hair: 'hair_bob', hairColor: 1, suit: o.id }
+    cell(r, o.name, [
+      [avatarSprite(l, 'front', 'stand'), Z],
+      [avatarSprite(l, 'back', 'stand'), Z],
+      [avatarSprite(l, 'side', 'stand'), Z],
+      [avatarSprite(l, 'side', 'walk2'), Z],
+      [avatarSprite(l, 'front', 'wai'), Z],
+      [avatarSprite(l, 'front', 'sit'), Z],
+      [avatarSprite(l, 'back', 'kneel'), Z],
+      [avatarSprite(l, 'back', 'sit'), Z],
+      [avatarSprite(l, 'back', 'bow'), Z],
+    ])
+  }
+}
+
+// ?s=exclusives – place-only souvenirs grouped by place, on both genders.
+if (want('exclusives')) {
+  const byPlace = new Map<string, typeof OUTFITS>()
+  for (const o of OUTFITS) if (o.shopOnly) byPlace.set(o.shopOnly, [...(byPlace.get(o.shopOnly) ?? []), o])
+  title(`place-exclusive souvenirs (${[...byPlace.values()].flat().length} items, ${byPlace.size} places): f / m / back / kneelWai / bow · small front / back / side / bow`)
+  for (const [place, items] of byPlace) {
+    const r = row()
+    for (const o of items) {
+      const f = { ...F, [o.slot]: o.id } as AvatarLook
+      const m = { ...M, [o.slot]: o.id } as AvatarLook
+      cell(r, `${place} · ${o.id} ${o.name} ${o.price}`, [
+        [dollSprite(f, 'stand'), Z],
+        [dollSprite(m, 'stand'), Z],
+        [dollSprite(f, 'stand', { view: 'back' }), Z],
+        [dollSprite(m, 'kneelWai'), Z],
+        [dollSprite(f, 'bow', { view: 'back', barefoot: true }), Z],
+        [avatarSprite(f, 'front', 'stand'), Z],
+        [avatarSprite(m, 'back', 'stand'), Z],
+        [avatarSprite(f, 'side', 'walk1'), Z],
+        [avatarSprite(m, 'back', 'bow', { barefoot: true }), Z],
+      ])
+    }
   }
 }
