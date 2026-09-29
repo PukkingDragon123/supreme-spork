@@ -18,12 +18,13 @@ import { cached, flipSprite, type Sprite } from '../engine/sprite'
 import { P } from './palette'
 
 export type PetFacing = 'down' | 'up' | 'side'
-export type PetAnim = 'idle' | 'walk' | 'happy' | 'sleep'
+/** `swim` paddles half under water (used near water by pets with `swims`). */
+export type PetAnim = 'idle' | 'walk' | 'happy' | 'sleep' | 'swim'
 
 /** Nominal frame size at scale 1 (scale 2 is exactly double). */
 export const PET_BASE = { w: 20, h: 20 } as const
 
-const FRAMES: Record<PetAnim, number> = { idle: 2, walk: 4, happy: 2, sleep: 2 }
+const FRAMES: Record<PetAnim, number> = { idle: 2, walk: 4, happy: 2, sleep: 2, swim: 2 }
 
 export function petFrames(anim: PetAnim): number {
   return FRAMES[anim]
@@ -349,6 +350,10 @@ interface Rig {
   hy: number
   hrx: number
   hry: number
+  /** Swimming: drawn as a walk, then the part below the waterline is cut. */
+  swim?: boolean
+  /** Native px lift the painter used (for `post` overlays). */
+  lift?: number
 }
 
 function makeRig(p: Pnt, f: PetFacing, a: PetAnim, fr: number): Rig {
@@ -360,6 +365,10 @@ function makeRig(p: Pnt, f: PetFacing, a: PetAnim, fr: number): Rig {
   } else if (a === 'walk') {
     r.walk = fr % 4
     r.bob = fr % 2 ? -1 : 0
+    r.wag = fr % 2 ? 1 : -1
+  } else if (a === 'swim') {
+    r.swim = true
+    r.walk = (fr % 2) * 2
     r.wag = fr % 2 ? 1 : -1
   } else if (a === 'happy') {
     r.happy = true
@@ -821,7 +830,17 @@ function tailSleepSide(r: Rig, q: QuadLook, brx: number, bcy: number) {
 
 type Painter = (r: Rig) => void
 
-const SPECIES: Record<string, { draw: Painter; icon?: PetFacing; /** Ground shadow half-width (flying pets). */ shadow?: number }> = {}
+const SPECIES: Record<
+  string,
+  {
+    draw: Painter
+    icon?: PetFacing
+    /** Ground shadow half-width (flying pets). */
+    shadow?: number
+    /** Unoutlined overlay painted onto the finished frame (drips, bubble tint...). */
+    post?: (ctx: CanvasRenderingContext2D, r: Rig) => void
+  }
+> = {}
 
 // --- Dogs & cats -----------------------------------------------------------
 
@@ -2003,6 +2022,521 @@ SPECIES.naga = { shadow: 7, icon: 'down', draw: (r) => serpent(r, NAGA) }
 SPECIES.dragon = { shadow: 7, icon: 'down', draw: (r) => serpent(r, DRAGON) }
 
 // ---------------------------------------------------------------------------
+// v4 pets: viral Thai animals (orange cat, water monitor, capybara, pygmy
+// hippo, a blind-box monster, a peanut-butter bear) and pack / battle-pass
+// exclusives (baby elephant in elephant pants, betta in a bubble, soggy
+// cat, rescue dog). Data: game/data/petsV4.ts.
+
+/** Recolour base-coloured pixels of a tag in a repeating pattern (stripes, spots). */
+function patternOver(r: Rig, m: Mat, tags: number[], col: string, hit: (x: number, y: number) => boolean) {
+  const p = r.p
+  for (let y = 0; y < p.H; y++)
+    for (let x = 0; x < p.W; x++) {
+      const i = y * p.W + x
+      if (!tags.includes(p.t[i]) || p.c[i] !== m.b) continue
+      if (hit(x, y)) p.c[i] = col
+    }
+}
+
+// --- Orange cat (แมวส้ม) --------------------------------------------------------
+
+const ORANGE = mat('#f5a653', '#d98535', '#ffc98a', '#9a5320')
+SPECIES.orange_cat = {
+  draw: (r) => {
+    quad(r, {
+      body: ORANGE,
+      light: mat('#fff1d6', '#f0d9b0'),
+      ears: 'point',
+      ear: ORANGE,
+      earIn: '#ffb3cf',
+      snout: 'cat',
+      nose: '#e8709e',
+      iris: '#7fd35a',
+      tail: 'catUp',
+      bodyRX: 7,
+      bodyRY: 4.6,
+      headRX: 8,
+      headRY: 6.6,
+      legW: 3,
+    })
+    // tabby stripes on the body and forehead
+    const k = r.hd ? 2 : 1
+    patternOver(r, ORANGE, [T.body], ORANGE.s, (x, y) => Math.floor((x + Math.floor(y / 2)) / k) % 3 === 0)
+    patternOver(r, ORANGE, [T.head], ORANGE.s, (x, y) => y < r.p.Y(r.hy - r.hry * 0.35) && Math.floor(x / k) % 3 === 1)
+  },
+}
+
+// --- Soggy grumpy cat (แมวเปียกหน้าบึ้ง) -------------------------------------------
+
+const SOGGY = mat('#a9b3c6', '#8792a8', '#cfd6e2', '#5c677e')
+SPECIES.soggy_cat = {
+  draw: (r) => {
+    quad(r, {
+      body: SOGGY,
+      light: mat('#dfe5ee', '#c3ccd9'),
+      ears: 'point',
+      ear: SOGGY,
+      earIn: '#d9a9b8',
+      snout: 'cat',
+      nose: '#8e6a7a',
+      iris: '#e9c23a',
+      tail: 'whip',
+      bodyRX: 6.6,
+      bodyRY: 4.2,
+      headRX: 7.6,
+      headRY: 6.2,
+      legW: 3,
+      afterHead: (rr) => {
+        const p = rr.p
+        if (rr.f === 'up' || rr.sleep) return
+        // angry brows
+        const y = Math.round(p.Y(rr.hy - 2.4))
+        if (rr.f === 'side') {
+          const x = Math.round(p.X(rr.hx + 2))
+          p.px(x, y, SOGGY.d)
+          p.px(x + 1, y + (rr.hd ? 1 : 0), SOGGY.d)
+          if (rr.hd) p.px(x + 2, y + 1, SOGGY.d)
+        } else {
+          const x = Math.round(p.X(2.2))
+          const w = rr.hd ? 3 : 2
+          for (let i = 0; i < w; i++) {
+            p.px(x + i, y + (rr.hd ? Math.floor(i / 2) : 0), SOGGY.d)
+            p.px(p.W - 1 - (x + i), y + (rr.hd ? Math.floor(i / 2) : 0), SOGGY.d)
+          }
+        }
+      },
+    })
+    // wet spiky fur clumps along the belly line
+    const p = r.p
+    if (r.hd) patternOver(r, SOGGY, [T.body], SOGGY.d, (x, y) => (x + y) % 5 === 0 && y % 3 === 0)
+    void p
+  },
+  post: (ctx, r) => {
+    // drips falling from the chin and the belly
+    const p = r.p
+    const drops: [number, number][] = r.f === 'side' ? [[7, -3], [-3, -2]] : [[-3, -2.5], [3.5, -3]]
+    ctx.fillStyle = '#7fc8ff'
+    drops.forEach(([x, y], i) => {
+      const fall = ((r.fr + i) % 2) * (r.hd ? 2 : 1)
+      const px = Math.round(p.X(x))
+      const py = Math.round(p.Y(y)) + fall
+      ctx.fillRect(px, py, 1, r.hd ? 2 : 1)
+    })
+    ctx.fillStyle = '#d9f0ff'
+    const [hx, hy] = [Math.round(p.X(r.hx + (r.f === 'side' ? 2 : 4))), Math.round(p.Y(r.hy - r.hry - 1))]
+    if (r.hd && r.fr % 2 === 0) ctx.fillRect(hx, hy, 1, 1)
+  },
+}
+
+// --- Rescue dog (ตูบกู้ภัย) ---------------------------------------------------------
+
+const TUB = mat('#e8b872', '#c9914a', '#ffd9a0', '#8a5a2a')
+const VEST = mat('#ff7a1a', '#d4580c', '#ffb066', '#8a3a0a')
+SPECIES.tub_rescue = {
+  draw: (r) =>
+    quad(r, {
+      body: TUB,
+      light: mat('#fff0d6', '#f0d9b0'),
+      ears: 'point',
+      ear: TUB,
+      earIn: '#f7c9b9',
+      snout: 'dog',
+      nose: INK,
+      tail: 'curl',
+      headRX: 8,
+      afterBody: (rr) => {
+        const p = rr.p
+        // orange rescue vest with a reflective band
+        const band = rr.f === 'side' ? p.rect(-6, -14, 3, -6) : p.rect(-6, -15, 6, -6)
+        p.fill(band, VEST, { clip: [T.body], line: VEST.d, tag: T.deco })
+        const y = Math.round(p.Y(-10))
+        for (let x = 0; x < p.W; x++) if (p.tagAt(x, y) === T.deco) p.px(x, y, '#e8eef8', T.deco)
+        if (rr.hd && rr.f !== 'down') {
+          const cx = Math.round(p.X(rr.f === 'side' ? -1.5 : 0))
+          p.stamp(cx - 1, y - 3, ['.b.', 'bwb', '.b.'], { b: '#2e3a6b', w: '#fbfcff' }, false, T.deco)
+        }
+      },
+      afterHead: (rr) => {
+        const p = rr.p
+        // white safety helmet with an orange stripe and a head lamp
+        const hx = rr.hx
+        const top = rr.hy - rr.hry
+        p.fill(p.ell(hx - (rr.f === 'side' ? 0.8 : 0), top + 2, rr.hrx * 0.78, 3.4), mat('#fbfcff', '#d9dfec', '#ffffff', '#8a8496'), { tag: T.deco })
+        const sy0 = Math.round(p.Y(top - 1))
+        const sy1 = Math.round(p.Y(top + 3))
+        const sx = Math.round(p.X(hx - (rr.f === 'side' ? 0.8 : 0)))
+        for (let y = sy0; y <= sy1; y++) {
+          p.pxOn(sx, y, VEST.b, T.deco)
+          if (rr.hd) p.pxOn(sx - 1, y, VEST.b, T.deco)
+        }
+        if (rr.f !== 'up') {
+          const ly = Math.round(p.Y(top + 2.5))
+          const lx = rr.f === 'side' ? Math.round(p.X(hx + 4)) : sx
+          p.pxOn(lx, ly, '#ffe45e', T.deco)
+          if (rr.hd) p.pxOn(lx - 1, ly, '#fffbd0', T.deco)
+        }
+      },
+    }),
+}
+
+// --- Capybara (คาปิบาร่า) -----------------------------------------------------------
+
+const CAPY = mat('#b58456', '#946640', '#d4a574', '#6e4a2e')
+const YUZU = mat('#ffb02e', '#e08a1a', '#ffd680', '#a8600a')
+SPECIES.capybara = {
+  draw: (r) =>
+    quad(r, {
+      body: CAPY,
+      light: mat('#c99a6a', '#b58456'),
+      ears: 'round',
+      ear: mat('#946640', '#7a5232'),
+      snout: 'none',
+      nose: INK,
+      tail: 'none',
+      bodyRX: 8.5,
+      bodyRY: 5.5,
+      headRX: 7,
+      headRY: 6,
+      legH: 4.5,
+      legW: 3.5,
+      afterHead: (rr) => {
+        const p = rr.p
+        const side = rr.f === 'side'
+        if (rr.f !== 'up') {
+          // the big square capybara muzzle
+          if (side) {
+            p.fill(p.ell(rr.hx + 4, rr.hy + 1.8, 4.2, 3.6), mat('#a87848', '#8a5e36'), { tag: T.head })
+            p.px(Math.round(p.X(rr.hx + 7.3)), Math.round(p.Y(rr.hy + 0.5)), CAPY.d)
+          } else {
+            p.fill(p.ell(0, rr.hy + 2.6, 5, 3.2), mat('#a87848', '#8a5e36'), { tag: T.head, line: CAPY.d })
+            const ny = Math.round(p.Y(rr.hy + 1.6))
+            p.px(p.W / 2 - 2, ny, CAPY.d)
+            p.px(p.W / 2 + 1, ny, CAPY.d)
+          }
+        }
+        // the famous yuzu balanced on its head
+        const yx = rr.hx - (side ? 1 : 0)
+        const yy = rr.hy - rr.hry - 1.2
+        p.fill(p.circ(yx, yy, 2.6), YUZU, { tag: T.deco, hl: p.ell(yx - 0.8, yy - 0.8, 1, 0.8) })
+        p.fill(p.ell(yx + 1.6, yy - 2.6, 1.6, 0.9), mat('#5ea653', '#43905a'), { tag: T.deco })
+      },
+    }),
+}
+
+// --- Pygmy hippo (ฮิปโปแคระ) ---------------------------------------------------------
+
+const HIPPO = mat('#a99db8', '#877a99', '#cfc6dc', '#5e5470')
+const HIPPO_M = mat('#c9bcd6', '#b0a2c2', '#e3dbec', '#6e6480')
+SPECIES.pygmy_hippo = {
+  draw: (r) =>
+    quad(r, {
+      body: HIPPO,
+      light: mat('#e9d6e0', '#d9bfcf'),
+      ears: 'round',
+      ear: HIPPO,
+      earIn: '#ffb3cf',
+      snout: 'none',
+      nose: INK,
+      tail: 'tuft',
+      bodyRX: 8.5,
+      bodyRY: 5.6,
+      headRX: 8,
+      headRY: 6.4,
+      legH: 4,
+      legW: 3.8,
+      afterHead: (rr) => {
+        const p = rr.p
+        if (rr.f === 'up') return
+        if (rr.f === 'side') {
+          p.fill(p.ell(rr.hx + 4.5, rr.hy + 1.8, 4.6, 3.6), HIPPO_M, { tag: T.head })
+          p.px(Math.round(p.X(rr.hx + 7.5)), Math.round(p.Y(rr.hy - 0.2)), HIPPO.d)
+          p.fill(p.ell(rr.hx + 2, rr.hy + 3.6, 1.6, 1), '#ff9fc0', { line: null, clip: [T.head], shade: false })
+        } else {
+          p.fill(p.ell(0, rr.hy + 2.8, 6.2, 3.4), HIPPO_M, { tag: T.head, line: HIPPO.s })
+          const ny = Math.round(p.Y(rr.hy + 1.4))
+          for (const dx of rr.hd ? [-3, -2, 1, 2] : [-2, 1]) p.px(p.W / 2 + dx, ny, HIPPO.d)
+          // chubby pink cheeks
+          p.fill(p.ell(-5.6, rr.hy + 2.4, 1.8, 1.3), '#ff9fc0', { line: null, clip: [T.head], shade: false })
+          p.fill(p.ell(5.6, rr.hy + 2.4, 1.8, 1.3), '#ff9fc0', { line: null, clip: [T.head], shade: false })
+        }
+      },
+    }),
+}
+
+// --- Water monitor (ตัวเงินตัวทอง) ------------------------------------------------------
+
+const MON = mat('#5c6b4a', '#465338', '#7a8a64', '#2f3a24')
+const MON_B = mat('#d9d59a', '#bdb878', '#eeeac0', '#8a864a')
+SPECIES.water_monitor = {
+  icon: 'side',
+  draw: (r) => {
+    const p = r.p
+    const f = r.f
+    const sleep = r.sleep
+    p.oy = r.bob
+    const w = r.wag
+    const step = r.walk < 0 ? 0 : [1, 0, -1, 0][r.walk]
+    const tongue = !sleep && (r.happy || r.fr % 2 === 1)
+    if (f === 'side') {
+      // long tail on the ground, splayed legs, low body, flat head forward
+      p.fill(p.tube([[-6, -3.5, 2.6], [-11, -2.5, 1.8], [-15.5, -1.5 + w * 0.5, 1.1], [-19, -1.2 + w, 0.6]]), MON)
+      p.fill(p.ell(-3.5 - step, -1.3, 2.3, 1.3), mat(MON.s, MON.d))
+      p.fill(p.ell(4.5 + step, -1.3, 2.3, 1.3), mat(MON.s, MON.d))
+      p.fill(p.ell(0, sleep ? -3 : -4, 7.8, sleep ? 2.6 : 3.2), MON, { hl: p.ell(-1, -6, 4, 0.9) })
+      p.fill(p.ell(0.5, sleep ? -1.8 : -2.4, 5.5, 1.4), MON_B, { line: null, clip: [T.body], shade: false })
+      p.fill(p.ell(-4.5 + step, -1.1, 2.4, 1.3), MON)
+      p.fill(p.ell(3.5 - step, -1.1, 2.4, 1.3), MON)
+      const hx = 9.5
+      const hy = sleep ? -3 : -5 - (r.air ? 1 : 0)
+      setHead(r, hx, hy, 4.4, 2.8)
+      p.fill(union(p.ell(hx, hy, 4.4, 2.8), p.ell(hx + 3.2, hy + 0.6, 2.6, 1.8)), MON, { tag: T.head, hl: p.ell(hx, hy - 1.8, 2.2, 0.6) })
+      eye(r, hx + 1, hy - 0.8, '#e9c23a')
+      if (tongue) {
+        const tx = Math.round(p.X(hx + 6))
+        const ty = Math.round(p.Y(hy + 0.8))
+        p.stamp(tx, ty - 1, r.hd ? ['...c', 'ccc.', '...c'] : ['.c', 'c.'], { c: '#ff5f7a' }, false, T.deco)
+      }
+    } else if (f === 'down') {
+      p.fill(p.tube([[3, -3, 1.6], [8, -2, 1.1], [11 + w, -1.2, 0.6]]), MON)
+      for (const s of [-1, 1]) p.fill(p.ell(s * (6.5 + (s > 0 ? step : -step) * 0.5), -1.3, 2.6, 1.3), MON)
+      p.fill(p.ell(0, -4.2, 6.2, 3.4), MON, { hl: p.ell(-2, -6.5, 2.5, 0.8) })
+      const hy = sleep ? -5 : -7.5
+      setHead(r, 0, hy, 5, 3.6)
+      p.fill(p.ell(0, hy, 5, 3.6), MON, { tag: T.head, hl: p.ell(-1.5, hy - 2.2, 2, 0.7) })
+      p.fill(p.ell(0, hy + 2, 3.4, 1.5), MON_B, { line: null, clip: [T.head], shade: false })
+      eyes2(r, 3.4, hy - 0.8, '#e9c23a')
+      if (tongue) {
+        const c = p.W / 2
+        const ty = Math.round(p.Y(hy + 3.2))
+        p.stamp(c - (r.hd ? 2 : 1), ty, r.hd ? ['.cc.', '.cc.', 'c..c'] : ['cc'], { c: '#ff5f7a' }, false, T.deco)
+      }
+    } else {
+      p.fill(p.ell(0, -4.8, 6.2, 3.8), MON, { hl: p.ell(-2, -7, 2.5, 0.8) })
+      for (const s of [-1, 1]) p.fill(p.ell(s * 6.5, -1.4 + (s > 0 ? step : -step) * 0.3, 2.5, 1.3), MON)
+      setHead(r, 0, -9, 4, 3)
+      p.fill(p.ell(0, -9, 4, 3), MON, { tag: T.head })
+      p.fill(p.tube([[0, -2.5, 2.2], [1 + w, -1, 1.5], [3 + w, -0.6, 0.8]]), MON)
+    }
+    // golden spots (they bring the money, after all)
+    const k = r.hd ? 2 : 1
+    patternOver(r, MON, [T.body, T.head], '#e8cf52', (x, y) => (Math.floor(x / k) * 2 + Math.floor(y / k) * 3) % 7 === 0)
+    if (r.happy && r.air) heart(r, f === 'side' ? 12 : 9, -14)
+    p.oy = 0
+  },
+}
+
+// --- Upright chibis: peanut-butter bear & blind-box monster -------------------------
+
+interface BipedLook {
+  fur: Mat
+  belly: Mat
+  face?: Mat
+  ears: 'round' | 'bunny'
+  earIn: string
+  /** Sways left and right while idle. */
+  dance?: boolean
+  mouth?: 'grin' | 'cute'
+  after?: (r: Rig, hx: number, hy: number) => void
+}
+
+function biped(r: Rig, b: BipedLook) {
+  const p = r.p
+  const f = r.f
+  const sleep = r.sleep
+  const sway = b.dance && r.a === 'idle' ? (r.fr % 2 ? 1 : -1) : 0
+  p.ox = Math.round(p.S(sway))
+  p.oy = r.bob
+  const swing = r.walk < 0 ? 0 : [1.5, 0, -1.5, 0][r.walk]
+  const armUp = r.happy || (b.dance && r.a === 'idle')
+  const hy = sleep ? -8.5 : -15.5 + (r.br ? 1 / p.k : 0)
+  const ear = (x: number, y: number, s: number, inner: boolean) => {
+    if (b.ears === 'round') {
+      p.fill(p.circ(x, y, 2.5), b.fur, { tag: T.head })
+      if (inner) p.fill(p.circ(x, y + 0.3, 1.3), b.earIn, { line: null, clip: [T.head] })
+    } else {
+      p.fill(p.tube([[x, y + 2, 1.8], [x + s * 0.6, y - 3, 1.5], [x + s * 1.2, y - 7, 0.7]]), b.fur, { tag: T.head })
+      if (inner) p.fill(p.tube([[x, y + 1.5, 0.8], [x + s * 0.6, y - 3, 0.7], [x + s * 1.1, y - 5.5, 0.4]]), b.earIn, { line: null, clip: [T.head] })
+    }
+  }
+  if (f === 'side') {
+    const hx = 2.5
+    if (!sleep) p.fill(p.tube([[1, -9.5, 1.3], [armUp ? 3 : 1 - swing, armUp ? -17 : -5.5, 1.2]]), mat(b.fur.s, b.fur.d, b.fur.b))
+    p.fill(p.ell(-2.2 - swing, -1.2, 2.4, 1.4), mat(b.fur.s, b.fur.d, b.fur.b))
+    p.fill(p.ell(-0.5, sleep ? -4.8 : -6.5, sleep ? 6.5 : 5.2, sleep ? 4.5 : 5.8), b.fur, { hl: p.ell(-2, sleep ? -8 : -10.5, 2.3, 1.2) })
+    p.fill(p.ell(1.5, sleep ? -3.5 : -5.5, 3, 3.5), b.belly, { line: null, clip: [T.body], shade: false })
+    p.fill(p.ell(1.8 + swing, -1.2, 2.4, 1.4), b.fur)
+    p.fill(p.circ(-5.8, -5, 1.6), b.fur)
+    ear(hx - 3.5, hy - 4.8, -1, false)
+    setHead(r, hx, hy, 6.3, 5.8)
+    p.fill(p.ell(hx, hy, 6.3, 5.8), b.fur, { tag: T.head, hl: p.ell(hx - 2, hy - 3.8, 2.5, 1) })
+    if (b.face) p.fill(p.ell(hx + 2.5, hy + 0.8, 3.6, 3.8), b.face, { line: null, clip: [T.head], shade: false })
+    ear(hx - 1, hy - 5.2, 1, true)
+    if (!sleep) p.fill(p.tube([[3, -9.5, 1.3], [armUp ? 6 : 4 + swing, armUp ? -17.5 : -5, 1.2]]), b.fur)
+    eye(r, hx + 3, hy - 0.5)
+    blush1(r, hx + 3.6, hy + 2)
+    if (b.mouth === 'grin' && !sleep) {
+      const mx = Math.round(p.X(hx + 4.5))
+      const my = Math.round(p.Y(hy + 3))
+      p.stamp(mx - 1, my, r.hd ? ['kkk', 'wkw'] : ['k'], { k: '#6e2433', w: '#ffffff' })
+    } else if (r.mouth === 'open') mouthSide(r, hx + 5.5, hy + 2.8)
+    b.after?.(r, hx, hy)
+  } else {
+    const back = f === 'up'
+    const l1 = r.walk === 1 ? -1.5 : 0
+    const l2 = r.walk === 3 ? -1.5 : 0
+    p.fill(p.ell(-3.2, -1.2 + l1, 2.4, 1.4), b.fur)
+    p.fill(p.ell(3.2, -1.2 + l2, 2.4, 1.4), b.fur)
+    if (back) p.fill(p.circ(0, -3.5, 1.8), b.fur)
+    p.fill(p.ell(0, sleep ? -5 : -6.5, sleep ? 6.5 : 5.5, sleep ? 4.6 : 5.6), b.fur, { hl: p.ell(-2, sleep ? -8 : -10.5, 2.3, 1.2) })
+    if (!back) p.fill(p.ell(0, sleep ? -4 : -5.8, 3.4, 3.8), b.belly, { line: null, clip: [T.body], shade: false })
+    for (const s of [-1, 1]) {
+      if (sleep) continue
+      const up = armUp && (!b.dance || r.a !== 'idle' || (s > 0) === (r.fr % 2 === 0))
+      const end: [number, number] = up ? [s * 8, -17.5] : [s * 6, -5 + s * swing]
+      p.fill(p.tube([[s * 4, -10, 1.4], [end[0], end[1], 1.3]]), b.fur)
+    }
+    for (const s of [-1, 1]) ear(s * 4.6, hy - 4.6, s, !back)
+    setHead(r, 0, hy, 6.8, 6)
+    p.fill(p.ell(0, hy, 6.8, 6), b.fur, { tag: T.head, hl: p.ell(-2.5, hy - 3.8, 2.5, 1) })
+    if (!back) {
+      if (b.face) p.fill(p.ell(0, hy + 1, 5, 4.4), b.face, { line: null, clip: [T.head], shade: false })
+      eyes2(r, 2.6, hy - 0.2)
+      blush2(r, 4.3, hy + 2)
+      if (b.mouth === 'grin' && !sleep) {
+        const c = p.W / 2
+        const my = Math.round(p.Y(hy + 2.8))
+        p.stamp(c - (r.hd ? 3 : 1), my, r.hd ? ['kkkkkk', 'kwkwkw', '.kkkk.'] : ['kk'], { k: '#6e2433', w: '#ffffff' })
+      } else snoutFront(r, hy + 1.8, b.belly.d, 'cat')
+    }
+    b.after?.(r, 0, hy)
+  }
+  if (r.happy && r.air) heart(r, f === 'side' ? 12 : 10, r.hy - r.hry - 3)
+  p.oy = 0
+  p.ox = 0
+}
+
+const PBEAR = mat('#f2c97a', '#d9a756', '#ffe3a8', '#9a6a2e')
+SPECIES.butter_bear = {
+  draw: (r) =>
+    biped(r, {
+      fur: PBEAR,
+      belly: mat('#fff3d6', '#f0d9b0'),
+      ears: 'round',
+      earIn: '#ffb3cf',
+      dance: true,
+      after: (rr, hx, hy) => {
+        const p = rr.p
+        if (rr.f === 'up') return
+        // a blue ribbon on one ear
+        const rx = rr.f === 'side' ? hx - 1 : 5
+        const bx = Math.round(p.X(rx))
+        const by = Math.round(p.Y(hy - 6.5))
+        p.stamp(bx - 2, by - 1, rr.hd ? ['bb.bb', 'bBbBb', 'bb.bb'] : ['b.b', '.b.'], { b: '#6fb8f0', B: '#bfe0ff' }, false, T.deco)
+      },
+    }),
+}
+
+const BBOX = mat('#c7a58a', '#a8866c', '#e0c4a8', '#6e4a35')
+SPECIES.blindbox_monster = {
+  draw: (r) =>
+    biped(r, {
+      fur: BBOX,
+      belly: mat('#f1dcc6', '#dcc2a8'),
+      face: mat('#f6e6d4', '#e6d0b8'),
+      ears: 'bunny',
+      earIn: '#ffb3cf',
+      mouth: 'grin',
+    }),
+}
+
+// --- Baby elephant in elephant pants (ช้างน้อยใส่กางเกงช้าง) ------------------------------
+
+const PANTS = mat('#d8435f', '#a8304a', '#f07a8f', '#6e1a2e')
+SPECIES.chang_noi = {
+  draw: (r) => {
+    elephant(r, { skin: ELE, ear: mat('#a2a8bd', '#858aa3', '#c9cfe0', '#5f647c'), earIn: '#f0b8c4', toe: '#e8ecf5' })
+    const p = r.p
+    p.oy = r.bob
+    // baggy red elephant pants over the legs and the lower tummy
+    const top = r.sleep ? -3.5 : r.f === 'side' ? -8.5 : -7.5
+    p.fill(p.rect(-20, top, 20, 0.5), PANTS, { clip: [T.body], line: null, tag: T.deco, shade: false })
+    const k = r.hd ? 2 : 1
+    const wy = Math.round(p.Y(top))
+    for (let x = 0; x < p.W; x++) {
+      if (p.tagAt(x, wy) !== T.deco) continue
+      p.px(x, wy, GOLD.b, T.deco)
+      if (r.hd) p.px(x, wy + 1, GOLD.d, T.deco)
+    }
+    // tiny gold elephants (dots) on the fabric, darker hem
+    for (let y = wy + 2 * k; y < p.H; y++)
+      for (let x = 0; x < p.W; x++) {
+        if (p.tagAt(x, y) !== T.deco || p.c[y * p.W + x] !== PANTS.b) continue
+        if ((Math.floor(x / k) + Math.floor(y / k) * 2) % 5 === 0 && Math.floor(y / k) % 2 === 0) p.px(x, y, GOLD.b, T.deco)
+      }
+    p.oy = 0
+  },
+}
+
+// --- Betta in a water bubble (ปลากัด) ----------------------------------------------------
+
+const BETTA = mat('#e8304a', '#b8203a', '#ff7a8a', '#7a1024')
+const BFIN = mat('#e8406a', '#6a5ae8', '#ff9ab0', '#3a2a9a')
+SPECIES.betta = {
+  shadow: 6,
+  icon: 'side',
+  draw: (r) => {
+    const p = r.p
+    hover(r, 6)
+    const cy = -12
+    const s = r.walk >= 0 ? [0, 1, 0, -1][r.walk] : r.br ? 0.8 : r.air ? -1 : 0
+    const back = r.f === 'up'
+    const m = r.f === 'side' ? 1 : back ? -1 : 1
+    const X = (x: number) => x * m
+    // flowing tail and fins
+    p.fill(union(p.tube([[X(-2), cy, 1.6], [X(-5.5), cy - 2.5 + s, 2.6], [X(-7.5), cy - 4.5 + s * 1.4, 1.6]]), p.tube([[X(-2), cy, 1.6], [X(-5.5), cy + 2.5 + s, 2.6], [X(-7.5), cy + 4 + s * 1.4, 1.6]]), p.poly([[X(-2.5), cy - 1.5], [X(-7.8), cy - 4.8 + s * 1.4], [X(-6.5), cy + s], [X(-7.8), cy + 4.4 + s * 1.4], [X(-2.5), cy + 1.5]])), BFIN, { tag: T.wing })
+    p.fill(p.poly([[X(-2), cy - 1.8], [X(0), cy - 5.5 + s * 0.4], [X(2.5), cy - 2]]), BFIN, { tag: T.wing })
+    p.fill(p.poly([[X(-2.5), cy + 1.6], [X(-1), cy + 5.5 + s * 0.4], [X(2), cy + 1.8]]), BFIN, { tag: T.wing })
+    p.fill(p.ell(X(1), cy, 4.4, 2.8), BETTA, { hl: p.ell(X(1.5), cy - 1.5, 2.4, 0.7) })
+    setHead(r, X(2.5), cy, 2.5, 2.4)
+    if (!back) {
+      eye(r, X(3), cy - 0.5, '#5a3a60', m < 0)
+      blush1(r, X(3.2), cy + 1)
+    }
+    if (r.hd) scales(r, BETTA, T.body, r.fr)
+    // the water bubble around the fish (drawn as a ring; the inside is tinted in post)
+    const ring = (x: number, y: number) => {
+      const d = Math.hypot(x - p.X(0), y - p.Y(cy))
+      return d <= p.S(9) && d >= p.S(9) - (r.hd ? 1.2 : 0.8)
+    }
+    p.fill(ring, mat('#bfeaff', '#8fd4f5', '#ffffff', '#5fb0d8'), { line: null, shade: false, tag: T.fx })
+    if (r.happy && r.air) heart(r, 10, cy - 11)
+    r.lift = p.oy
+    p.oy = 0
+  },
+  post: (ctx, r) => {
+    const p = r.p
+    const cx = p.X(0)
+    const cy = p.Y(-12) + (r.lift ?? 0)
+    const rad = p.S(9) - 0.5
+    ctx.fillStyle = 'rgba(150, 215, 255, 0.28)'
+    for (let y = Math.floor(cy - rad); y <= cy + rad; y++)
+      for (let x = Math.floor(cx - rad); x <= cx + rad; x++) if (Math.hypot(x + 0.5 - cx, y + 0.5 - cy) < rad - 0.6) ctx.fillRect(x, y, 1, 1)
+    // glossy highlight and a rising mini bubble
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+    const hx = Math.round(cx - rad * 0.55)
+    const hy = Math.round(cy - rad * 0.55)
+    ctx.fillRect(hx, hy, 1, r.hd ? 2 : 1)
+    if (r.hd) ctx.fillRect(hx + 1, hy - 1, 2, 1)
+    const up = (r.fr % 2) * (r.hd ? 2 : 1)
+    ctx.fillStyle = 'rgba(220, 245, 255, 0.9)'
+    ctx.fillRect(Math.round(cx + rad * 0.35), Math.round(cy - rad * 0.2) - up, 1, 1)
+  },
+}
+
+/** Waterline (design units above the ground) for the swim animation. */
+const SWIM_LINE = -5
+
+// ---------------------------------------------------------------------------
 // Rendering entry points
 
 function render(id: string, facing: PetFacing, anim: PetAnim, frame: number, k: number, shadow = true): Sprite {
@@ -2010,6 +2544,8 @@ function render(id: string, facing: PetFacing, anim: PetAnim, frame: number, k: 
   const r = makeRig(p, facing, anim, frame)
   const sp = SPECIES[id] ?? SPECIES.bangkaew
   sp.draw(r)
+  const wl = Math.round(p.Y(SWIM_LINE))
+  if (r.swim) for (let y = wl; y < p.H; y++) for (let x = 0; x < p.W; x++) p.c[y * p.W + x] = null
   p.outline()
   const canvas = p.canvas(
     sp.shadow && shadow
@@ -2030,6 +2566,24 @@ function render(id: string, facing: PetFacing, anim: PetAnim, frame: number, k: 
         }
       : undefined,
   )
+  const ctx = canvas.getContext('2d')!
+  sp.post?.(ctx, r)
+  if (r.swim) {
+    // water around the paddling pet: a translucent band with ripples and splashes
+    let x0 = p.W
+    let x1 = -1
+    for (let x = 0; x < p.W; x++) if (p.c[(wl - 1) * p.W + x] !== null) ((x0 = Math.min(x0, x)), (x1 = Math.max(x1, x)))
+    if (x1 >= 0) {
+      const pad = r.hd ? 4 : 2
+      ctx.fillStyle = 'rgba(94, 190, 235, 0.55)'
+      ctx.fillRect(x0 - pad, wl, x1 - x0 + 1 + pad * 2, Math.min(r.hd ? 4 : 2, p.H - wl))
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+      for (let x = x0 - pad; x <= x1 + pad; x++) if ((x + r.fr * 2) % (r.hd ? 5 : 3) === 0) ctx.fillRect(x, wl, 1, 1)
+      const sx = r.f === 'side' ? x1 + 1 : r.fr % 2 ? x0 - 1 : x1 + 1
+      ctx.fillRect(sx, wl - (r.hd ? 2 : 1) - (r.fr % 2), 1, 1)
+      if (r.hd) ctx.fillRect(sx + (r.fr % 2 ? -2 : 2), wl - 3, 1, 1)
+    }
+  }
   return { canvas, w: canvas.width, h: canvas.height }
 }
 

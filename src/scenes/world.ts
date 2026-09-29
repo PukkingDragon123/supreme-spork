@@ -124,7 +124,12 @@ export interface MapDef {
   camBias?: number
   dogs: string[]
   visitors?: number
+  /** Open water (ponds, rivers, flooded streets): swimming pets paddle here. */
+  water?: Rect[]
 }
+
+/** Hotspots that sit on water (used when a map has no explicit `water`). */
+const WATER_HOTSPOT = /pond|river|koi|krathong|flood|catfish|canal|lake|beach|pier|boat/
 
 /** Another player sharing this map (online presence). */
 export interface RemotePlayer {
@@ -789,15 +794,23 @@ export class WorldScene implements Scene {
     if (q.happy > 0) q.happy -= dt
   }
 
+  /** Is (x, y) in or next to water? Uses the map's `water` rects, else pond / river hotspots. */
+  nearWater(x: number, y: number, pad = 10): boolean {
+    const inR = (r: Rect) => x >= r.x - pad && x <= r.x + r.w + pad && y >= r.y - pad && y <= r.y + r.h + pad
+    if (this.map.water?.length) return this.map.water.some(inR)
+    return this.map.hotspots.some((h) => !h.id.startsWith('job:') && WATER_HOTSPOT.test(h.id) && inR(h.rect))
+  }
+
   private drawPet(g: Surface, t: number) {
     const id = this.pet!
     const q = this.petPos
     const def = PET_BY_ID[id]
     const facing: PetFacing = q.facing === 'down' ? 'down' : q.facing === 'up' ? 'up' : 'side'
-    const anim: PetAnim = q.happy > 0 ? 'happy' : q.moving ? 'walk' : q.idle > 12 ? 'sleep' : 'idle'
-    const frame = anim === 'walk' ? Math.floor(q.t * 8) : Math.floor(q.t * 2)
+    const swim = !!def?.swims && q.happy <= 0 && this.nearWater(q.x, q.y)
+    const anim: PetAnim = q.happy > 0 ? 'happy' : swim ? 'swim' : q.moving ? 'walk' : q.idle > 12 ? 'sleep' : 'idle'
+    const frame = anim === 'walk' ? Math.floor(q.t * 8) : anim === 'swim' ? Math.floor(q.t * 4) : Math.floor(q.t * 2)
     const s = petSprite(id, facing, anim, frame, { flip: q.facing === 'left' })
-    if (!def?.flying) drawShadow(g, q.x, q.y, 5, 1.5)
+    if (!def?.flying && !swim) drawShadow(g, q.x, q.y, 5, 1.5)
     g.draw(s.canvas, Math.round(q.x - s.w / 2), Math.round(q.y - s.h + 1))
     if (anim === 'sleep' && Math.floor(t * 1.2) % 2 === 0) {
       g.px(q.x + 5, q.y - 12, '#e2e8ff')
