@@ -9,6 +9,7 @@ import { maeklongMap } from './hub-maeklong'
 import { thaphaeMap } from './hub-thaphae'
 import { kimyongMap } from './hub-kimyong'
 import { indochinaMap } from './hub-indochina'
+import { fairMap } from './fair-temple'
 
 export const MAPS: Record<string, () => MapDef> = {
   hub_chatuchak: chatuchakMap,
@@ -17,4 +18,5 @@ export const MAPS: Record<string, () => MapDef> = {
   hub_thaphae: thaphaeMap,
   hub_kimyong: kimyongMap,
   hub_indochina: indochinaMap,
+  fair_temple: fairMap,
 }
