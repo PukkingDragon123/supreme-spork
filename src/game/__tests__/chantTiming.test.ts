@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   LEAD_IN,
+  PART_GAP,
   PRE_ROLL,
   ROUND_GAP,
   audioAt,
@@ -11,7 +12,9 @@ import {
   lineWeights,
   parseTiming,
   pickQuiz,
+  planStage,
   recordingRate,
+  setPlan,
   speakable,
   speechRateFor,
   synthPlan,
@@ -233,5 +236,58 @@ describe('pickQuiz', () => {
   })
   it('is deterministic for a seed', () => {
     expect(pickQuiz(plan.words, pool, 3, 0.4)).toEqual(q)
+  })
+})
+
+describe('planStage', () => {
+  const namoT = { lines: [0.8, 8.9, 17.1], end: 24.2 }
+  const refuge = chantById('refuge')
+  const refugeT = { lines: refuge.lines.map((_, i) => 0.6 + i * 3.2), end: 0.6 + refuge.lines.length * 3.2 }
+  it('uses a recording whose timing covers the stage, else the tempo', () => {
+    expect(planStage(stage(), [{ chantId: 'namo', timing: namoT, duration: 25 }]).source).toBe('file')
+    expect(planStage(stage(), [{ chantId: 'namo', timing: null, duration: 25 }]).source).toBe('synth')
+    expect(planStage(stage(), []).source).toBe('synth')
+    // Wrong line count (timing for another chant) is ignored.
+    expect(planStage(stage(), [{ chantId: 'namo', timing: { lines: [0, 1] }, duration: 25 }]).source).toBe('synth')
+    // Singing to the last line needs to know where the chanting ends.
+    expect(planStage(stage(), [{ chantId: 'namo', timing: { lines: [0.8, 8.9, 17.1] }, duration: 0 }]).source).toBe('synth')
+    // A first-line stage does not.
+    expect(planStage(stage({ part: [0, 1] }), [{ chantId: 'namo', timing: { lines: [0.8, 8.9, 17.1] }, duration: 0 }]).source).toBe('file')
+  })
+  it('chains one recording per part for a boss set', () => {
+    const boss = STAGE_BY_ID['wat-10']
+    expect(boss.chant).toBe('wai_set')
+    const p = planStage(boss, [
+      { chantId: 'namo', timing: namoT, duration: 25 },
+      { chantId: 'refuge', timing: refugeT, duration: 40 },
+    ])
+    expect(p.source).toBe('file')
+    expect(p.lines).toHaveLength(12)
+    expect(p.src).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
+    expect(p.segments.map((s) => s.src)).toEqual([0, 1])
+    expect(p.segments[1].t0 - p.segments[0].t1).toBeCloseTo(PART_GAP)
+    expect(p.segments[1].a0).toBeCloseTo(0.6 - PRE_ROLL)
+    // The refuge part's first word starts where its first line was marked.
+    const firstRefuge = p.words.find((w) => w.line === 3)!
+    expect(firstRefuge.start).toBeCloseTo(timeAt(p.segments, 1, 0.6))
+    for (let i = 1; i < p.words.length; i++) expect(p.words[i].start).toBeGreaterThan(p.words[i - 1].start)
+    // Missing or untimed parts fall back to the synthesized guide.
+    expect(planStage(boss, [{ chantId: 'namo', timing: namoT, duration: 25 }]).source).toBe('synth')
+    expect(planStage(boss, [{ chantId: 'namo', timing: namoT, duration: 25 }, { chantId: 'refuge', timing: null, duration: 40 }]).source).toBe('synth')
+    // A set's own recording is used as one file.
+    const whole = { lines: [...namoT.lines, ...refugeT.lines.map((x) => x + 25)], end: 70 }
+    const own = planStage(boss, [{ chantId: 'wai_set', timing: whole, duration: 71 }])
+    expect(own.segments).toHaveLength(1)
+    expect(own.lines).toHaveLength(12)
+  })
+  it('keeps the round gap when a chained set repeats', () => {
+    const st = stage({ chant: 'wai_set', rounds: 2 })
+    const p = setPlan(st, [
+      { lines: chantById('namo').lines, timing: namoT, duration: 25 },
+      { lines: refuge.lines, timing: refugeT, duration: 40 },
+    ])!
+    expect(p.segments).toHaveLength(4)
+    expect(p.segments[2].t0 - p.segments[1].t1).toBeCloseTo(ROUND_GAP)
+    expect(setPlan(stage({ chant: 'namo' }), [])).toBeNull()
   })
 })

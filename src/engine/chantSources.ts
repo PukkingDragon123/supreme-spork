@@ -215,6 +215,19 @@ async function resolve(chantId: string): Promise<ChantRecording | null> {
   return { chantId, kind, url, blob, name, duration, timing, timingFrom }
 }
 
+/**
+ * Recordings for a stage's chant: its own file, or for a boss set (e.g.
+ * wai_set = namo + refuge) one file per part when every part has one.
+ */
+export async function loadChantAudio(chantId: string): Promise<ChantRecording[]> {
+  const own = await loadRecording(chantId)
+  if (own) return [own]
+  const parts = CHANT_BY_ID[chantId]?.parts
+  if (!parts?.length) return []
+  const recs = await Promise.all(parts.map((id) => loadRecording(id)))
+  return recs.every((r): r is ChantRecording => !!r) ? recs : []
+}
+
 /** Save hand-marked timing for a chant's current recording. */
 export async function saveManualTiming(rec: Pick<ChantRecording, 'chantId' | 'kind'>, timing: LineTiming) {
   await saveTiming(rec.kind, rec.chantId, { ...timing, auto: false })

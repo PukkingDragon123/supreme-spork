@@ -86,8 +86,10 @@ timing tools work on it.
 | `bahum` | พาหุง (บทที่ ๑) | 4 |
 | `yatha` | ยะถา (อนุโมทนา) | 5 |
 
-Boss stages use longer sets. They need their own file, or they fall back to
-the synthesized guide:
+Boss stages use longer sets. A set uses its own file when there is one.
+Otherwise it plays its parts' files one after another, but only when every
+part has a file with timing (or auto-align works on it). If any part is
+missing, the set falls back to the synthesized guide.
 
 | id | set | lines |
 |---|---|---|

@@ -72,6 +72,8 @@ export interface AudioSegment {
   /** Audio file seconds at t0 / t1. */
   a0: number
   a1: number
+  /** Which recording plays (index into the stage's recordings; sets chain several). */
+  src: number
 }
 
 export interface StagePlan {
@@ -128,73 +130,157 @@ export function recordingRate(paceMs: number, stageTempo: number): number {
   return Math.abs(r - 1) < 0.06 ? 1 : Math.round(r * 100) / 100
 }
 
+/** One recording feeding a plan: lines [from, to) of the recorded chant. */
+export interface RecordedPart {
+  /** The recorded chant's lines. */
+  lines: string[]
+  timing: LineTiming
+  duration: number
+  from: number
+  to: number
+  /** Stage-chant line index of `from` (a set's part starts after the parts before it). */
+  offset: number
+}
+
+/** Pause between two recordings chained in one round (boss sets). */
+export const PART_GAP = 0.8
+
+function recordedPlan(st: PrayerStage, parts: RecordedPart[], rateOpt?: number): StagePlan {
+  const rounds = Math.max(1, st.rounds ?? 1)
+  let sylTotal = 0
+  let paceSum = 0
+  for (const p of parts) {
+    let syl = 0
+    for (let i = p.from; i < p.to; i++) for (const w of lineWords(p.lines[i])) syl += syllableUnits(w)
+    paceSum += recordingPace(p.lines, p.timing, p.duration, p.from, p.to) * syl
+    sylTotal += syl
+  }
+  const rate = rateOpt ?? recordingRate(sylTotal ? paceSum / sylTotal : 400, st.tempo)
+  const words: TimelineWord[] = []
+  const segments: AudioSegment[] = []
+  const lines: string[] = []
+  const src: number[] = []
+  let cursor = LEAD_IN
+  for (let r = 0; r < rounds; r++) {
+    if (r > 0) cursor += ROUND_GAP - PART_GAP
+    parts.forEach((p, k) => {
+      const cl = p.lines
+      const end = p.timing.end ?? p.duration
+      const lastEnd = p.to < cl.length ? p.timing.lines[p.to] : end
+      const a0 = Math.max(0, p.timing.lines[p.from] - PRE_ROLL)
+      const a1 = Math.max(a0 + 0.1, lastEnd)
+      const span = (a1 - a0) / rate
+      const t0 = cursor
+      segments.push({ t0, t1: t0 + span, a0, a1, src: k })
+      const toT = (audio: number) => t0 + (audio - a0) / rate
+      for (let i = p.from; i < p.to; i++) {
+        const li = lines.length
+        lines.push(cl[i])
+        src.push(p.offset + i - p.from)
+        const ls = p.timing.lines[i]
+        const isLast = i + 1 >= cl.length
+        const le = i + 1 < cl.length ? p.timing.lines[i + 1] : end
+        const speech = (le - ls) * (isLast ? 1 : LINE_FILL)
+        const toks = cl[i].split(/\s+/).filter(Boolean)
+        const ws = toks.filter((w) => w !== BOW_TOKEN)
+        const marks = p.timing.words?.[i]
+        const units = ws.map(syllableUnits)
+        const total = units.reduce((s, u) => s + u, 0) + WORD_GAP_UNITS * Math.max(0, ws.length - 1)
+        const unit = total > 0 ? speech / total : 0
+        let acc = 0
+        let wi = 0
+        for (const tok of toks) {
+          if (tok === BOW_TOKEN) {
+            const prev = words[words.length - 1]
+            if (prev && prev.line === li) prev.bow = true
+            continue
+          }
+          let s0: number
+          let s1: number
+          if (marks && marks.length === ws.length) {
+            s0 = marks[wi]
+            s1 = wi + 1 < ws.length ? marks[wi + 1] - 0.08 : ls + speech
+            if (!(s1 > s0)) s1 = s0 + units[wi] * 0.2
+          } else {
+            s0 = ls + acc * unit
+            s1 = s0 + units[wi] * unit
+          }
+          acc += units[wi] + WORD_GAP_UNITS
+          const start = toT(s0)
+          const dur = Math.max(0.12, (s1 - s0) / rate)
+          words.push({ index: words.length, text: tok, line: li, start, dur, syl: syllableWindows(tok, start, dur) })
+          wi++
+        }
+      }
+      cursor = t0 + span + PART_GAP
+    })
+  }
+  const last = segments[segments.length - 1]
+  const total = last.t1 + TAIL_MS / 1000
+  return { lines, src, words, total, ...lineSpans(words, lines.length), rate, segments, source: 'file' }
+}
+
 /**
  * Timeline from a real recording: words are spread across each line's
  * marked slot by syllables (or placed at marked word times), rounds replay
  * the recording, and `segments` say which audio plays when.
  */
 export function filePlan(st: PrayerStage, timing: LineTiming, duration: number, opts: { rate?: number } = {}): StagePlan {
-  const chant = chantById(st.chant)
-  const cl = chant.lines
+  const cl = chantById(st.chant).lines
   const [a, b] = stageRange(st)
-  const rounds = Math.max(1, st.rounds ?? 1)
-  const end = timing.end ?? duration
-  const lastEnd = b < cl.length ? timing.lines[b] : end
-  const a0 = Math.max(0, timing.lines[a] - PRE_ROLL)
-  const a1 = Math.max(a0 + 0.1, lastEnd)
-  const rate = opts.rate ?? recordingRate(recordingPace(cl, timing, duration, a, b), st.tempo)
-  const span = (a1 - a0) / rate
-  const words: TimelineWord[] = []
-  const segments: AudioSegment[] = []
-  const lines: string[] = []
-  const src: number[] = []
-  for (let r = 0; r < rounds; r++) {
-    const t0 = LEAD_IN + r * (span + ROUND_GAP)
-    segments.push({ t0, t1: t0 + span, a0, a1 })
-    const toT = (audio: number) => t0 + (audio - a0) / rate
-    for (let i = a; i < b; i++) {
-      const li = lines.length
-      lines.push(cl[i])
-      src.push(i)
-      const ls = timing.lines[i]
-      const isLast = i + 1 >= cl.length
-      const le = i + 1 < cl.length ? timing.lines[i + 1] : end
-      const speech = (le - ls) * (isLast ? 1 : LINE_FILL)
-      const toks = cl[i].split(/\s+/).filter(Boolean)
-      const ws = toks.filter((w) => w !== BOW_TOKEN)
-      const marks = timing.words?.[i]
-      const units = ws.map(syllableUnits)
-      const total = units.reduce((s, u) => s + u, 0) + WORD_GAP_UNITS * Math.max(0, ws.length - 1)
-      const unit = total > 0 ? speech / total : 0
-      let acc = 0
-      let wi = 0
-      for (const tok of toks) {
-        if (tok === BOW_TOKEN) {
-          const prev = words[words.length - 1]
-          if (prev && prev.line === li) prev.bow = true
-          continue
-        }
-        let s0: number
-        let s1: number
-        if (marks && marks.length === ws.length) {
-          s0 = marks[wi]
-          s1 = wi + 1 < ws.length ? marks[wi + 1] - 0.08 : ls + speech
-          if (!(s1 > s0)) s1 = s0 + units[wi] * 0.2
-        } else {
-          s0 = ls + acc * unit
-          s1 = s0 + units[wi] * unit
-        }
-        acc += units[wi] + WORD_GAP_UNITS
-        const start = toT(s0)
-        const dur = Math.max(0.12, (s1 - s0) / rate)
-        words.push({ index: words.length, text: tok, line: li, start, dur, syl: syllableWindows(tok, start, dur) })
-        wi++
-      }
-    }
+  return recordedPlan(st, [{ lines: cl, timing, duration, from: a, to: b, offset: a }], opts.rate)
+}
+
+/**
+ * Timeline for a boss set (e.g. นะโม + ไตรสรณคมน์) from one recording per
+ * part, played one after another. Null when the stage sings only part of the set.
+ */
+export function setPlan(st: PrayerStage, parts: { lines: string[]; timing: LineTiming; duration: number }[], opts: { rate?: number } = {}): StagePlan | null {
+  const c = chantById(st.chant)
+  if (!c.parts || st.part || parts.length !== c.parts.length) return null
+  let offset = 0
+  const rec: RecordedPart[] = parts.map((p) => {
+    const r = { ...p, from: 0, to: p.lines.length, offset }
+    offset += p.lines.length
+    return r
+  })
+  if (offset !== c.lines.length) return null
+  return recordedPlan(st, rec, opts.rate)
+}
+
+/** What a plan needs to know about a recording. */
+export interface RecordingInfo {
+  chantId: string
+  timing: LineTiming | null
+  duration: number
+}
+
+/**
+ * The plan for a stage: its recording (or, for a boss set, one recording per
+ * part) when the line timing covers what the stage sings, else the tempo.
+ */
+export function planStage(st: PrayerStage, recs: RecordingInfo[], opts: { rate?: number } = {}): StagePlan {
+  const c = chantById(st.chant)
+  const usable = (r: RecordingInfo, needEnd: boolean) => {
+    const t = r.timing
+    const n = chantById(r.chantId).lines.length
+    if (!t || t.lines.length !== n) return false
+    // Singing up to the last line needs to know where the chanting ends.
+    return !needEnd || (t.end ?? r.duration) > t.lines[n - 1] + 0.3
   }
-  const last = segments[segments.length - 1]
-  const total = last.t1 + TAIL_MS / 1000
-  return { lines, src, words, total, ...lineSpans(words, lines.length), rate, segments, source: 'file' }
+  if (recs.length === 1 && recs[0].chantId === st.chant) {
+    const r = recs[0]
+    const [, b] = stageRange(st)
+    if (usable(r, b >= c.lines.length)) return filePlan(st, r.timing!, r.duration || r.timing!.end || 0, opts)
+  } else if (c.parts && recs.length === c.parts.length && recs.every((r, i) => r.chantId === c.parts![i] && usable(r, true))) {
+    const p = setPlan(
+      st,
+      recs.map((r) => ({ lines: chantById(r.chantId).lines, timing: r.timing!, duration: r.duration })),
+      opts,
+    )
+    if (p) return p
+  }
+  return synthPlan(st)
 }
 
 /** Where the recording should be at timeline time t (null = silence between segments). */

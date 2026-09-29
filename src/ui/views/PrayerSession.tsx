@@ -14,7 +14,7 @@ import { ChantScorer, lineWords, type ChantResult, type Judge } from '../../game
 import { CHAPTERS, STAGE_BY_ID, STAGES, HINT_LABEL, chantById, stageRange, stageStarScores, type PrayerStage } from '../../game/data/prayers'
 import { StageChips } from '../components/StageChips'
 import { verseOf } from '../../game/data/chants'
-import { LEAD_IN, filePlan, pickQuiz, synthPlan, type QuizWord, type StagePlan } from '../../game/chantTiming'
+import { LEAD_IN, pickQuiz, planStage, type QuizWord, type StagePlan } from '../../game/chantTiming'
 import { finishPrayer, followingStage, setPrayerMode, stageUnlocked, type PrayerReward } from '../../game/prayer'
 import { game } from '../../game/state'
 import { adsLeft, grantMeritRaw, rewardAd } from '../../game/actions'
@@ -29,8 +29,8 @@ import { KaraokeLines, wordAt } from '../components/ChantKaraoke'
 import { MatChip } from './PrayerSelect'
 import type { MaterialId } from '../../game/materials'
 import { haptic, sfx } from '../../engine/audio'
-import { ChantGuide, pickVoice, thaiVoice, type GuideVoice } from '../../engine/chantGuide'
-import { loadRecording, type ChantRecording } from '../../engine/chantSources'
+import { ChantGuide, pickVoice, primeAudio, primeSpeech, thaiVoice, type GuideVoice } from '../../engine/chantGuide'
+import { loadChantAudio, type ChantRecording } from '../../engine/chantSources'
 import { chantPrefs, setChantPrefs, chantBookFocus } from '../chantPrefs'
 import '../../styles/chant.css'
 
@@ -58,20 +58,6 @@ function mic() {
   return voice
 }
 
-/** A recording is usable for a stage when its timing covers the lines it sings. */
-function planFor(st: PrayerStage, rec: ChantRecording | null): StagePlan {
-  const c = chantById(st.chant)
-  const t = rec?.timing
-  if (t && rec && t.lines.length === c.lines.length) {
-    const [, b] = stageRange(st)
-    const dur = rec.duration || t.end || 0
-    // Singing up to the last line needs to know where the chanting ends.
-    const endKnown = b < c.lines.length || (t.end ?? dur) > t.lines[t.lines.length - 1] + 0.3
-    if (endKnown) return filePlan(st, t, dur)
-  }
-  return synthPlan(st)
-}
-
 export function PrayerSession() {
   const stageId = prayStage.value!
   const st = STAGE_BY_ID[stageId] ?? STAGES[0]
@@ -90,7 +76,7 @@ export function PrayerSession() {
   const [result, setResult] = useState<ChantResult | null>(null)
   const [reward, setReward] = useState<PrayerReward | null>(null)
   const [bowsLeft, setBowsLeft] = useState(st.bows)
-  const [rec, setRec] = useState<ChantRecording | null | undefined>(undefined)
+  const [recs, setRecs] = useState<ChantRecording[] | undefined>(undefined)
   const [tts, setTts] = useState<SpeechSynthesisVoice | null | undefined>(undefined)
   const [caption, setCaption] = useState(prefs.caption && (st.hint === 'learn' || st.hint === 'read'))
   const [starting, setStarting] = useState(false)
@@ -106,7 +92,7 @@ export function PrayerSession() {
   const bowQueue = useRef(new Set<number>())
   const lastFrame = useRef(0)
   const wrongPick = useRef<{ i: number; k: number } | null>(null)
-  const loads = useRef<{ rec: Promise<ChantRecording | null>; tts: Promise<SpeechSynthesisVoice | null> } | null>(null)
+  const loads = useRef<{ recs: Promise<ChantRecording[]>; tts: Promise<SpeechSynthesisVoice | null> } | null>(null)
 
   const temple: HallTemple = prayAtHome.value ? 'home' : (chapter.hall as HallTemple)
   const deity = st.chant === 'ganesha' || st.chant === 'guanyin' || st.chant === 'lakshmi' ? st.chant : st.chant === 'deva_set' ? 'ganesha' : undefined
@@ -126,10 +112,10 @@ export function PrayerSession() {
   useEffect(() => {
     scene.current?.setPose('kneel')
     let alive = true
-    const r = loadRecording(st.chant)
+    const r = loadChantAudio(st.chant).catch(() => [] as ChantRecording[])
     const v = thaiVoice()
-    loads.current = { rec: r, tts: v }
-    r.then((x) => alive && setRec(x))
+    loads.current = { recs: r, tts: v }
+    r.then((x) => alive && setRecs(x))
     v.then((x) => alive && setTts(x))
     return () => {
       alive = false
@@ -228,6 +214,9 @@ export function PrayerSession() {
 
   const begin = async (m: 'voice' | 'tap') => {
     if (starting) return
+    // Still inside the tap: unlock media and speech for later (iOS).
+    const primed = recs?.length && st.hint !== 'memory' ? primeAudio(recs.map((r) => r.url)) : []
+    primeSpeech()
     setStarting(true)
     setMicMsg(null)
     let use = m
@@ -244,14 +233,14 @@ export function PrayerSession() {
     }
     // Wait a moment for the recording and the voice list (they usually are ready).
     const timeout = <T,>(p: Promise<T>, ms: number, dflt: T) => Promise.race([p, new Promise<T>((r) => setTimeout(() => r(dflt), ms))])
-    const recording = rec !== undefined ? rec : await timeout(loads.current!.rec, 2500, null)
+    const recordings = recs !== undefined ? recs : await timeout(loads.current!.recs, 2500, [] as ChantRecording[])
     const speech = tts !== undefined ? tts : await timeout(loads.current!.tts, 1200, null)
     setMode(use)
     setPrayerMode(m)
-    const p = planFor(st, recording)
+    const p = planStage(st, recordings)
     plan.current = p
     guide.current?.stop()
-    guide.current = new ChantGuide({ plan: p, hint: st.hint, pref: chantPrefs.value.guide, recording, mic: use === 'voice', speechVoice: speech, countIn: true })
+    guide.current = new ChantGuide({ plan: p, hint: st.hint, pref: chantPrefs.value.guide, recordings, elements: primed, mic: use === 'voice', speechVoice: speech, countIn: true })
     const pool = chant.lines.flatMap(lineWords)
     quiz.current = st.hint === 'memory' && use === 'tap' ? new Map(pickQuiz(p.words, pool, s.prayer.plays + 7, 0.4).map((q) => [q.i, q])) : new Map()
     scorer.current = new ChantScorer(p.words, { mode: use, onJudge, judge: st.judge, stars: stageStarScores(st), quiz: [...quiz.current.keys()] })
@@ -371,7 +360,8 @@ export function PrayerSession() {
   const count = t < LEAD_IN ? 3 - Math.floor(t / 0.8) : 0
   const nextWord = p && target !== null ? p.words[target] : null
   const approach = st.hint === 'learn' && mode === 'tap' && nextWord && !q ? Math.max(0, Math.min(1, (nextWord.start - t) / 0.8)) : -1
-  const expectVoice = pickVoice({ pref: prefs.guide, hint: st.hint, hasFile: !!rec?.timing, hasSpeech: !!tts })
+  const expectPlan = useMemo(() => (recs?.length ? planStage(st, recs) : null), [recs, stageId])
+  const expectVoice = pickVoice({ pref: prefs.guide, hint: st.hint, hasFile: expectPlan?.source === 'file', hasSpeech: !!tts })
   const voiceNow = guide.current?.voice ?? expectVoice
 
   return (
@@ -518,8 +508,9 @@ export function PrayerSession() {
           <div class="ch-guide-row small">
             <Icon name="bell" size={14} />
             <span class="grow">
-              เสียงนำ: <b>{rec === undefined ? 'กำลังเตรียม…' : VOICE_TEXT[expectVoice]}</b>
-              {rec?.timingFrom === 'auto' && ' (จังหวะอัตโนมัติ)'}
+              เสียงนำ: <b>{recs === undefined ? 'กำลังเตรียม…' : VOICE_TEXT[expectVoice]}</b>
+              {expectVoice === 'file' && recs && recs.length > 1 && ` (ต่อกัน ${recs.length} ไฟล์)`}
+              {expectVoice === 'file' && recs?.some((r) => r.timingFrom === 'auto') && ' (จังหวะอัตโนมัติ)'}
             </span>
             <button class="chip small" onClick={() => (sfx.tap(), setChantPrefs({ guide: prefs.guide === 'auto' ? 'hum' : prefs.guide === 'hum' ? 'off' : 'auto' }))}>
               {prefs.guide === 'auto' ? 'อัตโนมัติ' : prefs.guide === 'hum' ? 'ฮัมอย่างเดียว' : prefs.guide === 'off' ? 'ปิดเสียงนำ' : 'เสียงพูด'}

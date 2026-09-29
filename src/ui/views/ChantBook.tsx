@@ -7,11 +7,11 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { CHANTS, type Chant } from '../../game/data/chants'
 import { STAGES, type PrayerStage } from '../../game/data/prayers'
 import { stageUnlocked } from '../../game/prayer'
-import { filePlan, synthPlan, timingJson, type LineTiming, type StagePlan } from '../../game/chantTiming'
+import { planStage, timingJson, type LineTiming, type StagePlan } from '../../game/chantTiming'
 import { lineWords } from '../../game/chantScore'
 import { toast } from '../../game/events'
 import { haptic, sfx } from '../../engine/audio'
-import { ChantGuide, thaiVoice, type GuideVoice } from '../../engine/chantGuide'
+import { ChantGuide, primeAudio, primeSpeech, thaiVoice, type GuideVoice } from '../../engine/chantGuide'
 import { invalidateRecording, loadRecording, resetTiming, saveManualTiming, type ChantRecording } from '../../engine/chantSources'
 import { deleteImported, listImported, saveImported } from '../../services/chantAudioStore'
 import { openPanel, prayStage, prayAtHome, mode } from '../store'
@@ -30,11 +30,9 @@ function bookStage(chantId: string): PrayerStage {
   return { id: `book-${chantId}`, chapter: 'wat', n: 0, chant: chantId, tempo: 420, judge: 2, hint: 'read', bows: 0, merit: 0, coins: 0, mats: {} }
 }
 
+/** Listening plays a recording at its natural speed. */
 function bookPlan(c: Chant, rec: ChantRecording | null): StagePlan {
-  const st = bookStage(c.id)
-  const t = rec?.timing
-  if (rec && t && ((t.end ?? rec.duration) > t.lines[t.lines.length - 1] + 0.3)) return filePlan(st, t, rec.duration || t.end || 0, { rate: 1 })
-  return synthPlan(st)
+  return planStage(bookStage(c.id), rec ? [rec] : [], { rate: 1 })
 }
 
 const VOICE_TEXT: Record<GuideVoice, string> = { file: 'เสียงสวดจริง', speech: 'เสียงพูดนำ', hum: 'เสียงฮัมนำ', none: 'ไม่มีเสียง' }
@@ -43,7 +41,7 @@ export function ChantBook({ onClose }: { onClose: () => void }) {
   const [open, setOpen] = useState<string | null>(chantBookFocus.value)
   const [imported, setImported] = useState<string[]>([])
   const [recs, setRecs] = useState<Record<string, ChantRecording | null | undefined>>({})
-  const [listen, setListen] = useState<Chant | null>(null)
+  const [listen, setListen] = useState<{ chant: Chant; primed: HTMLAudioElement[] } | null>(null)
   const [marking, setMarking] = useState<{ chant: Chant; rec: ChantRecording } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const file = useRef<HTMLInputElement>(null)
@@ -152,7 +150,17 @@ export function ChantBook({ onClose }: { onClose: () => void }) {
                           : `${rec.kind === 'import' ? 'ไฟล์ที่นำเข้า' : 'ไฟล์ในเกม'} (${rec.name}) · จังหวะ: ${rec.timingFrom === 'manual' ? 'ตั้งเองแล้ว' : rec.timingFrom === 'file' ? 'จากไฟล์จังหวะ' : rec.timingFrom === 'auto' ? 'อัตโนมัติ' : 'ยังไม่ได้ตั้ง'}`}
                     </div>
                     <div class="ch-audio-grid">
-                      <PBtn tone="blue" size="small" icon="play" onClick={() => setListen(c)}>
+                      <PBtn
+                        tone="blue"
+                        size="small"
+                        icon="play"
+                        onClick={() => {
+                          // Unlock media and speech inside the tap (iOS).
+                          const primed = rec ? primeAudio([rec.url]) : []
+                          primeSpeech()
+                          setListen({ chant: c, primed })
+                        }}
+                      >
                         ฟังเสียงนำ
                       </PBtn>
                       <PBtn tone="gold" size="small" icon="music" disabled={busy === c.id} onClick={() => importFor(c.id)}>
@@ -190,7 +198,7 @@ export function ChantBook({ onClose }: { onClose: () => void }) {
           )
         })}
       </div>
-      {listen && <ListenPlayer chant={listen} onClose={() => setListen(null)} />}
+      {listen && <ListenPlayer chant={listen.chant} primed={listen.primed} onClose={() => setListen(null)} />}
       {marking && (
         <TimingTool
           chant={marking.chant}
@@ -207,7 +215,7 @@ export function ChantBook({ onClose }: { onClose: () => void }) {
 }
 
 /** Listen to a chant with the karaoke highlight (recording or synthesized guide). */
-function ListenPlayer({ chant, onClose }: { chant: Chant; onClose: () => void }) {
+function ListenPlayer({ chant, primed, onClose }: { chant: Chant; primed: HTMLAudioElement[]; onClose: () => void }) {
   const [plan, setPlan] = useState<StagePlan | null>(null)
   const [playing, setPlaying] = useState(false)
   const [, force] = useState(0)
@@ -221,7 +229,15 @@ function ListenPlayer({ chant, onClose }: { chant: Chant; onClose: () => void })
       if (!alive) return
       const p = bookPlan(chant, rec)
       setPlan(p)
-      guide.current = new ChantGuide({ plan: p, hint: 'read', pref: chantPrefs.value.guide === 'off' ? 'auto' : chantPrefs.value.guide, recording: rec, speechVoice: v, countIn: true })
+      guide.current = new ChantGuide({
+        plan: p,
+        hint: 'read',
+        pref: chantPrefs.value.guide === 'off' ? 'auto' : chantPrefs.value.guide,
+        recordings: rec ? [rec] : [],
+        elements: primed,
+        speechVoice: v,
+        countIn: true,
+      })
       guide.current.start(0)
       setPlaying(true)
       const loop = () => {

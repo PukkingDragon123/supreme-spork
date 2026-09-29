@@ -22,7 +22,10 @@ export interface GuideOptions {
   plan: StagePlan
   hint: HintLevel
   pref: GuidePref
-  recording?: ChantRecording | null
+  /** Recordings the plan's segments point at (one, or one per part of a boss set). */
+  recordings?: ChantRecording[]
+  /** Media elements unlocked inside the player's tap (see primeAudio), reused in order. */
+  elements?: HTMLAudioElement[]
   /** Microphone scoring is on: keep the guide quieter. */
   mic?: boolean
   speechVoice?: SpeechSynthesisVoice | null
@@ -45,6 +48,55 @@ export function pickVoice(o: { pref: GuidePref; hint: HintLevel; hasFile: boolea
   if (o.pref === 'speech') return o.hasSpeech ? 'speech' : 'hum'
   if (o.hasFile) return 'file'
   return o.hasSpeech ? 'speech' : 'hum'
+}
+
+// ---------------------------------------------------------------------------
+// Unlocking inside a tap (iOS plays media and speech only from a user gesture)
+
+function mediaElement(url: string): HTMLAudioElement {
+  const a = new Audio()
+  a.preload = 'auto'
+  a.src = url
+  const pp = a as HTMLAudioElement & { preservesPitch?: boolean; webkitPreservesPitch?: boolean; mozPreservesPitch?: boolean }
+  pp.preservesPitch = true
+  pp.webkitPreservesPitch = true
+  pp.mozPreservesPitch = true
+  return a
+}
+
+/** Call synchronously in a tap handler: returns media elements that may play later. */
+export function primeAudio(urls: string[]): HTMLAudioElement[] {
+  return urls.map((u) => {
+    const a = mediaElement(u)
+    try {
+      a.muted = true
+      const p = a.play()
+      if (p)
+        p.then(() => {
+          a.pause()
+          a.muted = false
+        }).catch(() => (a.muted = false))
+      else {
+        a.pause()
+        a.muted = false
+      }
+    } catch {
+      a.muted = false
+    }
+    return a
+  })
+}
+
+/** Call synchronously in a tap handler so later lines may be spoken (iOS). */
+export function primeSpeech() {
+  if (!speechSupported()) return
+  try {
+    const u = new SpeechSynthesisUtterance(' ')
+    u.volume = 0
+    window.speechSynthesis.speak(u)
+  } catch {
+    // no speech: the hummed guide takes over
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -160,7 +212,7 @@ interface SynthEvent {
 
 export class ChantGuide {
   readonly plan: StagePlan
-  readonly voice: GuideVoice
+  private _voice: GuideVoice
   private opts: GuideOptions
   private events: SynthEvent[] = []
   private evCursor = 0
@@ -172,8 +224,9 @@ export class ChantGuide {
   // Drone.
   private drone: { nodes: AudioScheduledSourceNode[]; gain: GainNode } | null = null
   private reverb: { input: GainNode } | null = null
-  // Recording.
-  private audio: HTMLAudioElement | null = null
+  // Recordings (one element per source).
+  private audios: HTMLAudioElement[] = []
+  private fileFails = 0
   private playingSeg: number | null = null
   private pendingFrom = -1
   private lastCt = -1
@@ -186,19 +239,31 @@ export class ChantGuide {
   constructor(opts: GuideOptions) {
     this.opts = opts
     this.plan = opts.plan
-    this.voice = pickVoice({ pref: opts.pref, hint: opts.hint, hasFile: !!opts.recording && opts.plan.source === 'file', hasSpeech: !!opts.speechVoice })
+    const recs = opts.recordings ?? []
+    const needed = opts.plan.segments.reduce((m, sg) => Math.max(m, sg.src + 1), 0)
+    const hasFile = opts.plan.source === 'file' && recs.length >= needed && needed > 0
+    this._voice = pickVoice({ pref: opts.pref, hint: opts.hint, hasFile, hasSpeech: !!opts.speechVoice })
     if (opts.speechVoice) this.sps = loadSps(opts.speechVoice.voiceURI || opts.speechVoice.name)
     this.buildEvents()
-    if (this.voice === 'file' && opts.recording) {
-      const a = new Audio()
-      a.preload = 'auto'
-      a.src = opts.recording.url
-      const pp = a as HTMLAudioElement & { preservesPitch?: boolean; webkitPreservesPitch?: boolean; mozPreservesPitch?: boolean }
-      pp.preservesPitch = true
-      pp.webkitPreservesPitch = true
-      pp.mozPreservesPitch = true
-      this.audio = a
+    if (this._voice === 'file') {
+      const primed = opts.elements ?? []
+      this.audios = recs.map((r, i) => {
+        const el = primed[i]
+        if (el && el.src === r.url) return el
+        return mediaElement(r.url)
+      })
     }
+  }
+
+  /** The guide voice actually in use (a blocked recording falls back to the hum). */
+  get voice(): GuideVoice {
+    return this._voice
+  }
+
+  /** The recording element playing now (dev/debug). */
+  get audio(): HTMLAudioElement | null {
+    const sg = this.playingSeg !== null ? this.plan.segments[this.playingSeg] : null
+    return (sg ? this.audios[sg.src] : this.audios[0]) ?? null
   }
 
   private get level(): number {
@@ -217,20 +282,40 @@ export class ChantGuide {
       if (i > 0) ev.push({ t: t - 0.02, kind: 'bell', n: i })
     })
     if (tick > 0) for (const w of p.words) ev.push({ t: w.start, kind: 'tick', vol: tick })
-    if (this.voice === 'hum') {
-      for (const w of p.words) {
-        const lineWs = p.words.filter((x) => x.line === w.line)
-        const firstW = lineWs[0] === w
-        const lastW = lineWs[lineWs.length - 1] === w
-        w.syl.forEach((s, k) => {
-          const edge = firstW && k === 0 ? 'first' : lastW && k === w.syl.length - 1 ? 'last' : undefined
-          ev.push({ t: s.start, kind: 'syl', dur: s.dur, text: s.text, edge })
-        })
-      }
-    }
+    if (this._voice === 'hum') ev.push(...this.humEvents())
     ev.push({ t: Math.max(0, p.total - 0.4), kind: 'end' })
     ev.sort((a, b) => a.t - b.t)
     this.events = ev
+  }
+
+  /** One hummed note per syllable, with a small rise at line starts and a fall at line ends. */
+  private humEvents(): SynthEvent[] {
+    const p = this.plan
+    const ev: SynthEvent[] = []
+    for (const w of p.words) {
+      const lineWs = p.words.filter((x) => x.line === w.line)
+      const firstW = lineWs[0] === w
+      const lastW = lineWs[lineWs.length - 1] === w
+      w.syl.forEach((s, k) => {
+        const edge = firstW && k === 0 ? 'first' : lastW && k === w.syl.length - 1 ? 'last' : undefined
+        ev.push({ t: s.start, kind: 'syl', dur: s.dur, text: s.text, edge })
+      })
+    }
+    return ev
+  }
+
+  /** A recording that will not play (blocked or broken): retry twice, then hum the guide instead. */
+  private fileFailed() {
+    this.playingSeg = null
+    this.pendingFrom = -1
+    if (++this.fileFails < 3 || this._voice !== 'file') return
+    for (const a of this.audios) a.pause()
+    this.audios = []
+    this._voice = 'hum'
+    const t = this.lastT
+    const rest = this.events.slice(this.evCursor)
+    const done = this.events.slice(0, this.evCursor)
+    this.events = [...done, ...[...rest, ...this.humEvents().filter((e) => e.t >= t)].sort((a, b) => a.t - b.t)]
   }
 
   // --- clock ---------------------------------------------------------------
@@ -273,7 +358,7 @@ export class ChantGuide {
     this.lastT = this.now()
     this.running = false
     this.stopDrone(0.3)
-    this.audio?.pause()
+    for (const a of this.audios) a.pause()
     this.playingSeg = null
     this.cancelSpeech()
   }
@@ -292,12 +377,12 @@ export class ChantGuide {
     this.running = false
     this.stopDrone(0.8)
     this.cancelSpeech()
-    if (this.audio) {
-      this.audio.pause()
-      this.audio.removeAttribute('src')
-      this.audio.load()
-      this.audio = null
+    for (const a of this.audios) {
+      a.pause()
+      a.removeAttribute('src')
+      a.load()
     }
+    this.audios = []
     holdAmbient(false)
   }
 
@@ -313,8 +398,9 @@ export class ChantGuide {
   // --- recording -----------------------------------------------------------
 
   private audioClock(w: number): number | null {
-    const a = this.audio
-    if (!a || this.playingSeg === null || a.paused) return null
+    if (this.playingSeg === null) return null
+    const a = this.audios[this.plan.segments[this.playingSeg].src]
+    if (!a || a.paused) return null
     const ct = a.currentTime
     if (this.pendingFrom >= 0) {
       // Wait until playback really moves before handing it the clock.
@@ -331,32 +417,36 @@ export class ChantGuide {
   }
 
   private syncFile(t: number) {
-    const a = this.audio
-    if (!a) return
-    a.muted = !(audioBus()?.sound ?? true)
-    a.volume = Math.max(0, Math.min(1, this.level))
+    if (this._voice !== 'file' || !this.audios.length) return
+    const muted = !(audioBus()?.sound ?? true)
+    const vol = Math.max(0, Math.min(1, this.level))
+    for (const el of this.audios) {
+      el.muted = muted
+      el.volume = vol
+    }
     const segs = this.plan.segments
     if (this.playingSeg !== null) {
       const s = segs[this.playingSeg]
-      if (t >= s.t1 - 0.02 || a.ended) {
-        a.pause()
+      const el = this.audios[s.src]
+      if (t >= s.t1 - 0.02 || !el || el.ended) {
+        el?.pause()
         this.playingSeg = null
       }
       return
     }
     const want = audioAt(segs, t)
     if (!want) return
+    const a = this.audios[segs[want.seg].src]
+    if (!a) return
     try {
       a.playbackRate = this.plan.rate || 1
       a.currentTime = want.pos
       this.pendingFrom = want.pos
       this.playingSeg = want.seg
       this.lastCt = -1
-      void a.play()?.catch(() => {
-        this.playingSeg = null
-      })
+      void a.play()?.catch(() => this.fileFailed())
     } catch {
-      this.playingSeg = null
+      this.fileFailed()
     }
   }
 
