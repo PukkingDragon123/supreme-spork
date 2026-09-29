@@ -3,6 +3,7 @@
 // (OutfitItem.shopOnly = place id) and, for the 7-บุญ mart, groceries.
 
 import { PLACE_BY_ID } from './places'
+import { HUB_SHOPS, HUB_SNACKS } from './hubShops'
 
 export interface Snack {
   id: string
@@ -51,6 +52,8 @@ export const SNACKS: Snack[] = [
   { id: 'sai_ua', name: 'ไส้อั่วแคบหมู', desc: 'ไส้อั่วสมุนไพรย่างหอม ๆ กับแคบหมูกรอบ', icon: 'curry', price: 25, buff: { kind: 'coin', mult: 1.2, minutes: 15 } },
   { id: 'salapao', name: 'ซาลาเปาเจ', desc: 'ซาลาเปาไส้เผือกนุ่ม ๆ กับขนมจีบเจ', icon: 'dessert', price: 20, buff: { kind: 'merit', mult: 1.15, minutes: 20 } },
   { id: 'gai_yang', name: 'ไก่ย่างข้าวเหนียว', desc: 'ไก่ย่างหนังกรอบ ข้าวเหนียวในกระติ๊บ', icon: 'sticky', price: 30, buff: { kind: 'animal', mult: 1.2, minutes: 15 } },
+  // Hub markets and the temple fair (hubShops.ts).
+  ...HUB_SNACKS,
 ]
 
 export const SNACK_BY_ID: Record<string, Snack> = Object.fromEntries(SNACKS.map((s) => [s.id, s]))
@@ -111,6 +114,8 @@ export const PLACE_SHOPS: Record<string, PlaceShop> = {
   kham_chanod_offerings: { id: 'kham_chanod_offerings', name: 'ของถวายพ่อปู่', npc: 'ป้าบุญมี', greeting: 'บายศรี มาลัยดาวเรือง น้ำแดง ถวายพญานาคจ้า', place: 'kham_chanod', snacks: ['red_soda', 'som_tam'] },
   that_phanom_somtam: { id: 'that_phanom_somtam', name: 'ตำแซ่บริมโขง', npc: 'แม่หนูพร', greeting: 'ตำไทยตำลาว ไก่ย่างข้าวเหนียว แซ่บหลายเด้อ', place: 'that_phanom', snacks: ['som_tam', 'gai_yang'] },
   ya_mo_padmee: { id: 'ya_mo_padmee', name: 'ผัดหมี่โคราชตลาดคืน', npc: 'ยายเบิ้ม', greeting: 'ผัดหมี่โคราชจ้า เผ็ดน้อยเผ็ดมากบอกยายเด้อ', place: 'ya_mo', snacks: ['pad_mee', 'som_tam'] },
+  // Hub markets and the temple fair (hubShops.ts).
+  ...HUB_SHOPS,
 }
 
 /** Best-effort stall for any `shop:<placeId>_<slug>` hotspot. */
