@@ -34,6 +34,22 @@ function spr(key: string, w: number, h: number, draw: (g: Surface) => void): Spr
   return cached(`flood:${key}`, () => outlineCanvas(bake(w, h, draw), OUT))
 }
 
+const blobs = new Map<string, HTMLCanvasElement>()
+
+/** Cached dithered disc (soft shadows, reflections and glows) – same look as Surface.ditherCircle. */
+export function blob(g: Surface, cx: number, cy: number, r: number, color: string, strength = 1, squash = 1) {
+  const R = Math.max(1, Math.round(r))
+  const key = `${R}:${color}:${strength}:${squash}`
+  let c = blobs.get(key)
+  const w = R * 2 + 2
+  const h = Math.ceil(R * squash) * 2 + 2
+  if (!c) {
+    c = bake(w, h, (s) => s.ditherCircle(w / 2, h / 2, R, color, strength, squash))
+    blobs.set(key, c)
+  }
+  g.draw(c, Math.round(cx - w / 2), Math.round(cy - h / 2))
+}
+
 // ---------------------------------------------------------------------------
 // Villagers (front view, ~11×13 before the outline)
 
@@ -528,7 +544,7 @@ export function drawHouse(g: Surface, h: House, cover: number, t: number, level 
   const y = Math.round(h.y)
   const geo = houseGeom(h.style)
   // Reflection / shadow on the water.
-  g.ditherCircle(h.x, y + 2, h.w / 2 + 3, FW.waterDD, 0.6, 0.3)
+  blob(g, h.x, y + 2, h.w / 2 + 3, FW.waterDD, 0.6, 0.3)
   if (h.style === 'mound') {
     drawMound(g, h.x, y, h.w, cover)
     return
@@ -551,7 +567,7 @@ export function drawHouse(g: Surface, h: House, cover: number, t: number, level 
 export function drawObstacle(g: Surface, o: Obstacle, t: number) {
   const x = Math.round(o.x)
   const y = Math.round(o.y)
-  g.ditherCircle(x, y + 1, o.r + 2, FW.waterDD, 0.7, 0.4)
+  blob(g, x, y + 1, o.r + 2, FW.waterDD, 0.7, 0.4)
   if (o.kind === 'pole') {
     g.rect(x - 1, y - 30, 3, 31, '#bdb2ae')
     g.rect(x - 1, y - 30, 1, 31, '#e4ddd6')
@@ -598,7 +614,7 @@ export function drawObstacle(g: Surface, o: Obstacle, t: number) {
 export function drawDebris(g: Surface, d: Debris, t: number) {
   const x = Math.round(d.x)
   const y = Math.round(d.y + Math.sin(t * 2 + d.id) * 1)
-  g.ditherCircle(x, y + 2, d.r + 2, FW.waterDD, 0.7, 0.4)
+  blob(g, x, y + 2, d.r + 2, FW.waterDD, 0.7, 0.4)
   switch (d.kind) {
     case 'log':
       g.rect(x - 8, y - 2, 16, 5, '#8a6440')
@@ -636,7 +652,7 @@ export function drawDebris(g: Surface, d: Debris, t: number) {
 export function drawFloaty(g: Surface, f: Floaty, t: number) {
   const x = Math.round(f.x)
   const y = Math.round(f.y + Math.sin(t * 2.4 + f.ph) * 1)
-  g.ditherCircle(x, y + 2, 5, FW.waterDD, 0.6, 0.4)
+  blob(g, x, y + 2, 5, FW.waterDD, 0.6, 0.4)
   if (f.kind === 'ring') {
     g.ellipse(x, y, 5, 3.5, '#ff9fc0')
     g.ellipse(x, y, 2, 1.3, FW.waterD)
@@ -690,7 +706,7 @@ export function drawPower(g: Surface, p: PowerUp, t: number) {
   if (blink) return
   // Glow ring.
   const r = 8 + Math.sin(t * 5) * 1
-  g.ditherCircle(x, y, r, '#fff3a6', 0.5)
+  blob(g, x, y, r, '#fff3a6', 0.5)
   if (p.kind === 'rice') {
     // ข้าวกล่อง: white foam box, rice and a basil leaf.
     g.rect(x - 5, y - 3, 10, 6, '#fffaf0')
@@ -716,7 +732,7 @@ export function drawLizard(g: Surface, lz: Lizard, t: number) {
   const y = Math.round(lz.y)
   const d = lz.dir
   const w = Math.sin(t * 8) * 1.5
-  g.ditherCircle(x, y + 1, 8, FW.waterDD, 0.5, 0.3)
+  blob(g, x, y + 1, 8, FW.waterDD, 0.5, 0.3)
   for (let k = 0; k < 14; k++) {
     const xx = x - d * k
     const yy = y + Math.round(Math.sin(t * 8 - k * 0.6) * (k / 7))
@@ -732,6 +748,19 @@ export function drawLizard(g: Surface, lz: Lizard, t: number) {
 
 // ---------------------------------------------------------------------------
 // Water, currents and the temple hill
+
+const laneBands = new Map<string, HTMLCanvasElement>()
+
+/** Dithered current band, baked once per size (drawn every frame). */
+function laneBand(w: number, h: number): HTMLCanvasElement {
+  const key = `${w}x${h}`
+  let c = laneBands.get(key)
+  if (!c) {
+    c = bake(w, h, (g) => g.dither(0, 0, w, h, null, FW.lane, 0.35))
+    laneBands.set(key, c)
+  }
+  return c
+}
 
 /** Animated water for the visible part of the world. */
 export function drawWater(g: Surface, x0: number, y0: number, w: number, h: number, t: number, lanes: Lane[], level: number) {
@@ -754,7 +783,7 @@ export function drawWater(g: Surface, x0: number, y0: number, w: number, h: numb
   // Currents: moving streaks and chevrons.
   for (const ln of lanes) {
     if (ln.y + ln.h < y0 || ln.y - ln.h > y1) continue
-    g.dither(0, ln.y - ln.h / 2, w, ln.h, null, FW.lane, 0.35)
+    g.draw(laneBand(w, ln.h), 0, Math.round(ln.y - ln.h / 2))
     for (let k = 0; k < 9; k++) {
       const row = ln.y - ln.h / 2 + 3 + ((k * 7) % Math.max(1, ln.h - 5))
       const len = 6 + ((k * 5) % 7)
@@ -948,7 +977,7 @@ function rot(pts: [number, number][], x: number, y: number, a: number, s = 1): [
 
 /** Hull, wake and motor. Returns seat positions (bow → stern) for passengers. */
 export function drawHull(g: Surface, x: number, y: number, a: number, t: number, moving: number): [number, number][] {
-  g.ditherCircle(x, y + 3, 15, FW.waterDD, 0.6, 0.45)
+  blob(g, x, y + 3, 15, FW.waterDD, 0.6, 0.45)
   g.poly(rot(HULL, x, y + 1, a, 1.14), OUT)
   g.poly(rot(HULL, x, y, a, 1.06), '#f58f35')
   g.poly(rot(HULL, x, y, a, 0.9), '#fffaf0')

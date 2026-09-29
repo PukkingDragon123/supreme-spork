@@ -464,7 +464,7 @@ export class FloodScene implements Scene {
     const x = Math.round(s.x)
     const y = Math.round(s.y) + bob
     const sp = ART.survivorSprite(s.kind, Math.floor(t * 5 + s.id))
-    g.ditherCircle(x, y + 2, 9, ART.FW.waterDD, 0.5, 0.4)
+    ART.blob(g, x, y + 2, 9, ART.FW.waterDD, 0.5, 0.4)
     if (s.swim) {
       // Paddling: head above water with little ripples.
       const cut = Math.max(4, sp.h - 6)
