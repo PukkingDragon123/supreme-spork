@@ -260,7 +260,7 @@ export function buyMaterials(id: string): boolean {
 
 export function buyPet(id: string): boolean {
   const p = PET_BY_ID[id]
-  if (!p || p.premium || game.value.pets.includes(id)) return false
+  if (!p || p.premium || p.exclusive || game.value.pets.includes(id)) return false
   if (!spendCoins(p.price)) return false
   mutate((d) => {
     d.pets.push(id)
@@ -298,7 +298,7 @@ export function buyOutfitAnywhere(id: string): boolean {
 
 export function buyOutfit(id: string, atPlace = false): boolean {
   const o = OUTFIT_BY_ID[id]
-  if (!o || ownsOutfit(id) || o.premium) return false
+  if (!o || ownsOutfit(id) || o.premium || o.exclusive) return false
   if ((o as { shopOnly?: string }).shopOnly && !atPlace) {
     toast('ชุดนี้มีขายที่ร้านประจำสถานที่เท่านั้นนะ', 'map', 'warn')
     return false
@@ -327,6 +327,35 @@ export function equip(slot: Slot, id: string | null) {
     else if ((slot as string) === 'back') look.back = id
     else if ((slot as string) === 'suit') look.suit = id
   })
+}
+
+// ---------------------------------------------------------------------------
+// Grants (packs, battle pass, events, shop deals). They bypass price, level
+// and the exclusive flag, never duplicate, and stamp the "got" time used by
+// the bag's newest-first sort.
+
+/** Give the player an outfit. Returns false when unknown or already owned. */
+export function grantOutfit(id: string, opts: { equip?: boolean } = {}): boolean {
+  const o = OUTFIT_BY_ID[id]
+  if (!o || ownsOutfit(id)) return false
+  mutate((d) => {
+    d.outfits.push(id)
+    d.shop.got[`outfit:${id}`] = Date.now()
+  })
+  if (opts.equip) equip(o.slot, id)
+  return true
+}
+
+/** Give the player a pet companion (optionally walking with them now). */
+export function grantPet(id: string, opts: { walk?: boolean } = {}): boolean {
+  const p = PET_BY_ID[id]
+  if (!p || game.value.pets.includes(id)) return false
+  mutate((d) => {
+    d.pets.push(id)
+    if (opts.walk) d.pet = id
+    d.shop.got[`pet:${id}`] = Date.now()
+  })
+  return true
 }
 
 /** Premium hair colours are bought once (stored like outfits). */
@@ -593,7 +622,7 @@ export function donateCharity(id: string, coins: number): number {
 // ---------------------------------------------------------------------------
 // Purchases & ads
 
-export function completePurchase(productId: string, tx: string): boolean {
+export function completePurchase(productId: string, tx: string, opts: { quiet?: boolean } = {}): boolean {
   const pack = COIN_PACKS.find((p) => p.id === productId)
   const offer = SPECIAL_OFFERS.find((p) => p.id === productId)
   if (!pack && !offer) return false
@@ -603,15 +632,23 @@ export function completePurchase(productId: string, tx: string): boolean {
   })
   if (pack) {
     addCoins(pack.coins + pack.bonus)
-    notify({ kind: 'reward', title: `ได้รับ ${pack.name}`, merit: 0, coins: pack.coins + pack.bonus, note: 'ขอบคุณที่ร่วมสนับสนุนบุญดี' })
+    if (!opts.quiet) notify({ kind: 'reward', title: `ได้รับ ${pack.name}`, merit: 0, coins: pack.coins + pack.bonus, note: 'ขอบคุณที่ร่วมสนับสนุนบุญดี' })
   }
   if (offer) {
     mutate((d) => {
       if (offer.oneTime) d.starterBought = true
-      if (offer.outfits) for (const o of offer.outfits) if (!d.outfits.includes(o)) d.outfits.push(o)
+      if (offer.outfits)
+        for (const o of offer.outfits)
+          if (!d.outfits.includes(o)) {
+            d.outfits.push(o)
+            d.shop.got[`outfit:${o}`] = Date.now()
+          }
       if (offer.pets)
         for (const p of offer.pets) {
-          if (!d.pets.includes(p)) d.pets.push(p)
+          if (!d.pets.includes(p)) {
+            d.pets.push(p)
+            d.shop.got[`pet:${p}`] = Date.now()
+          }
           d.pet = p
         }
       if (offer.monthly) {
@@ -624,7 +661,7 @@ export function completePurchase(productId: string, tx: string): boolean {
     if (offer.items) addItems(offer.items)
     if (offer.buff) addBuff(offer.buff.kind, offer.buff.mult, offer.buff.minutes, offer.id)
     addCoins(offer.coins)
-    notify({ kind: 'reward', title: `ได้รับ ${offer.name}`, merit: 0, coins: offer.coins, items: offer.items, note: offer.desc })
+    if (!opts.quiet) notify({ kind: 'reward', title: `ได้รับ ${offer.name}`, merit: 0, coins: offer.coins, items: offer.items, note: offer.desc })
   }
   return true
 }

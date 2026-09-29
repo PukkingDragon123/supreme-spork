@@ -92,6 +92,37 @@ export interface PrayerProgress {
   todayKey: string
 }
 
+/** v4 shop + bag: daily free gift, today's deals bought, and first-owned times (bag "newest" sort). */
+export interface ShopState {
+  /** Day key of the last free gift claimed. */
+  giftDay: string
+  /** Free gifts claimed so far (drives the 7-day gift cycle). */
+  gifts: number
+  /** Day key the `deals` list belongs to. */
+  dealDay: string
+  /** Deal ids bought on `dealDay`. */
+  deals: string[]
+  /** `${kind}:${id}` -> first time seen owned (ms; 1 = owned before tracking began). */
+  got: Record<string, number>
+}
+
+export function defaultShop(): ShopState {
+  return { giftDay: '', gifts: 0, dealDay: '', deals: [], got: {} }
+}
+
+export function normalizeShop(raw: unknown): ShopState {
+  const b = defaultShop()
+  if (!raw || typeof raw !== 'object') return b
+  const r = raw as Partial<ShopState>
+  return {
+    giftDay: typeof r.giftDay === 'string' ? r.giftDay : b.giftDay,
+    gifts: typeof r.gifts === 'number' && r.gifts >= 0 ? r.gifts : 0,
+    dealDay: typeof r.dealDay === 'string' ? r.dealDay : '',
+    deals: Array.isArray(r.deals) ? r.deals.filter((x) => typeof x === 'string') : [],
+    got: r.got && typeof r.got === 'object' ? Object.fromEntries(Object.entries(r.got).filter(([, v]) => typeof v === 'number')) : {},
+  }
+}
+
 export interface GameState {
   v: number
   createdAt: number
@@ -139,6 +170,8 @@ export interface GameState {
   social: { friends: string[]; groupId: string | null; created: CreatedGroup[]; reacted: Record<string, boolean>; groupClaims: Record<string, number> }
   settings: Settings
   lastArea: AreaId
+  /** v4 shop & bag bookkeeping (see ShopState). */
+  shop: ShopState
 }
 
 export function makeFriendCode(): string {
@@ -208,6 +241,7 @@ export function defaultState(): GameState {
     social: { friends: [], groupId: null, created: [], reacted: {}, groupClaims: {} },
     settings: { sound: true, music: true, time: 'real', haptics: true, reduceMotion: false },
     lastArea: 'wat',
+    shop: defaultShop(),
   }
 }
 
@@ -235,6 +269,7 @@ export function migrate(raw: unknown): GameState {
     house: s.house ? normalizeHouse(s.house) : base.house,
     places: { ...base.places, ...(s.places ?? {}) },
     market: { ...base.market, ...(s.market ?? {}) },
+    shop: normalizeShop(s.shop),
     v: SAVE_VERSION,
   }
   // v1 called the main temple 'home'; it is 'wat' now that players have a house.

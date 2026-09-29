@@ -3,6 +3,7 @@
 // fields drive the wardrobe screen. Prices are in Boon Coins.
 
 import { DAY_COLORS } from '../../art/palette'
+import { V4_OUTFITS } from './cosmetics'
 
 /**
  * `back` = worn on the back (wings, backpacks, auras, flags).
@@ -10,6 +11,9 @@ import { DAY_COLORS } from '../../art/palette'
  * top and bottom (and the hair, for hooded suits) while it is worn.
  */
 export type Slot = 'hair' | 'top' | 'bottom' | 'shoes' | 'head' | 'neck' | 'hand' | 'back' | 'suit'
+
+/** Where a granted-only cosmetic or pet comes from. */
+export type Exclusive = 'pack' | 'pass_free' | 'pass_premium' | 'event'
 
 /** Shop grouping for the wardrobe UI. `costume` = full-body suits. */
 export type OutfitCategory = 'school' | 'thai' | 'modern' | 'temple' | 'accessory' | 'fun' | 'work' | 'costume'
@@ -96,7 +100,7 @@ export interface TopArt {
   patternColor?: string
   patternColor2?: string
   /** Special overlay drawn on the torso. */
-  extra?: 'sabai' | 'buttons' | 'overalls' | 'hood' | 'logo' | 'sash' | 'likay' | 'khon' | 'astro'
+  extra?: 'sabai' | 'buttons' | 'overalls' | 'hood' | 'logo' | 'sash' | 'likay' | 'khon' | 'astro' | 'lifevest' | 'rescue'
   extraColor?: string
   /** Colour index into DAY_COLORS if this top counts as a lucky colour. */
   dayColor?: number
@@ -125,7 +129,7 @@ export interface TopArt {
   number?: string
   numberColor?: string
   /** Chest print. The Thai-word keys are funny slogan tees. */
-  graphic?: 'lotus' | 'boon' | 'heart' | 'elephant' | 'star' | 'hiw' | 'yakuan' | 'boonma' | 'maiphet' | 'aikhai'
+  graphic?: 'lotus' | 'boon' | 'heart' | 'elephant' | 'star' | 'hiw' | 'yakuan' | 'boonma' | 'maiphet' | 'aikhai' | 'mutelu' | 'hippo'
   graphicColor?: string
   graphicColor2?: string
   /** Open jacket / cardigan layered over this top (main/shade = inner tee). */
@@ -193,7 +197,7 @@ export interface BottomArt {
 }
 
 export interface ShoeArt {
-  kind: 'shoe' | 'sneaker' | 'hightop' | 'flipflop' | 'sandal' | 'maryjane' | 'boot' | 'heel' | 'slipper' | 'wrap' | 'clog'
+  kind: 'shoe' | 'sneaker' | 'hightop' | 'flipflop' | 'sandal' | 'maryjane' | 'boot' | 'heel' | 'slipper' | 'wrap' | 'clog' | 'flipper'
   main: string
   shade: string
   sole?: string
@@ -225,6 +229,13 @@ export type SuitKind =
   | 'nangkwak'
   | 'naga'
   | 'ramkaebon'
+  // v4 cosmetics
+  | 'scuba'
+  | 'rescue'
+  | 'hippo'
+  | 'monitor'
+  | 'capybara'
+  | 'butterbear'
 
 /**
  * Full-body costume. The renderers turn it into a synthetic top + bottom (see
@@ -266,6 +277,11 @@ export interface OutfitItem {
   starter?: boolean
   /** Only obtainable from a purchase pack. */
   premium?: boolean
+  /**
+   * Granted only (never sold in the general shop): real-money packs, the
+   * battle-pass free / premium tiers or events. See grantOutfit().
+   */
+  exclusive?: Exclusive
   level?: number
   /** Shop grouping. */
   category?: OutfitCategory
@@ -2038,6 +2054,7 @@ export const OUTFITS: OutfitItem[] = [
   ...LIFESTYLE,
   ...SUITS,
   ...SOUVENIRS,
+  ...V4_OUTFITS,
 ]
 
 export const OUTFIT_BY_ID: Record<string, OutfitItem> = Object.fromEntries(OUTFITS.map((o) => [o.id, o]))
@@ -2053,7 +2070,12 @@ export const SHOP_ONLY_BY_PLACE: Record<string, string[]> = OUTFITS.reduce<Recor
   return acc
 }, {})
 
-/** Items the general fashion shop may list (not premium-only, not place-only). */
+/** Granted-only items (packs, battle pass, events): never sold for coins. */
+export function isExclusive(o: { exclusive?: Exclusive; premium?: boolean } | null | undefined): boolean {
+  return !!o && (!!o.exclusive || !!o.premium)
+}
+
+/** Items the general fashion shop may list (not premium-only, not place-only, not pass/pack exclusives). */
 export function inGeneralShop(o: OutfitItem): boolean {
-  return !o.premium && !o.shopOnly
+  return !o.premium && !o.shopOnly && !o.exclusive
 }
