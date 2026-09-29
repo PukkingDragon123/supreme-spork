@@ -6,6 +6,7 @@ import { dollSprite, dollPortrait, dollDefaultLook, FACE_STYLES, type DollPose }
 import { avatarSprite, type AvatarLook, type Pose, type View } from '../art/avatar'
 import { OUTFITS } from '../game/data/outfits'
 import type { Sprite } from '../engine/sprite'
+import { PACK_OUTFIT_IDS, PASS_FREE_OUTFIT_IDS, PASS_PREMIUM_OUTFIT_IDS, POP_OUTFIT_IDS } from '../game/data/cosmetics'
 
 const root = document.getElementById('g')!
 const params = new URLSearchParams(location.search)
@@ -216,6 +217,23 @@ const SETS: [string, AvatarLook][] = [
   ['แห่ผ้าป่า', { ...M, hair: 'hair_short', top: 'top_tee_boonma', bottom: 'bot_fisherman', shoes: 'shoes_flipflop', head: 'head_turban', neck: 'neck_mask', back: 'back_flag' }],
 ]
 
+const V4_LOOKS: [string, AvatarLook][] = [
+  ['starter ช้างน้อย', { ...F, hair: 'hair_bob', top: 'top_tee_white', bottom: 'bottom_elephant_pants', shoes: 'shoes_flipflop', head: 'hat_elephant' }],
+  ['flood scuba', { ...M, skin: 2, shoes: 'shoes_flippers', suit: 'suit_scuba' }],
+  ['ผู้ประสบภัย', { ...F, skin: 1, hair: 'hair_ponytail', top: 'top_swim_vest', bottom: 'bot_denim_shorts', shoes: 'shoes_rain_boots', head: 'head_basin', neck: 'neck_whistle', hand: 'hand_bailer', back: 'back_swim_ring' }],
+  ['กู้ภัย', { ...M, skin: 2, hair: 'hair_short', top: 'top_rescue_jacket', bottom: 'bot_cargo', shoes: 'shoes_rescue_boots', head: 'head_rescue_helmet', hand: 'hand_megaphone', back: 'back_rescue_tube' }],
+  ['กู้ภัยเต็มยศ', { ...F, hair: 'hair_bob', hand: 'hand_megaphone', back: 'back_paddle', suit: 'suit_rescue' }],
+  ['สายกิน', { ...M, hair: 'hair_twoblock', top: 'top_floral_neon', bottom: 'bot_denim_shorts', shoes: 'shoes_flipflop', head: 'head_tomyum', hand: 'hand_krapao_box', back: 'back_thaitea' }],
+  ['สไบเซลฟี่', { ...F, hair: 'hair_long', hairColor: 1, top: 'top_sabai_pink', bottom: 'bot_sin_pink', shoes: 'shoes_sandal', head: 'head_malai_bun', hand: 'hand_ringlight' }],
+  ['สายมู', { ...F, skin: 2, hair: 'hair_wavy', top: 'top_tee_mutelu', bottom: 'bot_jeans', shoes: 'shoes_sneaker_white', neck: 'neck_saimu', hand: 'hand_lotus_bouquet', back: 'back_blindbox' }],
+  ['ป้าข้างบ้าน', { ...F, skin: 1, hair: 'hair_bob', hairColor: 5, top: 'top_kradao', bottom: 'bot_batik', shoes: 'shoes_flipflop', head: 'head_curlers', neck: 'neck_towel', hand: 'hand_grocery' }],
+  ['นักมวยดำทอง', { ...M, skin: 3, hair: 'hair_buzz', top: 'top_muay', bottom: 'bot_muay_gold', shoes: 'shoes_wrap', head: 'head_mongkol' }],
+  ['ฮิปโปแคระ', { ...F, hair: 'hair_twin', top: 'top_tee_hippo', bottom: 'bot_pinkskirt', shoes: 'shoes_hippo', head: 'head_hippo_ears', hand: 'hand_dubai_choc' }],
+  ['สายเจนซี', { ...F, skin: 1, hair: 'hair_ponytail', top: 'top_tee_black', bottom: 'bot_jeans', shoes: 'shoes_sneaker_white', neck: 'neck_sabai_genz', hand: 'hand_jelly_bag', head: 'head_platu' }],
+  ['หมูกระทะ', { ...M, skin: 1, hair: 'hair_curtain', top: 'top_hawaii', bottom: 'bot_fisherman', shoes: 'shoes_flipflop', head: 'head_mookata', hand: 'hand_chayen' }],
+  ['ข้าวเหนียวมะม่วง', { ...F, skin: 0, hair: 'hair_bun', top: 'top_tee_white', bottom: 'bot_songkran_shorts', shoes: 'shoes_sneaker_pastel', head: 'head_mango_sticky' }],
+]
+
 if (want('sets')) {
   title('sets: stand / wave / back / kneelWai / back kneel / bow · small front / back / side / kneel')
   const r = row()
@@ -328,6 +346,56 @@ if (want('exclusives')) {
         [avatarSprite(m, 'back', 'stand'), Z],
         [avatarSprite(f, 'side', 'walk1'), Z],
         [avatarSprite(m, 'back', 'bow', { barefoot: true }), Z],
+      ])
+    }
+  }
+}
+
+// ?s=v4 – the v4 drop: pack & battle-pass exclusives and the pop-culture
+// shop items (f / m / back / kneelWai / bow · small front / back / side / bow),
+// then full v4 looks. &grp=pack,pass_free,pass_premium,pop,looks narrows it.
+if (want('v4')) {
+  const grp = params.get('grp')?.split(',')
+  const groups: [string, string[]][] = [
+    ['pack', PACK_OUTFIT_IDS],
+    ['pass_free', PASS_FREE_OUTFIT_IDS],
+    ['pass_premium', PASS_PREMIUM_OUTFIT_IDS],
+    ['pop', POP_OUTFIT_IDS],
+  ]
+  for (const [g, idsOf] of groups) {
+    if (grp && !grp.includes(g)) continue
+    title(`v4 ${g} (${idsOf.length})`)
+    const r = row()
+    for (const id of idsOf) {
+      const o = OUTFITS.find((x) => x.id === id)!
+      const f = { ...F, [o.slot]: o.id } as AvatarLook
+      const m = { ...M, skin: 2, [o.slot]: o.id } as AvatarLook
+      cell(r, `${o.id} ${o.name}`, [
+        [dollSprite(f, 'stand'), Z],
+        [dollSprite(m, 'wave'), Z],
+        [dollSprite(f, 'stand', { view: 'back' }), Z],
+        [dollSprite(m, 'kneelWai'), Z],
+        [dollSprite(f, 'bow', { view: 'back', barefoot: true }), Z],
+        [avatarSprite(f, 'front', 'stand'), Z],
+        [avatarSprite(m, 'back', 'stand'), Z],
+        [avatarSprite(f, 'side', 'walk1'), Z],
+        [avatarSprite(m, 'back', 'bow', { barefoot: true }), Z],
+      ])
+    }
+  }
+  if (!grp || grp.includes('looks')) {
+    title('v4 looks')
+    const r = row()
+    for (const [n, l] of V4_LOOKS) {
+      cell(r, n, [
+        [dollSprite(l, 'stand'), Z],
+        [dollSprite(l, 'wave'), Z],
+        [dollSprite(l, 'stand', { view: 'back' }), Z],
+        [dollSprite(l, 'kneelWai'), Z],
+        [dollSprite(l, 'bow', { view: 'back', barefoot: true }), Z],
+        [avatarSprite(l, 'front', 'stand'), Z],
+        [avatarSprite(l, 'back', 'stand'), Z],
+        [avatarSprite(l, 'side', 'walk2'), Z],
       ])
     }
   }

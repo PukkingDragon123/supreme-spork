@@ -1803,6 +1803,9 @@ function drawShoesStand(b: Buf, r: Res, view: DollView) {
       case 'boot':
         // drawn after the garment (see drawBoots)
         break
+      case 'flipper':
+        drawV4Flipper(b, sh, view, X)
+        break
       case 'wrap': {
         skinFoot()
         commit(b, L, r.sk.d, TAG.skin)
@@ -2199,7 +2202,7 @@ function drawGraphic(b: Buf, key: string, cx: number, y: number, c1: string, c2:
       const ch = row[i]
       if (ch === '.') continue
       if (clip && !clip(x0 + i, y + j)) continue
-      put(b, x0 + i, y + j, ch === '1' ? c1 : ch === '2' ? c2 : ch === 'g' ? c2 : ch === '3' ? '#43905a' : c1)
+      put(b, x0 + i, y + j, ch === '1' ? c1 : ch === '2' ? c2 : ch === 'g' ? c2 : ch === '3' ? '#43905a' : ch === 'k' ? EYE_K : c1)
     }
   })
 }
@@ -3225,7 +3228,7 @@ function drawHeadAccNew(b: Buf, r: Res, key: string, view: DollView, dy: number,
     }
   }
   void r
-  return drawSouvenirHead(b, key, view, dy, stage)
+  return drawSouvenirHead(b, key, view, dy, stage) || drawV4Head(b, r, key, view, dy, stage)
 }
 
 /** Surgical mask – drawn after the face, before the front hair. */
@@ -3545,6 +3548,7 @@ function drawTopLayersFront(b: Buf, r: Res, dy: number) {
     const fx = f ? 18 : 19
     put(b, fx, Y(25), '#e8514a'); put(b, fx + 1, Y(25), '#e8514a'); put(b, fx, Y(26), '#fbfcff'); put(b, fx + 1, Y(26), '#3d63b5')
   }
+  drawV4TopExtra(b, r, dy, 'front')
 }
 
 function drawTopLayersBack(b: Buf, r: Res, dy: number) {
@@ -3594,6 +3598,7 @@ function drawTopLayersBack(b: Buf, r: Res, dy: number) {
   } else if (t.extra === 'astro') {
     for (let x = tx0 - 1; x <= tx1 + 1; x++) put(b, x, Y(24), t.collarColor ?? '#aeb4c8')
   }
+  drawV4TopExtra(b, r, dy, 'back')
 }
 
 // ---- back slot ----------------------------------------------------------------
@@ -3773,6 +3778,8 @@ function drawBackItem(b: Buf, r: Res, view: DollView, dy: number, stage: 'behind
       }
       return
     }
+    default:
+      drawV4Back(b, r, key, view, dy, stage)
   }
 }
 
@@ -3812,6 +3819,8 @@ function drawBackBow(b: Buf, r: Res, stage: 'behind' | 'top') {
       commit(b, mapLayer(['wwwWkkkkwwwW', 'wwwWkrgkwwwW', 'wwwWkkkkwwwW', 'wwwW....wwwW', 'wwwW....wwwW', '.WW......WW.'], 10, 31, pal), '#6c6678', TAG.deco)
       return
     }
+    default:
+      drawV4BackBow(b, key, stage)
   }
 }
 
@@ -4284,6 +4293,7 @@ function suitHoodBits(b: Buf, r: Res, p: SPal, view: DollView, dy: number, stage
   const k = s.kind
   const Y = (y: number) => y + dy
   const beh = stage === 'behind'
+  if (drawV4SuitHood(b, r, p, view, dy, stage)) return
   switch (k) {
     case 'trex': {
       if (beh) {
@@ -4555,6 +4565,7 @@ function suitHoodBits(b: Buf, r: Res, p: SPal, view: DollView, dy: number, stage
 /** Headdresses of the `crown` suits (the hair stays visible). */
 function drawSuitCrown(b: Buf, r: Res, view: DollView, dy: number) {
   const s = r.suit!
+  drawV4SuitCrown(b, r, view, dy)
   if (s.kind === 'ramkaebon') {
     drawHeadAcc(b, r, 'chada', view, dy, 'over')
     return
@@ -4572,6 +4583,7 @@ function drawSuitCrown(b: Buf, r: Res, view: DollView, dy: number) {
 
 /** The headdress peeking over the hair on the prostration mound. */
 function drawSuitCrownBow(b: Buf, r: Res) {
+  if (drawV4SuitCrownBow(b, r)) return
   const g = mat('#ffd54f', '#e9a53a')
   const tall = r.suit!.kind === 'ramkaebon'
   const CR = tall ? ['..gg..', '..gg..', '.gGgs.', '.gggs.', 'gGrggs', 'ssssss'] : ['.gg.', 'gGgs', 'grgs', 'ssss']
@@ -4607,6 +4619,7 @@ function drawSuitBody(b: Buf, r: Res, view: DollView, dy: number, pd: PoseDef) {
   const Y = (y: number) => y + dy
   const k = s.kind
   const standing = pd.legs === 'stand'
+  if (drawV4SuitBody(b, r, p, view, dy, standing)) return
   // the belly patch stretches over the legs only when standing
   const belly = (rx: number, ry: number, cy: number, col: (x: number, y: number, u: number, v: number) => string | null) => {
     const L = ellLayer(15.5, Y(cy), rx, ry, col)
@@ -4779,6 +4792,7 @@ function drawSuitBow(b: Buf, r: Res, stage: 'crown' | 'back') {
   const s = r.suit!
   const p = suitPalD(r, s)
   const k = s.kind
+  if (drawV4SuitBow(b, r, p, stage)) return
   if (stage === 'crown') {
     // features on the hood crown (crown rows ≈ 23..28, centre x 15.5)
     switch (k) {
@@ -5172,7 +5186,7 @@ function drawSouvenirNeck(b: Buf, key: string, view: DollView, dy: number): bool
       return true
     }
   }
-  return false
+  return drawV4Neck(b, key, view, dy)
 }
 
 function drawSouvenirHand(b: Buf, key: string, hx: number, hy: number, mirror: boolean): boolean {
@@ -5201,9 +5215,868 @@ function drawSouvenirHand(b: Buf, key: string, hx: number, hy: number, mirror: b
       line = '#2f6f4b'
       break
     default:
+      return drawV4Hand(b, key, hx, hy, mirror)
+  }
+  commit(b, L, line, TAG.deco)
+  return true
+}
+
+// ---------------------------------------------------------------------------
+// v4 cosmetics: starter & flood packs, battle-pass "ผู้ประสบภัย" / "กู้ภัย"
+// sets and the Thai soft-power pop-culture drop (data: game/data/cosmetics.ts).
+
+const V4 = {
+  gold: mat('#ffd54f', '#e9a53a', '#fff3a6'),
+  steel: mat('#c9d3e0', '#9aa6b8', '#f0f5fb'),
+  orange: mat('#ff7a1a', '#d4580c', '#ffb066'),
+  duck: mat('#ffd23f', '#e0a820', '#fff3a6'),
+  rope: '#ff5fa8',
+  refl: '#e8eef8',
+  navy: '#2e3a6b',
+}
+
+Object.assign(GRAPHICS, {
+  // a fortune-teller's crystal ball on a gold stand, stars around it
+  mutelu: ['2.....2', '..111..', '.11111.', '1111111', '11k1111', '.11111.', '..222..', '.22222.'],
+  // a grumpy baby pygmy hippo face
+  hippo: ['.1...1.', '1111111', '1k111k1', '1111111', '2111112', '.11111.', '..1k1..'],
+})
+
+/** Head items of the v4 drop. */
+function drawV4Head(b: Buf, r: Res, key: string, view: DollView, dy: number, stage: 'under' | 'over'): boolean {
+  const L = new Layer()
+  const front = view === 'front'
+  const Y = (y: number) => y + dy
+  const p = (x: number, y: number, c: string) => L.put(x, Y(y), c)
+  const map = (rows: string[], ox: number, oy: number, pal: Record<string, string>, mirror = false) => mapLayer(rows, ox, Y(oy), pal, mirror, L)
+  const pair = (rows: string[], ox: number, oy: number, pal: Record<string, string>) => pairLayer(rows, ox, Y(oy), pal, L)
+  const done = (line: string | null) => commit(b, L, line, TAG.deco)
+  /** A centred dome: widths per row starting at y0. */
+  const dome = (y0: number, widths: number[], col: (x: number, y: number, w: number, j: number) => string | null) => {
+    widths.forEach((w, j) => {
+      for (let x = 16 - w; x <= 15 + w; x++) {
+        const c = col(x, y0 + j, w, j)
+        if (c) p(x, y0 + j, c)
+      }
+    })
+  }
+  switch (key) {
+    case 'elephanthat': {
+      if (stage !== 'over') return true
+      const g = mat('#aaa5c8', '#8a84ab', '#d2cee6')
+      // big floppy ears first
+      const E = new Layer()
+      for (const s of [-1, 1] as const) {
+        const cx = 15.5 + s * 11.2
+        ellLayer(cx, Y(12.5), 4.1, 5.8, (_x, _y, u, v) => {
+          const inner = front && u * u * 1.6 + v * v < 0.5 && u * s > -0.35
+          if (inner) return v > 0.35 ? '#f59abb' : '#ffc4d8'
+          return u * s > 0.55 || v > 0.72 ? g.s : v < -0.6 ? g.l : g.b
+        }, E)
+      }
+      commit(b, E, g.d, TAG.deco)
+      dome(1, [5, 7, 9, 10, 11, 11, 12, 12, 12], (x, y, w) => (x >= 13 + w || y === 9 ? g.s : y <= 4 && x <= 16 - w + 3 ? g.l : g.b))
+      // red and gold head cloth band
+      for (let x = 4; x <= 27; x++) {
+        p(x, 10, x % 4 === 0 ? V4.gold.b : '#d8434f')
+        p(x, 11, x % 2 ? V4.gold.b : V4.gold.s)
+      }
+      if (front) {
+        map(['...gg...', '..grrg..', '.grryrg.', 'gggggggg'], 12, -1, { g: V4.gold.b, r: '#d8434f', y: '#fff3a6' })
+        for (const x of [10, 20]) {
+          p(x, 6, EYE_K); p(x + 1, 6, EYE_K); p(x, 7, EYE_K); p(x + 1, 7, EYE_K); p(x, 6, WHITE)
+        }
+        p(8, 8, '#ffb3cf'); p(23, 8, '#ffb3cf')
+        // tusks
+        p(13, 9, '#fffaf0'); p(18, 9, '#fffaf0')
+        done(g.d)
+        // curled-up trunk over the fringe
+        const T = tubeLayer([[15.5, Y(6.5)], [15.5, Y(10)], [16.3, Y(12.6)], [18.5, Y(13.2)], [20.2, Y(11.4)]], 1.8, 1, (t, oy) => (Math.floor(t * 9) % 2 === 1 ? g.b : oy > 0.3 ? g.b : oy < -0.4 ? '#e6e3f2' : g.l))
+        commit(b, T, g.d, TAG.deco)
+        b.put(20, Y(10), '#ff9fc0', TAG.deco)
+        b.put(21, Y(11), '#ff9fc0', TAG.deco)
+      } else {
+        // ceremonial cloth draped down the back of the head
+        for (let y = 3; y <= 13; y++)
+          for (let x = 11; x <= 20; x++) {
+            if (y >= 12 && (x + y) % 2) continue
+            const border = x === 11 || x === 20 || y === 13 || y === 3
+            p(x, y, border ? (x + y) % 2 ? V4.gold.b : V4.gold.s : Math.abs(x - 15.5) + Math.abs(y - 8) < 3 ? V4.gold.b : '#d8434f')
+          }
+        done(g.d)
+      }
+      return true
+    }
+    case 'basin': {
+      if (stage !== 'over') return true
+      const st = V4.steel
+      dome(2, [6, 8, 9, 10, 11, 11, 12, 12], (x, y, w, j) => {
+        if (x >= 13 + w) return st.s
+        if (j >= 1 && (x === 16 - w + 2 || x === 16 - w + 3)) return st.l
+        if (j >= 2 && j <= 4 && x === 20) return '#ffffff'
+        return (x === 19 && y === 5) || (x === 18 && y === 6) ? st.s : st.b
+      })
+      for (let x = 3; x <= 28; x++) p(x, 10, x >= 25 ? st.b : st.l)
+      for (let x = 2; x <= 29; x++) p(x, 11, x >= 26 ? st.s : x % 5 === 0 ? st.l : st.b)
+      for (let x = 3; x <= 28; x++) p(x, 12, st.d)
+      if (front) {
+        // pink straw rope tied under the chin
+        const R: Pt[] = [[6, 13], [6, 14], [7, 15], [7, 16], [7, 17], [7, 18], [7, 19], [8, 20], [9, 21], [10, 22], [12, 23], [13, 24]]
+        for (const [x, y] of R) {
+          p(x, y, V4.rope)
+          p(31 - x, y, V4.rope)
+        }
+        map(['rr..rr', '.rRRr.', 'rr..rr'], 13, 23, { r: V4.rope, R: '#ffb3d6' })
+      } else for (const x of [6, 25]) for (let y = 13; y <= 16; y++) p(x, y, V4.rope)
+      done(st.d)
+      return true
+    }
+    case 'rescuehelmet': {
+      if (stage !== 'over') return true
+      const H = helmetLayer(dy, '#fbfcff', V4.orange.b, '#3a3547', view)
+      // reflective band around the crown
+      for (let x = 5; x <= 26; x++) if (H.has(x, Y(8)) && x !== 15 && x !== 16) H.put(x, Y(8), x % 3 === 0 ? '#c9d3e0' : V4.refl)
+      if (front) mapLayer(['.kkkk.', 'kyYYyk', 'kyYyyk', '.kkkk.'], 13, Y(2), { k: '#3a3547', y: '#ffe45e', Y: '#fffbd0' }, false, H)
+      else mapLayer(['rrrr', 'rwwr'], 14, Y(5), { r: V4.orange.b, w: V4.refl }, false, H)
+      commit(b, H, '#8a8496', TAG.deco)
+      return true
+    }
+    case 'tomyum': {
+      if (stage !== 'over') return true
+      const br = mat('#e9b949', '#c08a2a', '#fff0a0')
+      // soup surface with bubbles, lemongrass, chilli and a leaf
+      for (let x = 7; x <= 24; x++) p(x, 2, x % 4 === 1 ? '#ffb066' : x % 7 === 3 ? '#fff3e6' : '#f0662e')
+      for (let x = 5; x <= 26; x++) p(x, 3, x >= 24 ? br.b : br.l)
+      const rows: [number, number][] = [[5, 26], [5, 26], [6, 25], [6, 25], [7, 24], [8, 23]]
+      rows.forEach(([a, z], j) => {
+        const y = 4 + j
+        for (let x = a; x <= z; x++) p(x, y, y === 6 ? (x % 3 ? br.s : br.l) : x >= z - 1 ? br.s : x <= a + 1 ? br.l : br.b)
+      })
+      for (let x = 9; x <= 22; x++) p(x, 10, br.d)
+      // handles
+      for (const [x, y] of [[3, 4], [4, 4], [3, 5], [3, 6], [4, 6], [27, 4], [28, 4], [28, 5], [27, 6], [28, 6]] as Pt[]) p(x, y, br.s)
+      // the chimney of the หม้อไฟ
+      for (let y = 0; y <= 2; y++) for (let x = 14; x <= 17; x++) p(x, y, y === 0 ? '#6e4a35' : x === 14 ? br.l : x === 17 ? br.s : br.b)
+      // shrimps hanging over the rim
+      map(['..rr', '.rRr', 'rR..', 'rr..', '.rk.'], 3, 0, { r: '#f0662e', R: '#ffa060', k: '#3a2838' })
+      map(['rr..', 'rRr.', '..Rr', '..rr', '.kr.'], 25, 0, { r: '#f0662e', R: '#ffa060', k: '#3a2838' })
+      p(20, 0, '#86c95f'); p(20, 1, '#5ea653'); p(21, 1, '#86c95f')
+      p(10, 1, '#e8514a'); p(11, 1, '#b8343f')
+      p(23, 1, '#43905a'); p(24, 2, '#43905a')
+      done(br.d)
+      // steam
+      for (const [x, y] of [[12, 0], [19, 0]] as Pt[]) if (!b.get(x, Y(y))) b.put(x, Y(y), '#ffffff', TAG.deco)
+      return true
+    }
+    case 'mangohat': {
+      if (stage !== 'over') return true
+      // banana-leaf plate
+      for (let x = 3; x <= 28; x++) {
+        p(x, 9, x % 5 === 0 ? '#86c95f' : '#5ea653')
+        p(x, 10, x >= 26 ? '#3f7f45' : '#4a9a50')
+      }
+      for (let x = 4; x <= 27; x++) p(x, 11, '#3f7f45')
+      // sticky rice mound with coconut cream
+      const rice = [4, 6, 8, 9, 10, 10]
+      rice.forEach((w, j) => {
+        const y = 3 + j
+        for (let x = 13 - w; x <= 12 + w; x++) p(x, y, j <= 1 ? '#fff8e8' : (x * 3 + y) % 5 === 0 ? '#e6e3da' : x >= 11 + w ? '#e9e6f0' : '#fbfcff')
+      })
+      for (let x = 3; x <= 28; x++) p(x, 8, (x * 3) % 5 === 0 ? '#e6e3da' : x >= 26 ? '#e9e6f0' : '#fbfcff')
+      p(8, 5, '#fff8e8'); p(8, 6, '#fff8e8'); p(15, 6, '#fff8e8')
+      for (const [x, y] of [[10, 3], [13, 4], [7, 6], [16, 5], [11, 7]] as Pt[]) p(x, y, '#ffd54f')
+      // a whole mango cheek on top
+      ellLayer(20.5, Y(4.2), 7.2, 3.2, (x, y, u, v) => {
+        const score = v < 0.4 && ((x + y) % 4 === 0 || (x - y + 40) % 4 === 0)
+        return v > 0.55 ? '#e9a53a' : v < -0.45 && u < 0.3 ? '#ffe68a' : score ? '#f5b52e' : '#ffc93c'
+      }, L)
+      p(26, 3, '#b8c93a'); p(27, 4, '#8fae3a')
+      map(['.gg', 'gG.'], 26, 1, { g: '#5ea653', G: '#86c95f' })
+      done('#9a6a2a')
+      return true
+    }
+    case 'mookata': {
+      if (stage !== 'over') return true
+      const pan = mat('#4a4458', '#35303f', '#6a6478')
+      // broth moat with veggies around the dome
+      for (let x = 2; x <= 29; x++) {
+        p(x, 8, x % 6 === 0 ? '#5ea653' : x % 6 === 3 ? '#fbfcff' : x % 9 === 1 ? '#ffb02e' : '#d98a3a')
+        p(x, 9, x >= 27 ? pan.s : pan.b)
+        p(x, 10, pan.s)
+      }
+      p(1, 8, pan.b); p(30, 8, pan.b); p(1, 9, pan.s); p(30, 9, pan.s)
+      dome(1, [3, 5, 7, 8, 9, 10, 11], (x, y, w) => ((y + x) % 2 === 0 && y >= 3 && Math.abs(x - 15.5) < w - 1 ? '#2a2530' : x >= 13 + w ? pan.s : x <= 17 - w ? pan.l : pan.b))
+      // sizzling pork belly slices and a lump of fat on top
+      map(['pwpp', 'pppw'], 9, 3, { p: '#f08a8a', w: '#fff0f0' })
+      map(['pwpp', 'ppwp'], 18, 5, { p: '#e87a7a', w: '#fff0f0' })
+      map(['pp', 'wp'], 12, 6, { p: '#f08a8a', w: '#fff0f0' })
+      p(15, 0, '#fff8d8'); p(16, 0, '#fff0b0'); p(15, 1, '#fff8d8'); p(16, 1, '#f5e6a8')
+      done('#231f2a')
+      return true
+    }
+    case 'platu': {
+      if (stage !== 'over') return true
+      // bamboo basket-weave band
+      for (let x = 5; x <= 26; x++) {
+        p(x, 8, (x % 2 ? '#d9b98a' : '#c9a06b'))
+        p(x, 9, (x % 2 ? '#a8804e' : '#c9a06b'))
+      }
+      // two mackerels with the famous bent neck, heads down into the band
+      // silver body, blue-grey back, yellow-green gill line, big round eye
+      const FISH = ['........TT', '.......TtT', '..bbbbbbt.', '.bbsssssy.', 'bWksssy...', 'bkks......', '.ss.......']
+      const pal = { b: '#4f6882', s: '#dfe8f2', W: '#ffffff', k: '#1f2a38', t: '#8a9cb0', T: '#aebccc', y: '#c9d66a' }
+      map(FISH, 4, 1, pal)
+      map(FISH, 18, 1, pal, true)
+      done('#3a4a5e')
+      return true
+    }
+    case 'malaibun': {
+      if (stage !== 'over') return true
+      const hr = r.hr
+      const jas = '#fffaf0'
+      const mari = '#ffb02e'
+      const rose = '#e8514a'
+      if (front) {
+        // bun peeking over the crown, garland around it
+        ellLayer(15.5, Y(2.6), 4.6, 3.2, (_x, _y, u, v) => (u > 0.45 || v > 0.5 ? hr.s : u < -0.3 && v < -0.2 ? hr.l : hr.b), L)
+        for (let x = 10; x <= 21; x++) p(x, 5, x % 3 === 0 ? mari : x % 3 === 1 ? jas : x === 17 ? rose : '#f5f0dc')
+        for (const x of [11, 20]) p(x, 4, jas)
+        done(hr.d)
+        // tassel (อุบะ) hanging by the ear
+        const U = new Layer()
+        for (const [x, y, c] of [[22, 5, jas], [22, 6, jas], [23, 7, '#f5f0dc'], [23, 8, jas], [23, 9, jas], [24, 10, '#f5f0dc'], [24, 11, rose], [23, 12, rose], [24, 12, '#ff8a7a'], [24, 13, '#5ea653']] as [number, number, string][]) U.put(x, Y(y), c)
+        commit(b, U, '#8a8a70', TAG.deco)
+      } else {
+        ellLayer(15.5, Y(4.5), 5.2, 4.3, (x, y, u, v) => (u > 0.5 || v > 0.55 ? hr.s : u < -0.35 && v < -0.2 ? hr.l : (x + y) % 5 === 0 ? hr.s : hr.b), L)
+        for (let x = 10; x <= 21; x++) {
+          p(x, 8, x % 3 === 0 ? mari : x % 3 === 1 ? jas : '#f5f0dc')
+          p(x, 9, x % 3 === 1 ? mari : x % 3 === 2 ? jas : rose)
+        }
+        for (let y = 10; y <= 17; y++) {
+          p(15, y, y % 2 ? jas : '#f5f0dc')
+          p(16, y, y % 3 === 0 ? mari : jas)
+        }
+        p(15, 18, rose); p(16, 18, rose); p(15, 19, '#5ea653'); p(16, 19, '#43905a')
+        done(hr.d)
+      }
+      return true
+    }
+    case 'curlers': {
+      if (stage !== 'over') return true
+      const cols = ['#ff9fc0', '#8fc4ff', '#ffe45e', '#7fd3b5']
+      const spots: Pt[] = front ? [[6, 6], [10, 3], [14, 1], [18, 3], [22, 6], [12, 6], [17, 6]] : [[6, 6], [10, 3], [14, 1], [18, 3], [22, 6], [9, 8], [14, 6], [19, 8], [11, 11], [17, 11]]
+      spots.forEach(([x, y], i) => {
+        const c = cols[i % cols.length]
+        const m = mat(c)
+        map(['.cc.', 'cCcc', 'cccs', '.ss.'].map((row) => row), x, y, { c: m.b, C: m.l, s: m.s })
+        if (front) p(x + 1, y + 1, mix(m.s, INK, 0.3))
+      })
+      done('#6a5a70')
+      return true
+    }
+    case 'hippoears': {
+      if (stage !== 'over') return true
+      const g = mat('#a99db8', '#877a99', '#cfc6dc')
+      for (let x = 6; x <= 25; x++) {
+        p(x, 8, x >= 23 ? g.s : g.b)
+        p(x, 9, g.s)
+      }
+      pair(['.gg.', 'gppg', 'gpPg', '.gg.'], 6, 3, { g: g.b, p: front ? '#ff9fc0' : g.s, P: front ? '#ffb3cf' : g.s })
+      done(g.d)
+      return true
+    }
+  }
+  return false
+}
+
+/** Neck / body items of the v4 drop. */
+function drawV4Neck(b: Buf, key: string, view: DollView, dy: number): boolean {
+  const L = new Layer()
+  const front = view === 'front'
+  const Y = (y: number) => y + dy
+  const p = (x: number, y: number, c: string) => L.put(x, Y(y), c)
+  const map = (rows: string[], ox: number, oy: number, pal: Record<string, string>, mirror = false) => mapLayer(rows, ox, Y(oy), pal, mirror, L)
+  const V: Pt[] = [[12, 24], [12, 25], [13, 26], [13, 27], [14, 28]]
+  switch (key) {
+    case 'whistle': {
+      const c = '#ff8a2a'
+      if (!front) {
+        for (let x = 13; x <= 18; x++) p(x, 24, c)
+        commit(b, L, '#b8542a', TAG.deco)
+        return true
+      }
+      for (const [x, y] of V) {
+        p(x, y, c)
+        p(31 - x, y, c)
+      }
+      map(['..ww...', '.ooooOk', 'oOoooos', '.osss..'], 12, 28, { o: '#ff8a2a', O: '#ffc080', s: '#d06018', w: '#c9ccda', k: '#3a2838' })
+      commit(b, L, '#8a3a10', TAG.deco)
+      return true
+    }
+    case 'saimu': {
+      const beads = ['#e8514a', '#ffb02e', '#ffe45e', '#5ea653', '#5a8de0', '#8a64d6', '#ff9fc0']
+      if (!front) {
+        for (let x = 11; x <= 20; x++) p(x, 24, beads[x % beads.length])
+        commit(b, L, null, TAG.deco)
+        return true
+      }
+      const path: Pt[] = [[11, 24], [11, 25], [12, 26], [12, 27], [13, 28], [14, 29]]
+      path.forEach(([x, y], i) => {
+        p(x, y, beads[i % beads.length])
+        p(31 - x, y, beads[(i + 3) % beads.length])
+      })
+      // gold takrut and a purple crystal ball
+      map(['gGGGGg', '.pPPp.', '.pWpp.', '.pppq.', '..qq..'], 13, 29, { g: V4.gold.s, G: V4.gold.b, p: '#9a70dc', P: '#c9a8f0', W: '#ffffff', q: '#6a4ab0' })
+      commit(b, L, null, TAG.deco)
+      return true
+    }
+    case 'sabaigenz': {
+      const c = mat('#8a4fd6', '#6a36b0', '#b98ae6')
+      const band = (x0: number, y0: number, dir: 1 | -1, n: number) => {
+        for (let i = 0; i < n; i++)
+          for (let w = 0; w < 3; w++) {
+            const x = x0 + dir * i + w
+            const y = y0 + i
+            p(x, y, (i + w) % 4 === 0 ? V4.gold.b : w === 2 ? c.s : i % 4 === 2 ? c.l : c.b)
+          }
+      }
+      if (front) band(9, 24, 1, 11)
+      else {
+        band(19, 24, -1, 11)
+        for (let y = 24; y <= 37; y++) for (let x = 19; x <= 21; x++) p(x, y, (x + y) % 4 === 0 ? V4.gold.b : x === 21 ? c.s : c.b)
+        for (const x of [19, 21]) p(x, 38, V4.gold.b)
+      }
+      commit(b, L, c.d, TAG.deco)
+      return true
+    }
+    case 'towel': {
+      const st = (y: number) => (y % 2 ? '#5ab4e8' : '#fbfcff')
+      for (let x = 12; x <= 19; x++) p(x, 23, st(x))
+      if (front) {
+        for (let y = 24; y <= 31; y++) for (const x of [11, 12, 13]) p(x, y, y === 31 ? '#dfe3ee' : st(y))
+        for (let y = 24; y <= 29; y++) for (const x of [18, 19, 20]) p(x, y, y === 29 ? '#dfe3ee' : st(y + 1))
+      } else for (let x = 11; x <= 20; x++) { p(x, 24, st(x + 1)); p(x, 25, st(x)) }
+      commit(b, L, '#3f86b8', TAG.deco)
+      return true
+    }
+  }
+  return false
+}
+
+/** Hand-held items of the v4 drop, relative to the resting hand. */
+function drawV4Hand(b: Buf, key: string, hx: number, hy: number, mirror: boolean): boolean {
+  const L = new Layer()
+  const p = (x: number, y: number, c: string) => L.put(mirror ? IW - 1 - (hx + x) : hx + x, hy + y, c)
+  const map = (rows: string[], ox: number, oy: number, pal: Record<string, string>) => {
+    rows.forEach((row, j) => {
+      for (let i = 0; i < row.length; i++) {
+        const ch = row[i]
+        if (ch !== '.' && pal[ch]) p(ox + i, oy + j, pal[ch])
+      }
+    })
+  }
+  let line: string = INK
+  switch (key) {
+    case 'bailer':
+      map(['...wwwwww.', 'hhpppppppp', '..pPPPPPps', '...pPPPps.', '....ssss..'], -1, -1, { p: '#ff7eb6', P: '#ffb3d6', s: '#d9508f', h: '#ff7eb6', w: '#9fd8ff' })
+      p(8, 5, '#9fd8ff'); p(6, 7, '#bfe6ff')
+      line = '#a8306a'
+      break
+    case 'megaphone':
+      map(['......rw', '....wwrW', '..wwwwrW', 'kkwwwwrW', '..wwwwrW', '....wwrW', '......rw'], -1, -9, { w: '#fbfcff', W: '#d9dfec', r: '#e8514a', k: '#4a4458' })
+      for (let y = -3; y <= 0; y++) p(1, y, '#6a6478')
+      line = '#6a6478'
+      break
+    case 'lotusbouquet': {
+      const bud = { p: '#e8709e', P: '#ffc4d8', g: '#43905a' }
+      for (let y = -7; y <= 0; y++) { p(0, y, '#43905a'); p(1, y, '#5ea653') }
+      map(['.p.', 'pPp', 'pPp', '.p.', '.g.'], -3, -12, bud)
+      map(['.p.', 'pPp', 'pPp', 'pPp', '.p.', '.g.'], -1, -14, bud)
+      map(['.p.', 'pPp', 'pPp', '.p.', '.g.'], 2, -11, bud)
+      for (let y = -6; y <= 2; y++) {
+        const w = y < -2 ? 3 : 2
+        for (let x = 1 - w; x <= w; x++) p(x, y, y === -2 ? '#ff5fa8' : x === w ? '#b89868' : '#d9b98a')
+      }
+      line = '#2f6f4b'
+      break
+    }
+    case 'ringlight': {
+      for (let i = 0; i <= 14; i++) p(1 + Math.round(i * 0.25), -1 - i, i % 5 === 0 ? '#4a4458' : '#6a6478')
+      const cx = 5
+      const cy = -21
+      for (let y = -27; y <= -15; y++)
+        for (let x = -1; x <= 11; x++) {
+          const d = Math.hypot(x - cx, y - cy)
+          if (d >= 3.6 && d <= 5.4) p(x, y, d > 4.8 ? '#e6ecf5' : '#fffbe6')
+        }
+      map(['kkk', 'kbk', 'kbk', 'kkk'], 4, -23, { k: '#3a3547', b: '#9fd0ff' })
+      line = '#8a8496'
+      break
+    }
+    case 'jellybag':
+      map(['.h....h.', '.h....h.', 'h......h', 'mmmmmmmm', 'mWmmmmmM', 'mWmgGmmM', 'mmmggmmM', 'mmpmmmmM', 'mmmmmmMM', '.MMMMMM.'], -2, -1, { h: '#ff9fc0', m: '#aef0e0', M: '#7fd8c2', W: '#ffffff', g: '#ffd54f', G: '#e9a53a', p: '#ff9fc0' })
+      line = '#4fb89c'
+      break
+    case 'dubaichoc':
+      map(['.g.gg.', 'gggGgg', 'cgcccg', 'cCcccc', 'ccCccc', 'cccCcc', 'cCcccc', 'ffffff', 'fFffff'], -2, -9, { c: '#6e4228', C: '#8a5634', g: '#9ccf5a', G: '#c9ec8a', f: '#e9b949', F: '#fff0a0' })
+      p(4, -5, '#9ccf5a'); p(4, -4, '#9ccf5a')
+      line = '#3f2414'
+      break
+    case 'krapaobox':
+      map(['....ww....', '...wYYw...', '..wwYYww..', '.rwwbgbwb.', 'kkkkkkkkkk', '.kKKKKKKk.', '..kkkkkk..'], -4, -6, { w: '#fffaf0', Y: '#ffb02e', b: '#8a5a3a', g: '#43905a', r: '#e8514a', k: '#c9a06b', K: '#e0bf8a' })
+      line = '#7a5a2a'
+      break
+    default:
       return false
   }
   commit(b, L, line, TAG.deco)
+  return true
+}
+
+/** Ring / band around the waist (front half or back half). */
+function waistRing(cy: number, rx: number, ry: number, thick: number, half: 'near' | 'far', col: (u: number, v: number, x: number, y: number) => string): Layer {
+  const L = new Layer()
+  for (let y = Math.floor(cy - ry - thick); y <= Math.ceil(cy + ry + thick); y++)
+    for (let x = 0; x < IW; x++) {
+      const u = (x + 0.5 - 15.5) / (rx + thick)
+      const v = (y + 0.5 - cy) / (ry + thick)
+      if (u * u + v * v > 1) continue
+      const ui = (x + 0.5 - 15.5) / rx
+      const vi = (y + 0.5 - (cy - thick * 0.6)) / ry
+      if (ui * ui + vi * vi < 1) continue
+      if (half === 'near' && y + 0.5 < cy - 0.8) continue
+      if (half === 'far' && y + 0.5 >= cy - 0.8) continue
+      L.put(x, y, col(u, v, x, y))
+    }
+  return L
+}
+
+const DUCK_HEAD = ['..yyy...', '.yyyyy..', 'oyWkyy..', 'ooyyyy..', '.yyyyys.', '..yyys..', '..yys...', '..yys...']
+const BLINDBOX = ['.e....e.', '.eE..Ee.', '.eE..Ee.', '.ffffff.', 'ffFFFFff', 'fFkFFkFf', 'fFFFFFFf', 'fmTmTmTf', '.ffffff.', '.f.ff.f.']
+
+/** Back-slot items of the v4 drop ('behind' / 'body' / 'top' as in drawBackItem). */
+function drawV4Back(b: Buf, r: Res, key: string, view: DollView, dy: number, stage: 'behind' | 'body' | 'top') {
+  const front = view === 'front'
+  const Y = (y: number) => y + dy
+  const duckPal = { y: V4.duck.b, s: V4.duck.s, o: '#ff8a2a', k: EYE_K, W: WHITE }
+  switch (key) {
+    case 'duckring': {
+      const d = V4.duck
+      const col = (u: number, v: number, x: number) => (v < -0.45 ? d.l : v > 0.6 || u > 0.8 ? d.s : (x % 7 === 2 ? '#fff9d0' : d.b))
+      if (stage === 'behind') {
+        commitBehind(b, waistRing(Y(35), 9, 2.2, 2.4, 'far', col), mix(d.s, INK, 0.4))
+        if (!front) commitBehind(b, mapLayer(DUCK_HEAD.map((row) => row.replace(/[okW]/g, 'y')), 23, Y(27), duckPal, true), mix(d.s, INK, 0.4))
+      }
+      if (stage === 'body') {
+        commit(b, waistRing(Y(35), 9, 2.2, 2.4, 'near', col), mix(d.s, INK, 0.4), TAG.deco)
+        if (front) commit(b, mapLayer(DUCK_HEAD, 2, Y(27), duckPal), mix(d.s, INK, 0.4), TAG.deco)
+      }
+      return
+    }
+    case 'rescuetube': {
+      const ring = (cx: number, cy: number, ro: number, ri: number) =>
+        ellLayer(cx, cy, ro, ro, (x, y, u, v) => {
+          if (Math.hypot(x + 0.5 - cx, y + 0.5 - cy) < ri) return null
+          const a = Math.atan2(v, u)
+          const seg = Math.floor(((a + Math.PI) / (Math.PI * 2)) * 8) % 2
+          const base = seg ? '#fbfcff' : '#e8514a'
+          const sh = u + v > 0.55
+          return sh ? mix(base, INK, 0.18) : u + v < -0.9 ? mix(base, '#ffffff', 0.35) : base
+        })
+      if (front && stage === 'behind') commitBehind(b, ring(15.5, Y(30.5), 8, 4), '#7e2436')
+      if (front && stage === 'body') {
+        const S = new Layer()
+        for (let i = 0; i <= 10; i++) {
+          S.put(20 - i, Y(24 + i), '#e0d6c0')
+          S.put(21 - i, Y(24 + i), '#c9bca0')
+        }
+        for (const i of [...S.m.keys()]) if (b.c[i] === null) S.m.delete(i)
+        commit(b, S, '#8a7a5a', TAG.deco)
+      }
+      if (!front && stage === 'body') {
+        const R = ring(15.5, Y(30.5), 8, 4)
+        for (const [x, y] of [[8, 30], [23, 30], [15, 23], [16, 38]] as Pt[]) R.put(x, Y(y), '#8a8496')
+        commit(b, R, '#7e2436', TAG.deco)
+      }
+      return
+    }
+    case 'paddle': {
+      const wood = mat('#c28e5c', '#9a6a45', '#e0b27a')
+      const P2 = (flip: boolean) => {
+        const L = new Layer()
+        const fx = (x: number) => (flip ? IW - 1 - x : x)
+        for (let i = 0; i <= 30; i++) {
+          const x = 26 - i * 0.62
+          const y = 5 + i
+          L.put(fx(Math.round(x)), Y(y), wood.b)
+          L.put(fx(Math.round(x) + 1), Y(y), wood.s)
+          if (i >= 22) for (let w = -2; w <= 2; w++) L.put(fx(Math.round(x) + w), Y(y), w === -2 ? wood.l : w === 2 ? wood.s : (i + w) % 5 === 0 ? wood.s : wood.b)
+        }
+        L.put(fx(26), Y(4), wood.d)
+        L.put(fx(27), Y(4), wood.d)
+        return L
+      }
+      if (front && stage === 'behind') commitBehind(b, P2(false), wood.d)
+      if (!front && stage === 'top') commit(b, P2(true), wood.d, TAG.deco)
+      return
+    }
+    case 'thaiteabag': {
+      const tea = (y: number) => (y <= 27 ? '#fff0dc' : y <= 30 ? '#ffb066' : y <= 33 ? '#f58f35' : '#d9702a')
+      const cup = () => {
+        const L = new Layer()
+        for (let y = 23; y <= 38; y++) {
+          const inset = y <= 24 ? 1 : Math.floor((y - 25) / 5)
+          for (let x = 10 + inset; x <= 21 - inset; x++) {
+            let c = y <= 24 ? (x >= 19 ? '#c9d6e6' : '#eef6fb') : tea(y)
+            if (y >= 35 && y <= 37 && (x + y) % 2 === 0 && x > 10 + inset && x < 21 - inset) c = y === 35 && x % 4 === 0 ? '#6a5a70' : '#2e2840'
+            if (y > 24 && x === 10 + inset + 1) c = mix(c, '#ffffff', 0.45)
+            if (y > 24 && x === 21 - inset) c = mix(c, INK, 0.2)
+            L.put(x, Y(y), c)
+          }
+        }
+        return L
+      }
+      const straw = (flip: boolean) => {
+        const L = new Layer()
+        for (let i = 0; i <= 10; i++) {
+          const x = 20 + Math.round(i * 0.3)
+          const y = 24 - i
+          const fx = flip ? IW - 1 - x : x
+          L.put(fx, Y(y), i % 3 === 0 ? '#fbfcff' : '#ff5fa8')
+          L.put(fx + (flip ? -1 : 1), Y(y), i % 3 === 0 ? '#e6e9f2' : '#d63f86')
+        }
+        return L
+      }
+      if (front && stage === 'body') {
+        const f = r.g === 'f'
+        for (const x of f ? [12, 19] : [11, 20]) for (let y = 24; y <= 31; y++) put(b, x, Y(y), '#b8742a')
+      }
+      if (front && stage === 'behind') {
+        commitBehind(b, straw(true), '#8e2a5a')
+        const S = new Layer()
+        for (let y = 26; y <= 36; y++) { S.put(9, Y(y), tea(y)); S.put(22, Y(y), tea(y)) }
+        commitBehind(b, S, '#a8541f')
+      }
+      if (!front && stage === 'body') {
+        commit(b, straw(false), '#8e2a5a', TAG.deco)
+        commit(b, cup(), '#a8541f', TAG.deco)
+      }
+      return
+    }
+    case 'blindbox': {
+      const pal = { e: '#b58a70', E: '#ffb3cf', f: '#c7a58a', F: '#f1dcc6', k: EYE_K, m: '#6e2433', T: '#ffffff' }
+      if (front && stage === 'body') {
+        const f = r.g === 'f'
+        for (const x of f ? [12, 19] : [11, 20]) for (let y = 24; y <= 31; y++) put(b, x, Y(y), '#ff9fc0')
+      }
+      if (front && stage === 'behind') {
+        const C = new Layer()
+        C.put(8, Y(32), V4.gold.b); C.put(7, Y(33), V4.gold.s)
+        mapLayer(BLINDBOX, 1, Y(34), pal, false, C)
+        commitBehind(b, C, '#6e4a35')
+      }
+      if (!front && stage === 'body') {
+        const bag = new Layer()
+        for (let y = 26; y <= 34; y++) for (let x = 11; x <= 20; x++) bag.put(x, Y(y), y === 29 ? '#e88aae' : x >= 19 || y === 34 ? '#e88aae' : '#ffb3cf')
+        bag.put(15, Y(29), V4.gold.b)
+        commit(b, bag, '#b9577e', TAG.deco)
+        const C = new Layer()
+        C.put(20, Y(35), V4.gold.b)
+        mapLayer(BLINDBOX, 17, Y(36), pal, false, C)
+        commit(b, C, '#6e4a35', TAG.deco)
+      }
+      return
+    }
+  }
+}
+
+/** v4 back items on the prostration mound. */
+function drawV4BackBow(b: Buf, key: string, stage: 'behind' | 'top') {
+  if (stage !== 'top') return
+  switch (key) {
+    case 'duckring': {
+      const d = V4.duck
+      commit(b, waistRing(40, 10, 2, 2.2, 'near', (_u, v) => (v < -0.4 ? d.l : v > 0.6 ? d.s : d.b)), mix(d.s, INK, 0.4), TAG.deco)
+      return
+    }
+    case 'rescuetube': {
+      const R = ellLayer(15.5, 34, 6.5, 5, (_x, _y, u, v) => {
+        if (u * u + v * v < 0.3) return null
+        const seg = Math.floor(((Math.atan2(v, u) + Math.PI) / (Math.PI * 2)) * 8) % 2
+        return seg ? '#fbfcff' : '#e8514a'
+      })
+      commit(b, R, '#7e2436', TAG.deco)
+      return
+    }
+    case 'paddle': {
+      const L = new Layer()
+      for (let i = 0; i <= 18; i++) {
+        L.put(8 + i, 26 + Math.round(i * 0.7), '#c28e5c')
+        L.put(8 + i, 27 + Math.round(i * 0.7), '#9a6a45')
+      }
+      commit(b, L, '#6e4a35', TAG.deco)
+      return
+    }
+    case 'thaiteabag':
+      commit(b, mapLayer(['.wwwwwwww.', 'oooooooooo', 'OOOOOOOOOO', 'OkOkOkOkOO', 'OOkOkOkOkO'], 11, 31, { w: '#eef6fb', o: '#ffb066', O: '#f58f35', k: '#2e2840' }), '#a8541f', TAG.deco)
+      return
+    case 'blindbox':
+      commit(b, mapLayer(['pppppppp', 'pPPpPPpp', 'pppppppp'], 12, 32, { p: '#ffb3cf', P: '#e88aae' }), '#b9577e', TAG.deco)
+      return
+  }
+}
+
+/** Life-vest buckles and rescue-unit emblems over the vest. */
+function drawV4TopExtra(b: Buf, r: Res, dy: number, view: DollView) {
+  const t = r.top
+  if (t.extra !== 'lifevest' && t.extra !== 'rescue') return
+  const Y = (y: number) => y + dy
+  const f = r.g === 'f'
+  if (t.extra === 'lifevest') {
+    for (const y of view === 'front' ? [27] : [28]) {
+      const sp = torsoSpan(r, y)
+      if (!sp) continue
+      for (let x = sp[0]; x <= sp[1]; x++) put(b, x, Y(y), '#2e2840')
+    }
+    if (view === 'front') {
+      for (const y of [27, 31]) {
+        put(b, 15, Y(y), '#c9ccda')
+        put(b, 16, Y(y), '#9aa0b0')
+      }
+      // puffy collar behind the neck
+      for (const x of [12, 13, 18, 19]) put(b, x, Y(23), V4.orange.b)
+    }
+    return
+  }
+  // rescue: unit emblem (navy disc, orange cross) on the chest patch / big on the back
+  if (view === 'front') {
+    const px = f ? 16 : 17
+    mapLayer(['.bb.', 'bRRb', 'bRRb', '.bb.'], px, Y(26), { b: V4.navy, R: V4.orange.b }, false).m.forEach((c, i) => put(b, i % IW, Math.floor(i / IW), c))
+  } else {
+    const E = ['...bbbb...', '..bRRRRb..', '.bRRwwRRb.', 'bRwwwwwwRb', 'bRRRwwRRRb', '.bRRwwRRb.', '..bbbbbb..']
+    mapLayer(E, 11, Y(26), { b: V4.navy, R: V4.orange.b, w: '#fbfcff' }).m.forEach((c, i) => put(b, i % IW, Math.floor(i / IW), c))
+  }
+}
+
+/** Swim fins (ตีนกบ): a foot pocket plus a wide ribbed blade spreading outwards. */
+function drawV4Flipper(b: Buf, sh: ShoeArt, view: DollView, X: (i: number) => number) {
+  const m = mat(sh.main, sh.shade)
+  const strap = sh.accent ?? INK
+  const L = new Layer()
+  for (let y = 45; y <= 49; y++) {
+    const [a, z] = y <= 46 ? [0, 3] : y === 47 ? [0, 5] : y === 48 ? [-1, 7] : [-1, 8]
+    for (let i = a; i <= z; i++) {
+      let c = i >= 4 ? (i % 2 ? m.b : m.l) : i === 0 ? m.s : m.b
+      if (y === 49) c = i >= 4 ? (i % 2 ? m.s : m.b) : sh.sole ?? m.d
+      if (y === 46 && view === 'front') c = strap
+      L.put(X(i), y, c)
+    }
+  }
+  commit(b, L, m.d, TAG.cloth)
+  if (view === 'front') b.put(X(2), 47, m.l, TAG.cloth)
+}
+
+// ---- suits ------------------------------------------------------------------
+
+Object.assign(TAILS, {
+  hippo: { pts: [[0, 0], [1, 3]], r0: 1.2, r1: 0.7 },
+  monitor: { pts: [[0, 0], [3, 5], [8, 8], [14, 8], [17, 5]], low: [[0, 0], [5, 2], [11, 3], [16, 2], [18, 0]], r0: 2.8, r1: 0.6 },
+  butterbear: { pts: [[0, 0], [0.5, 1]], r0: 2.2, r1: 1.8 },
+} satisfies Partial<Record<SuitKind, TailDef>>)
+for (const k of ['hippo', 'monitor', 'capybara', 'butterbear'] as SuitKind[]) SUIT_FRINGE.add(k)
+Object.assign(SUIT_RIM, {
+  scuba: { w: 1.4, col: (p: SPal) => p.b, line: (p: SPal) => mix(p.B, INK, 0.3) },
+  monitor: { w: 1.1, col: (p: SPal, x: number, y: number) => (y > 16 ? ((x + y) % 3 === 0 ? p.B : p.b) : null) },
+} satisfies Partial<typeof SUIT_RIM>)
+
+const V4_SUIT_KINDS = new Set<SuitKind>(['scuba', 'rescue', 'hippo', 'monitor', 'capybara', 'butterbear'])
+
+/** Hood decorations of the v4 suits ('behind' pokes out behind the hood). */
+function drawV4SuitHood(b: Buf, r: Res, p: SPal, view: DollView, dy: number, stage: 'behind' | 'over'): boolean {
+  if (!V4_SUIT_KINDS.has(r.suit!.kind)) return false
+  v4SuitHood(b, r, p, view, dy, stage)
+  return true
+}
+
+function v4SuitHood(b: Buf, r: Res, p: SPal, view: DollView, dy: number, stage: 'behind' | 'over') {
+  const s = r.suit!
+  const front = view === 'front'
+  const Y = (y: number) => y + dy
+  const beh = stage === 'behind'
+  switch (s.kind) {
+    case 'scuba': {
+      if (beh) return
+      if (front) {
+        // mask frame with glass glints (the eyes stay visible)
+        const M = new Layer()
+        for (let y = 13; y <= 20; y++)
+          for (let x = 7; x <= 24; x++) {
+            const u = (x + 0.5 - 15.5) / 9
+            const v = (y + 0.5 - 16.8) / 4.2
+            const d = u * u + v * v
+            if (d > 1 || d < 0.62) continue
+            M.put(x, Y(y), y <= 14 ? p.a : '#2d3650')
+          }
+        M.put(15, Y(14), '#2d3650'); M.put(16, Y(14), '#2d3650')
+        M.put(9, Y(15), p.c); M.put(10, Y(15), '#ffffff'); M.put(20, Y(15), p.c)
+        commit(b, M, '#141826', TAG.deco)
+        // snorkel on the right side
+        smap(b, ['.aa', '.aA', '.aA', '.aA', '.aA', '.aA', '.aA', '.aA', '.aA', 'aaA', 'kk.'], 24, Y(4), p, mix(p.A, INK, 0.4))
+      } else {
+        for (let y = 4; y <= 14; y++) b.put(y % 2 ? 15 : 16, Y(y), p.b, TAG.deco)
+        smap(b, ['aa.', 'Aa.', 'Aa.', 'Aa.', 'Aa.', 'Aa.', 'Aa.', 'Aa.'], 5, Y(4), p, mix(p.A, INK, 0.4))
+      }
+      return
+    }
+    case 'hippo': {
+      if (beh) return
+      const EAR = ['.mm.', 'mppm', 'mppm', '.mm.']
+      smap(b, front ? EAR : EAR.map((row) => row.replace(/p/g, 'm')), 7, Y(1), { ...p, p: p.a }, p.d, { pair: true })
+      if (front) {
+        // eye bumps, nostrils and blush on the hood
+        for (const x of [10, 20]) {
+          b.put(x, Y(5), p.k, TAG.deco); b.put(x + 1, Y(5), p.k, TAG.deco); b.put(x, Y(5), p.W, TAG.deco)
+        }
+        for (const x of [14, 17]) b.put(x, Y(8), p.d, TAG.deco)
+        for (const [x, y] of [[4, 17], [5, 17], [4, 18], [26, 17], [27, 17], [27, 18]] as Pt[]) b.put(x, Y(y), p.a, TAG.deco)
+      }
+      return
+    }
+    case 'monitor': {
+      if (beh) return
+      if (front) {
+        // snout ridge with nostrils, beady eyes, a flicking forked tongue
+        smap(b, ['.mmmm.', 'mmllmm', 'mkmmkm'], 13, Y(1), p, p.d)
+        for (const x of [8, 22]) smap(b, ['mmm', 'mWk', 'mkk'], x, Y(5), p, p.d)
+        smap(b, ['..c..', '..c..', '.c.c.'], 13, Y(4), p, mix(p.c, INK, 0.3))
+        for (const [x, y] of [[6, 11], [25, 11], [5, 15], [26, 15]] as Pt[]) b.put(x, Y(y), p.a, TAG.deco)
+      } else for (const y of [3, 7, 11, 15]) for (let x = 12; x <= 19; x++) if ((x + y) % 3 === 0) b.put(x, Y(y), p.a, TAG.deco)
+      return
+    }
+    case 'capybara': {
+      if (beh) {
+        // the famous yuzu balanced on top, with a leaf
+        smap(b, ['...gg.', '.aaag.', 'aeaaaA', 'aaaaAA', '.aAAA.'], 13, Y(-2), p, mix(p.A, INK, 0.4))
+        return
+      }
+      smap(b, ['mm.', 'mpm', '.m.'].map((row) => (front ? row : row.replace('p', 'm'))), 6, Y(3), { ...p, p: p.d }, p.d, { pair: true })
+      if (front) {
+        // calm half-closed eyes and a big square nose on the hood
+        for (const x of [10, 20]) { b.put(x, Y(7), p.k, TAG.deco); b.put(x + 1, Y(7), p.k, TAG.deco) }
+        smap(b, ['.dddd.', 'dkddkd', '.dddd.'], 13, Y(8), p, null)
+      }
+      return
+    }
+    case 'butterbear': {
+      if (beh) return
+      const EAR = front ? ['.mmm.', 'mbbbm', 'mbbbm', '.mmm.'] : ['.mmm.', 'mmmmm', 'mmmmm', '.mmm.']
+      smap(b, EAR, 4, Y(1), p, p.d, { pair: true })
+      if (front) {
+        // blue ribbon on one ear, round eyes and a little snout on the hood
+        smap(b, ['aa.aa', 'aAaAa', '.aaa.', 'a...a'], 21, Y(-1), p, mix(p.A, INK, 0.4))
+        for (const x of [10, 20]) { b.put(x, Y(7), p.k, TAG.deco); b.put(x + 1, Y(7), p.k, TAG.deco); b.put(x, Y(8), p.k, TAG.deco); b.put(x + 1, Y(8), p.k, TAG.deco); b.put(x, Y(7), p.W, TAG.deco) }
+        smap(b, ['.bbbb.', 'bbkkbb', '.bbbb.'], 13, Y(8), p, mix(p.B, INK, 0.3))
+        for (const x of [6, 25]) b.put(x, Y(10), p.p, TAG.deco)
+      }
+      return
+    }
+  }
+}
+
+/** Belly panels, chest emblems and back gear of the v4 suits. */
+function drawV4SuitBody(b: Buf, r: Res, p: SPal, view: DollView, dy: number, standing: boolean): boolean {
+  if (!V4_SUIT_KINDS.has(r.suit!.kind)) return false
+  v4SuitBody(b, r, p, view, dy, standing)
+  return true
+}
+
+function v4SuitBody(b: Buf, r: Res, p: SPal, view: DollView, dy: number, standing: boolean) {
+  const s = r.suit!
+  const Y = (y: number) => y + dy
+  const front = view === 'front'
+  const onCloth = (L: Layer) => {
+    for (const i of [...L.m.keys()]) if (b.c[i] === null || b.t[i] !== TAG.cloth) L.m.delete(i)
+    return L
+  }
+  const belly = (rx: number, ry: number, cy: number, col: (x: number, y: number, u: number, v: number) => string | null) => {
+    const L = ellLayer(15.5, Y(cy), rx, ry, col)
+    const yMax = Y(standing ? 37 : 36)
+    for (const i of [...L.m.keys()]) if (Math.floor(i / IW) > yMax) L.m.delete(i)
+    commit(b, onCloth(L), mix(p.B, INK, 0.25), TAG.cloth)
+  }
+  switch (s.kind) {
+    case 'scuba': {
+      if (front) {
+        // air tank peeking out behind the shoulders
+        const T = mapLayer(['.aa.', 'aeaA', 'aaaA', 'kkkk', 'aaaA'], 22, Y(21), p)
+        mapLayer(['.aa.', 'aeaA', 'aaaA', 'kkkk', 'aaaA'], 6, Y(21), p, false, T)
+        commitBehind(b, T, mix(p.A, INK, 0.4))
+        // teal side panels and a chest zip
+        const Z = new Layer()
+        for (let y = 25; y <= 36; y++) {
+          Z.put(11, Y(y), p.b)
+          Z.put(20, Y(y), p.b)
+          if (y <= 33) Z.put(16, Y(y), y % 2 ? '#8a94a8' : '#c9d3e0')
+        }
+        commit(b, onCloth(Z), null, TAG.cloth)
+      } else {
+        // yellow air tank with black straps
+        smap(b, ['..kk..', '.aeaa.', 'aeaaaA', 'aeaaaA', 'kkkkkk', 'aeaaaA', 'aeaaaA', 'aeaaaA', 'kkkkkk', 'aeaaaA', '.aaaA.'], 13, Y(24), p, mix(p.A, INK, 0.4))
+      }
+      return
+    }
+    case 'rescue': {
+      const R = new Layer()
+      for (const y of front ? [30, 31] : [31, 32]) {
+        const sp = torsoSpan(r, y)
+        if (!sp) continue
+        for (let x = sp[0]; x <= sp[1]; x++) R.put(x, Y(y), y % 2 ? '#c9d3e0' : V4.refl)
+      }
+      commit(b, onCloth(R), null, TAG.cloth)
+      if (front) {
+        const f = r.g === 'f'
+        smap(b, ['.bb.', 'bRRb', 'bRRb', '.bb.'], f ? 16 : 17, Y(25), { b: V4.navy, R: '#fbfcff' }, null)
+        for (let x = f ? 12 : 11; x <= (f ? 14 : 13); x++) put(b, x, Y(27), '#fbfcff')
+      } else smap(b, ['...bbbb...', '..bRRRRb..', '.bRRwwRRb.', 'bRwwwwwwRb', '.bRRwwRRb.', '..bbbbbb..'], 11, Y(24), { b: V4.navy, R: V4.orange.l, w: '#fbfcff' }, null)
+      return
+    }
+    case 'hippo':
+    case 'capybara':
+    case 'butterbear':
+      if (front) belly(s.kind === 'hippo' ? 5 : 4.4, s.kind === 'hippo' ? 6.4 : 5.6, 33, (_x, _y, u) => (u > 0.6 ? p.B : p.b))
+      if (front && s.kind === 'butterbear') smap(b, ['aa..aa', 'aAaaAa', 'aa..aa'], 13, Y(24), p, mix(p.A, INK, 0.4))
+      return
+    case 'monitor':
+      if (front) belly(4, 6.6, 33, (_x, y) => ((y - dy) % 2 === 0 ? p.B : p.b))
+      else for (const y of [26, 30, 34]) smap(b, ['.a.a.', 'a.a.a'], 13, Y(y), p, null)
+      return
+  }
+}
+
+/** Crowns of v4 'crown' suits (the rescue suit's built-in helmet). */
+function drawV4SuitCrown(b: Buf, r: Res, view: DollView, dy: number) {
+  if (r.suit!.kind === 'rescue') drawV4Head(b, r, 'rescuehelmet', view, dy, 'over')
+}
+
+function drawV4SuitCrownBow(b: Buf, r: Res) {
+  if (r.suit!.kind !== 'rescue') return false
+  smap(b, ['...wwww...', '.wwwrrwww.', 'wwwwrrwwww', 'kkkkkkkkkk'], 11, 20, { w: '#fbfcff', r: V4.orange.b, k: '#3a3547' }, '#8a8496')
+  return true
+}
+
+/** v4 suit bits on the prostration mound. */
+function drawV4SuitBow(b: Buf, r: Res, p: SPal, stage: 'crown' | 'back'): boolean {
+  const k = r.suit!.kind
+  if (!V4_SUIT_KINDS.has(k)) return false
+  if (stage === 'crown') {
+    if (k === 'hippo') smap(b, ['.mm.', 'mmmm', '.mm.'], 8, 22, p, p.d, { pair: true })
+    if (k === 'capybara') smap(b, ['..gg', 'aaag', 'aeaA', '.AA.'], 14, 18, p, mix(p.A, INK, 0.4))
+    if (k === 'butterbear') smap(b, ['.mmm.', 'mmmmm', '.mmm.'], 7, 21, p, p.d, { pair: true })
+    if (k === 'monitor') for (const x of [11, 15, 19]) b.put(x, 24, p.a, TAG.deco)
+    return true
+  }
+  if (k === 'scuba') smap(b, ['.aeaa.', 'aeaaaA', 'kkkkkk', 'aeaaaA', '.aaaA.'], 13, 29, p, mix(p.A, INK, 0.4))
+  if (k === 'rescue') for (let x = 7; x <= 24; x++) if (b.tag(x, 36) === TAG.cloth) b.put(x, 36, V4.refl, TAG.cloth)
   return true
 }
 

@@ -1490,6 +1490,144 @@ Object.assign(ACC, {
   },
 } satisfies Record<string, AccArt>)
 
+// ---- v4 cosmetics (packs, battle pass, pop-culture drop) ----------------------
+
+const ELE_PAL = { g: '#ffd54f', r: '#d8434f', m: '#aaa5c8', e: '#8a84ab', E: '#ffc4d8', k: '#2a1a2c', T: '#aaa5c8', t: '#8a84ab' }
+
+Object.assign(ACC, {
+  // head
+  elephanthat: {
+    front: { y: -3, rows: ['.......gg.......', '......grrg......', '....mmmmmmmm....', '..emmmmmmmmmme..', 'eemmkmmmmmmkmmee', 'eEmmmmmTTmmmmmEe', 'eErgrgrTTrgrgrEe', 'eE.....TT.....Ee', '.e......Tt....e.', '.........T......'] },
+    back: { y: -3, rows: ['.......gg.......', '......grrg......', '....mmmmmmmm....', '..emmmmmmmmmme..', 'eemmmmmmmmmmmmee', 'eemmmmmmmmmmmmee', 'eergrgrgrgrgrgee', 'ee....rggr....ee', '.e....rrrr....e.', '......grrg......'] },
+    side: { y: -3, rows: ['......gg........', '.....grrg.......', '....mmmmmmmm....', '..emmmmmmmmmm...', '.eemmmmmmmkmm...', '.eEmmmmmmmmmmT..', '.eErgrgrgrgrgT..', '.eE..........T..', '..e..........Tt.', '.............t..'] },
+    pal: ELE_PAL,
+  },
+  basin: {
+    front: { y: -2, rows: ['.....ssssss.....', '....sWsssssd....', '...sWsssssssd...', '..sWssssssssdd..', 'llllllllllllllll', '.dddddddddddddd.', '.r............r.', '.r............r.'] },
+    back: { y: -2, rows: ['.....ssssss.....', '....sssssssd....', '...sssWssssssd..', '..ssssWsssssdd..', 'llllllllllllllll', '.dddddddddddddd.', '.r............r.', '.r............r.'] },
+    side: { y: -2, rows: ['.....ssssss.....', '....sWsssssd....', '...sWsssssssd...', '..sWssssssssdd..', 'llllllllllllllll', '.dddddddddddddd.', '........r.......', '........r.......', '.........r......', '.........r......'] },
+    pal: { s: '#c9d3e0', W: '#f8fbff', d: '#8a96a8', l: '#eef3fa', r: '#ff5fa8' },
+  },
+  rescuehelmet: {
+    front: { y: -1, rows: ['.....wwwwww.....', '...wwwwyywwww...', '..wWwwkyykwwww..', '.wWwwwwrrwwwwwd.', '.aaaaaaaaaaaaaa.', '.wwwwwwrrwwwwwd.', '.kkkkkkkkkkkkkk.', ...HELMET_STRAP] },
+    back: { y: -1, rows: ['.....wwwwww.....', '...wwwwrrwwww...', '..wWwwwrrwwwww..', '.wWwwwwrrwwwwwd.', '.aaaaaaaaaaaaaa.', '.wwwwwwrrwwwwwd.', '.kkkkkkkkkkkkkk.'] },
+    side: { y: -1, rows: ['.....wwwwww.....', '...wwwwwwwyy....', '..wWrrrrrrrryk..', '.wWwwwwwwwwwwwd.', '.aaaaaaaaaaaaaa.', '.wwwwwwwwwwwwkk.', '.kkkkkkkkkkk....', '.......k........', '.......k........', '........k.......'] },
+    pal: { w: '#fbfcff', W: '#ffffff', r: '#ff7a1a', d: '#c9ccda', k: '#3a3547', y: '#ffe45e', a: '#dfe8f5' },
+  },
+  tomyum: {
+    front: { y: -4, rows: ['.......kk.......', '.r....bkbl....r.', 'rRoooobkboooooRr', 'r.bbbbbbbbbbbb.r', '...bBbbbbbbbd...', '...bbbbbbbbbd...', '....dddddddd....'] },
+    back: { y: -4, rows: ['.......kk.......', '.r....bkb.....r.', 'rRoooobkboooooRr', 'r.bbbbbbbbbbbb.r', '...bbbbbbbbbd...', '...bbbbbbbbbd...', '....dddddddd....'] },
+    side: { y: -4, rows: ['.......kk.......', '.r....bkbl......', 'rRoooobkbooooo..', 'r.bbbbbbbbbbbb..', '...bBbbbbbbbd...', '...bbbbbbbbbd...', '....dddddddd....'] },
+    pal: { k: '#6e4a35', b: '#e9b949', B: '#fff0a0', d: '#b8802a', o: '#f0662e', r: '#f0662e', R: '#ffa060', l: '#86c95f' },
+  },
+  mangohat: {
+    front: { y: -4, rows: ['..........g.....', '......yyyyyy....', '.....yYyyyyyo...', '...wwwyyyyyo....', '..wcwwwwwwwwd...', '.wwwjwwwjwwwwd..', 'gggggggggggggggg', '.GGGGGGGGGGGGGG.'] },
+    back: { y: -4, rows: ['.....g..........', '....yyyyyy......', '...oyyyyyYy.....', '....oyyyyywww...', '...dwwwwwwwwcw..', '..dwwwwjwwwjwww.', 'gggggggggggggggg', '.GGGGGGGGGGGGGG.'] },
+    side: { y: -4, rows: ['..........g.....', '......yyyyyy....', '.....yYyyyyyo...', '...wwwyyyyyo....', '..wcwwwwwwwwd...', '.wwwjwwwjwwwwd..', 'gggggggggggggggg', '.GGGGGGGGGGGGGG.'] },
+    pal: { y: '#ffc93c', Y: '#ffe68a', o: '#e9a53a', w: '#fbfcff', c: '#fff8e8', j: '#ffd54f', d: '#dfe3ee', g: '#5ea653', G: '#3f7f45' },
+  },
+  mookata: {
+    front: { y: -3, rows: ['.......ff.......', '.....kpwkk......', '....kkkkkpwk....', '...kkkkkkkkkk...', '..kkpwkkkkkkkk..', 'oovoowooovoowooo', '.nnnnnnnnnnnnnn.'] },
+    back: { y: -3, rows: ['.......ff.......', '......kkpwk.....', '....kpwkkkkk....', '...kkkkkkkkkk...', '..kkkkkkkpwkkk..', 'oowoovoowoovoooo', '.nnnnnnnnnnnnnn.'] },
+    side: { y: -3, rows: ['.......ff.......', '.....kpwkk......', '....kkkkkpwk....', '...kkkkkkkkkk...', '..kkpwkkkkkkkk..', 'oovoowooovoowooo', '.nnnnnnnnnnnnnn.'] },
+    pal: { f: '#fff0b0', k: '#4a4458', p: '#f08a8a', w: '#fff0f0', o: '#d98a3a', v: '#5ea653', n: '#35303f' },
+  },
+  platu: {
+    front: { y: -2, rows: ['..bbb.TTTT.bbb..', '.bssssT..Tssssb.', '.ks..........sk.', '..wwwwwwwwwwww..'] },
+    back: { y: -2, rows: ['..bbb.TTTT.bbb..', '.bbbbbT..Tbbbbb.', '.kb..........bk.', '..wwwwwwwwwwww..'] },
+    side: { y: -2, rows: ['......bbb.TT....', '.....bssssT.....', '.....ks.........', '..wwwwwwwwwwww..'] },
+    pal: { b: '#5f7890', s: '#c9d6e6', k: '#2e3a4a', T: '#8a9cb0', w: '#c9a06b' },
+  },
+  malaibun: {
+    front: { y: -3, rows: ['......hhhh......', '.....hHhhhh.....', '.....wowrow.....', '............ow..', '.............w..', '.............w..', '.............r..'] },
+    back: { y: -3, rows: ['......hhhh......', '.....hHhhhhh....', '.....hhhhhhh....', '....wowrowow....', '.......ww.......', '.......wo.......', '.......ww.......', '.......rr.......'] },
+    side: { y: -3, rows: ['.....hhhh.......', '....hHhhhh......', '....wowrow......', '...ow...........', '...w............', '...r............'] },
+    pal: { h: '#3a2a2e', H: '#6a5058', w: '#fffaf0', o: '#ffb02e', r: '#e8514a' },
+  },
+  curlers: {
+    front: { y: -2, rows: ['......pppp......', '...bbb....yyy...', '..bbbb.mm.yyyy..', '...........ppp..', '.yy............'] },
+    back: { y: -2, rows: ['......pppp......', '...bbb....yyy...', '..bbbb.mm.yyyy..', '...mmm.pp.bbb...', '..yyy.bbb.mmmm..', '...pp.yyy.ppp...'] },
+    side: { y: -2, rows: ['.....pppp.......', '...bbb...yyy....', '..bbbb.mm.yyy...', '.pp.............'] },
+    pal: { p: '#ff9fc0', b: '#8fc4ff', y: '#ffe45e', m: '#7fd3b5' },
+  },
+  hippoears: {
+    front: { y: -1, rows: ['..gg........gg..', '.gpg........gpg.', '..gggggggggggg..'] },
+    back: { y: -1, rows: ['..gg........gg..', '.ggg........ggg.', '..gggggggggggg..'] },
+    side: { y: -1, rows: ['.....gg.........', '....gpg.........', '..gggggggggggg..'] },
+    pal: { g: '#a99db8', p: '#ff9fc0' },
+  },
+
+  // neck
+  whistle: {
+    front: { y: 13, rows: ['....o......o....', '.....o....o.....', '......oooo......', '......OOOk......'] },
+    side: { y: 13, rows: ['.........o......', '..........oo....'] },
+    back: { y: 13, rows: ['.....oooooo.....'] },
+    pal: { o: '#ff8a2a', O: '#ffc080', k: '#3a2838' },
+  },
+  saimu: {
+    front: { y: 13, rows: ['....rn....gb....', '.....yo..pv.....', '......gGGb......', '.......vv.......'] },
+    side: { y: 13, rows: ['.........rn.....', '..........yG....', '..........v.....'] },
+    back: { y: 13, rows: ['....rnygbvpr....'] },
+    pal: { r: '#e8514a', n: '#ffb02e', y: '#ffe45e', g: '#5ea653', b: '#5a8de0', v: '#9a70dc', p: '#ff9fc0', G: '#e9a53a' },
+  },
+  sabaigenz: {
+    front: { y: 13, rows: ['....ss..........', '.....sy.........', '......ss........', '.......ys.......', '........ss......'] },
+    side: { y: 13, rows: ['.......ss.......', '........ys......', '.........ss.....'] },
+    back: { y: 13, rows: ['..........ss....', '.........ys.....', '........ss......', '.......ys.......', '..........ss....', '..........ys....'] },
+    pal: { s: '#8a4fd6', y: '#ffd54f' },
+  },
+  towel: {
+    front: { y: 12, rows: ['.....bwbwbw.....', '.....w....b.....', '.....b....w.....', '.....w..........'] },
+    side: { y: 12, rows: ['......bwbwb.....', '..........w.....', '..........b.....'] },
+    back: { y: 12, rows: ['.....bwbwbw.....', '.....wbwbwb.....'] },
+    pal: { b: '#5ab4e8', w: '#fbfcff' },
+  },
+
+  // hand
+  bailer: {
+    front: { y: 16, rows: ['...........pppp.', '..........hpPPpp', '............pps.', '..............w.'] },
+    side: { y: 16, rows: ['..........pppp..', '.........hpPPpp.', '...........pps..'] },
+    back: { y: 16, rows: ['.pppp...........', 'ppPPph..........', '.spp............'] },
+    pal: { p: '#ff7eb6', P: '#ffb3d6', s: '#d9508f', h: '#ff7eb6', w: '#9fd8ff' },
+  },
+  megaphone: {
+    front: { y: 13, rows: ['..............rw', '............wwrW', '...........kwwrW', '............wwrW', '............k.rw', '............k...'] },
+    side: { y: 13, rows: ['.............rw.', '...........wwrW.', '..........kwwrW.', '...........wwrW.', '...........k.rw.'] },
+    back: { y: 13, rows: ['wr..............', 'Wrww............', 'Wrwwk...........', 'Wrww............', 'wr.k............'] },
+    pal: { w: '#fbfcff', W: '#d9dfec', r: '#e8514a', k: '#6a6478' },
+  },
+  lotusbouquet: {
+    front: { y: 9, rows: ['............p...', '...........pPp.p', '..........p.p.pP', '..........pPg.g.', '...........gcg..', '...........ccc..', '............c...'] },
+    side: { y: 9, rows: ['...........p....', '..........pPp.p.', '.........p.p.pP.', '.........pPg.g..', '..........gcg...', '..........ccc...'] },
+    back: { y: 9, rows: ['...p............', 'p.pPp...........', 'Pp.p.p..........', '.g.gPp..........', '..gcg...........', '..ccc...........'] },
+    pal: { p: '#e8709e', P: '#ffc4d8', g: '#43905a', c: '#d9b98a' },
+  },
+  ringlight: {
+    front: { y: 5, rows: ['............www.', '...........w...w', '...........w.b.w', '...........w...w', '............www.', '.............k..', '.............k..', '............k...', '............k...', '............k...'] },
+    side: { y: 5, rows: ['..........www...', '.........w...w..', '.........w.b.w..', '.........w...w..', '..........www...', '...........k....', '...........k....', '..........k.....', '..........k.....'] },
+    back: { y: 5, rows: ['.www............', 'w...w...........', 'w.b.w...........', 'w...w...........', '.www............', '..k.............', '..k.............', '...k............', '...k............'] },
+    pal: { w: '#fffbe6', b: '#3a3547', k: '#6a6478' },
+  },
+  jellybag: {
+    front: { y: 16, rows: ['...........h..h.', '...........h..h.', '...........mmmmm', '...........mWgmM', '...........mmmmM'] },
+    side: { y: 16, rows: ['.......h..h.....', '.......h..h.....', '......mmmmm.....', '......mWgmM.....', '......mmmmM.....'] },
+    back: { y: 16, rows: ['.h..h...........', '.h..h...........', 'mmmmm...........', 'mWgmM...........', 'mmmmM...........'] },
+    pal: { h: '#ff9fc0', m: '#aef0e0', M: '#7fd8c2', W: '#ffffff', g: '#ffd54f' },
+  },
+  dubaichoc: {
+    front: { y: 12, rows: ['............gg..', '............cgg.', '............cCc.', '............cCc.', '............ff..'] },
+    side: { y: 12, rows: ['...........gg...', '...........cgg..', '...........cCc..', '...........cCc..', '...........ff...'] },
+    back: { y: 12, rows: ['..gg............', '.ggc............', '.cCc............', '.cCc............', '..ff............'] },
+    pal: { c: '#6e4228', C: '#8a5634', g: '#9ccf5a', f: '#e9b949' },
+  },
+  krapaobox: {
+    front: { y: 15, rows: ['............wY..', '...........bgwwb', '...........kkkkk', '............KKK.'] },
+    side: { y: 15, rows: ['...........wY...', '..........bgwwb.', '..........kkkkk.', '...........KKK..'] },
+    back: { y: 15, rows: ['..Yw............', 'bwwgb...........', 'kkkkk...........', '.KKK............'] },
+    pal: { w: '#fffaf0', Y: '#ffb02e', b: '#8a5a3a', g: '#43905a', k: '#c9a06b', K: '#a8804e' },
+  },
+} satisfies Record<string, AccArt>)
+
 // ---- back slot ---------------------------------------------------------------
 
 interface BackPart {
@@ -1565,6 +1703,65 @@ const BACK: Record<string, BackArt> = {
     pal: { w: '#f4f5fa', W: '#c9ccda', k: '#8a8496', r: '#e8514a', g: '#5ee0a0' },
   },
 }
+
+// ---- v4 back items ------------------------------------------------------------
+
+/** A 1px-wide diagonal pole (with a wider blade at the far end) as 16-wide rows. */
+function poleRows(x0: number, y0: number, x1: number, y1: number, bladeFrom: number, top: string, blade: string, pole: string): { y: number; rows: string[] } {
+  const n = y1 - y0
+  const rows: string[] = []
+  for (let j = 0; j <= n; j++) {
+    const x = Math.round(x0 + ((x1 - x0) * j) / n)
+    const row = new Array(16).fill('.')
+    const t = j / n
+    if (t >= bladeFrom) {
+      for (let w = -1; w <= 1; w++) if (x + w >= 0 && x + w < 16) row[x + w] = blade
+    } else row[x] = j === 0 ? top : pole
+    rows.push(row.join(''))
+  }
+  return { y: y0, rows }
+}
+
+const PADDLE_FRONT = poleRows(13, 5, 2, 22, 0.72, 'k', 'b', 'w')
+const PADDLE_BACK = poleRows(2, 5, 13, 22, 0.72, 'k', 'b', 'w')
+
+Object.assign(BACK, {
+  duckring: {
+    front: { y: 15, over: true, rows: ['.yy.............', 'oyk.............', '.yy.............', '.yllllllllllll..', 'yyyyyyyyyyyyyyy.', '.ssssssssssssss.'] },
+    back: { y: 15, over: true, rows: ['.............yy.', '.............yyy', '.............yy.', '..llllllllllllly', '.yyyyyyyyyyyyyyy', '.ssssssssssssss.'] },
+    side: { y: 15, over: true, rows: ['...........yy...', '...........kyo..', '...........yy...', '...llllllllll...', '..yyyyyyyyyyy...', '..sssssssssss...'] },
+    bow: { y: 20, over: true, rows: ['.llllllllllllll.', 'yyyyyyyyyyyyyyyy'] },
+    pal: { y: '#ffd23f', l: '#fff3a6', s: '#e0a820', o: '#ff8a2a', k: '#2a1a2c' },
+  },
+  rescuetube: {
+    front: { y: 13, over: true, rows: ['.........k......', '........k.......', '.......k........', '......k.........', '.....k..........'] },
+    back: { y: 12, over: true, rows: ['......rrww......', '.....r....w.....', '....r......w....', '....w......r....', '....w......r....', '.....w....r.....', '......wwrr......'] },
+    side: { y: 12, rows: ['..rw............', '.r..............', '.w..............', '.w..............', '.r..............', '..wr............'] },
+    bow: { y: 15, over: true, rows: ['......rrww......', '.....r....w.....', '.....w....r.....', '......wwrr......'] },
+    pal: { r: '#e8514a', w: '#fbfcff', k: '#e0d6c0' },
+  },
+  paddle: {
+    front: PADDLE_FRONT,
+    back: { ...PADDLE_BACK, over: true },
+    side: { y: 5, rows: poleRows(2, 5, 3, 22, 0.72, 'k', 'b', 'w').rows },
+    bow: { y: 12, over: true, rows: ['..w.............', '...w............', '....w...........', '.....w..........', '......w.........', '.......bb.......', '........bb......'] },
+    pal: { w: '#c28e5c', b: '#e0b27a', k: '#6e4a35' },
+  },
+  thaiteabag: {
+    front: { ...BAG_STRAPS, rows: BAG_STRAPS.rows },
+    back: { y: 8, over: true, rows: ['...........p....', '...........w....', '..........p.....', '..........p.....', '.........w......', '.....wwwwww.....', '.....oOoooo.....', '.....oooooo.....', '.....OOOOOO.....', '.....OkOkOO.....', '.....kOkOkO.....', '......OOOO......'] },
+    side: { y: 13, rows: ['..ww............', '.oOo............', '.ooo............', '.OOO............', '.kOk............', '..O.............'] },
+    bow: { y: 16, over: true, rows: ['.....wwwwww.....', '.....oOoooo.....', '.....OkOkOO.....'] },
+    pal: { p: '#ff5fa8', w: '#eef6fb', o: '#ffb066', O: '#f58f35', k: '#2e2840' },
+  },
+  blindbox: {
+    front: { y: 16, rows: ['..g.............', '.e.e............', '.fff............', '.kfk............', '.fTf............', '.f.f............'] },
+    back: { y: 13, over: true, rows: ['.....pppppp.....', '.....pPPPPp.....', '.....pppppp.....', '.....ppppppg....', '..........e.e...', '..........fff...', '..........kfk...', '..........fTf...', '..........f.f...'] },
+    side: { y: 14, rows: ['.pppp...........', '.pPPp...........', '.pppp...........', '..g.............', '.e.e............', '.fff............', '.kfk............', '.fTf............'] },
+    bow: { y: 16, over: true, rows: ['.....pppppp.....', '.....pPPPPp.....'] },
+    pal: { p: '#ffb3cf', P: '#e88aae', g: '#ffd54f', e: '#b58a70', f: '#c7a58a', k: '#2a1a2c', T: '#ffffff' },
+  },
+} satisfies Record<string, BackArt>)
 
 /** Golden merit halo (รัศมี) drawn behind everything. */
 function paintAura(ctx: CanvasRenderingContext2D, cx: number, cy: number, rad: number) {
@@ -1926,7 +2123,93 @@ const HOOD_RIM_SIDE = [
 /** Hood crown on the prostration mound (bow pose). */
 const HOOD_BOW = ['......mmmm......', '.....mmmmmm.....', '....mmmmmmms....']
 
+/** v4 suits (spread into SUIT_SM below). */
+const V4_SUIT_SM: Record<'scuba' | 'rescue' | 'hippo' | 'monitor' | 'capybara' | 'butterbear', SuitSm> = {
+  scuba: {
+    rim: 'b',
+    front: [
+      [1, ['.............aa.', '.............aA.', '.............aA.', '.............aA.', '.............aA.', '.............aA.']],
+      [7, ['...kkkkkkkkkk...', '...k..c.....k...', '...k........k...', '...kkkkkkkkkk...']],
+    ],
+    back: [[1, ['.aa.............', '.Aa.............', '.Aa.............', '.Aa.............', '.Aa.............']]],
+    side: [
+      [1, ['..aa............', '..aA............', '..aA............', '..aA............']],
+      [7, ['.........kkkkk..', '.........k.c.k..', '.........k...k..', '.........kkkkk..']],
+    ],
+    bodyFront: [[14, ['.....b....b.....', '.....b....b.....', '.....b....b.....']]],
+    bodyBack: [[13, ['......aaaa......', '......awaa......', '......kkkk......', '......awaA......', '......awaA......', '.......aA.......']]],
+    bodySide: [[13, ['...aa...........', '...aw...........', '...kk...........', '...aA...........']]],
+    bow: [[13, ['......awaa......', '......kkkk......']]],
+  },
+  rescue: {
+    bodyFront: [[14, ['.........cc.....']], [16, ['.....aaaaaa.....']]],
+    bodyBack: [[14, ['......cmmc......']], [16, ['.....aaaaaa.....']]],
+    bodySide: [[16, ['.....aaaaa......']]],
+  },
+  hippo: {
+    fringe: true,
+    front: [
+      [-1, ['...mm......mm...', '...ma......am...']],
+      [2, ['....k......k....']],
+      [4, ['......d..d......']],
+      [9, ['.a............a.']],
+    ],
+    back: [[-1, ['...mm......mm...', '...mm......mm...']]],
+    side: [[-1, ['.....mm.........', '.....ma.........']], [2, ['..........k.....']], [4, ['.............d..']]],
+    bodyFront: [[14, ['......bbbb......', '.....bbbbbb.....', '.....bbbbbb.....', '......bbbb......']]],
+    bodySide: [[14, ['.........bb.....', '.........bbb....', '.........bb.....']]],
+    tail: ['.......mm.......', '........m.......'],
+    tailY: 18,
+    bow: [[12, ['...mm......mm...']]],
+  },
+  monitor: {
+    fringe: true,
+    front: [
+      [-4, ['......c..c......', '.......cc.......', '......mmmm......', '.....mllmmm.....']],
+      [3, ['...k........k...']],
+    ],
+    back: [[-2, ['......mmmm......', '.....mmmmmm.....']], [3, ['.......a........']], [6, ['........a.......']]],
+    side: [[-3, ['..............c.', '.............c..', '.........mmmm...']], [3, ['..........k.....']]],
+    bodyFront: [[14, ['......bbbb......', '......BBBB......', '......bbbb......', '......BBBB......', '......bbbb......']]],
+    bodyBack: [[14, ['.......a........']], [17, ['........a.......']]],
+    bodySide: [[14, ['.........bb.....', '.........BB.....', '.........bb.....']]],
+    tail: ['.......ll.......', '........lla.....', '.........llla...', '..........llll..', '............lll.', '.............ll.'],
+    tailY: 17,
+    bow: [[12, ['......mmmm......']]],
+  },
+  capybara: {
+    fringe: true,
+    front: [
+      [-4, ['.......GG.......', '......aaaG......', '.....aaaaa......', '......aaa.......']],
+      [0, ['.mm..........mm.']],
+      [3, ['....kk....kk....']],
+      [5, ['......dddd......']],
+    ],
+    back: [[-4, ['.......GG.......', '......aaaG......', '.....aaaaa......', '......aaa.......']], [0, ['.mm..........mm.']]],
+    side: [[-4, ['......GG........', '.....aaaG.......', '....aaaaa.......', '.....aaa........']], [0, ['....mm..........']], [3, ['..........kk....']], [5, ['.............dd.']]],
+    bodyFront: [[14, ['......bbbb......', '.....bbbbbb.....', '.....bbbbbb.....', '......bbbb......']]],
+    bodySide: [[14, ['.........bb.....', '.........bbb....', '.........bb.....']]],
+    bow: [[10, ['.......GG.......', '......aaaG......', '......aaa.......']]],
+  },
+  butterbear: {
+    fringe: true,
+    front: [
+      [-2, ['...........aaa..', '..mmm......mmmm.', '..mbm......mbm..']],
+      [3, ['....k......k....']],
+      [5, ['......bkkb......']],
+    ],
+    back: [[-2, ['..aaa...........', '..mmm......mmm..', '..mmm......mmm..']]],
+    side: [[-2, ['........aaa.....', '......mmm.......', '......mbm.......']], [3, ['..........k.....']], [5, ['.............bk.']]],
+    bodyFront: [[13, ['......aaaa......']], [15, ['......bbbb......', '.....bbbbbb.....', '......bbbb......']]],
+    bodySide: [[14, ['.........bb.....', '.........bbb....']]],
+    tail: ['.......mm.......', '.......mm.......'],
+    tailY: 18,
+    bow: [[12, ['..mmm......mmm..']]],
+  },
+}
+
 const SUIT_SM: Record<SuitKind, SuitSm> = {
+  ...V4_SUIT_SM,
   trex: {
     front: [
       [-2, ['.......aa.......', '...ww.aAAa.ww...', '...wk......kw...']],
@@ -2204,6 +2487,12 @@ const SUIT_SM: Record<SuitKind, SuitSm> = {
 
 /** Headdresses of the `crown` suits (hair stays visible). */
 const SUIT_CROWN: Partial<Record<SuitKind, { front: SRows; back: SRows; side: SRows }>> = {
+  // v4: the rescue uniform's built-in safety helmet with a head lamp
+  rescue: {
+    front: [-1, ['.....wwwwww.....', '...wwwwyywwww...', '..wWwwkyykwwww..', '.wwwwwwmmwwwwww.', '.aaaaaaaaaaaaaa.', '.wwwwwwmmwwwwww.', '.kkkkkkkkkkkkkk.']],
+    back: [-1, ['.....wwwwww.....', '...wwwwmmwwww...', '..wWwwwmmwwwww..', '.wwwwwwmmwwwwww.', '.aaaaaaaaaaaaaa.', '.wwwwwwmmwwwwww.', '.kkkkkkkkkkkkkk.']],
+    side: [-1, ['.....wwwwww.....', '...wwwwwwwyy....', '..wWmmmmmmmmyk..', '.wwwwwwwwwwwwww.', '.aaaaaaaaaaaaaa.', '.wwwwwwwwwwwwkk.', '.kkkkkkkkkkk....']],
+  },
   nangkwak: {
     front: [-3, ['.......aa.......', '......aAAa......', '.....aaraaa.....', '....aAaaaaAa....']],
     back: [-3, ['.......aa.......', '......aAAa......', '.....aaaaaa.....', '....aAaaaaAa....']],
@@ -2818,6 +3107,27 @@ function paintAcc(ctx: CanvasRenderingContext2D, id: string | null | undefined, 
   paint(ctx, part.rows, part.y + dy, (k) => art.pal[k] ?? null)
 }
 
+/** v4 swim fins: widen the lowest row of feet outwards (forwards in side view). */
+function paintFins(ctx: CanvasRenderingContext2D, legs: string[], legsY: number, view: View, sh: ShoeArt) {
+  let j = legs.length - 1
+  while (j >= 0 && !legs[j].includes('F')) j--
+  if (j < 0) return
+  const row = legs[j]
+  const y = legsY + j + HEADROOM
+  ctx.fillStyle = sh.shade
+  for (let x = 0; x < row.length; x++) {
+    if (row[x] !== 'F') continue
+    const leftEnd = x === 0 || row[x - 1] !== 'F'
+    const rightEnd = x === row.length - 1 || row[x + 1] !== 'F'
+    if (view === 'side') {
+      if (rightEnd) ctx.fillRect(x + 1, y, 2, 1)
+    } else {
+      if (leftEnd && x < 8) ctx.fillRect(x - 1, y, 1, 1)
+      if (rightEnd && x >= 8) ctx.fillRect(x + 1, y, 1, 1)
+    }
+  }
+}
+
 export interface AvatarRenderOptions {
   barefoot?: boolean
   frame?: number
@@ -2875,6 +3185,7 @@ export function composeAvatar(look: AvatarLook, view: View, pose: Pose, opts: Av
     legs = pose === 'walk1' ? LEGS.frontWalk1 : pose === 'walk2' ? LEGS.frontWalk2 : LEGS.front
   }
   paint(ctx, legs, legsY, lcol)
+  if (!r.barefoot && r.shoes?.kind === 'flipper' && pose !== 'kneel' && pose !== 'sit') paintFins(ctx, legs, legsY, view, r.shoes)
   if (pose !== 'kneel' && pose !== 'sit') paintBottomOverlay(ctx, r, view, legsY)
 
   // Torso.
@@ -2954,7 +3265,7 @@ export function avatarPortrait(look: AvatarLook): Sprite {
   return cached(key, () => {
     const full = avatarSprite(look, 'front', 'stand')
     // Crop an 18×18 square around the head (skipping the headroom rows).
-    const tall = ['ngob', 'lotus', 'chefhat', 'chada', 'likay', 'bunnyears', 'spacehelmet', 'helmetcute', 'sleepcap', 'yakhat', 'chadaprang', 'ngobpomelo', 'pineapple', 'gamecock', 'doibeanie', 'carriagehat']
+    const tall = ['elephanthat', 'tomyum', 'mangohat', 'mookata', 'malaibun', 'curlers', 'ngob', 'lotus', 'chefhat', 'chada', 'likay', 'bunnyears', 'spacehelmet', 'helmetcute', 'sleepcap', 'yakhat', 'chadaprang', 'ngobpomelo', 'pineapple', 'gamecock', 'doibeanie', 'carriagehat']
     const top = look.hair === 'hair_bun' || look.hair === 'hair_jook' || !!look.suit || tall.includes(OUTFIT_BY_ID[look.head ?? '']?.acc ?? '') ? 1 : 3
     const c = createCanvas(18, 18)
     const ctx = c.getContext('2d')!
