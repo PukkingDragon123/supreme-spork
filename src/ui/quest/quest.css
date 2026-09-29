@@ -516,6 +516,14 @@
   animation: qt-glow 1.4s ease-in-out infinite;
 }
 
+.qt-pill.hint .qt-main {
+  background: rgba(40, 24, 14, 0.72);
+}
+
+.qt-pill.hint .qt-mark {
+  animation: bob 1.2s ease-in-out infinite;
+}
+
 @keyframes qt-glow {
   50% {
     box-shadow:

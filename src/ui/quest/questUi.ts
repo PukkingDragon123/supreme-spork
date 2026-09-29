@@ -229,6 +229,11 @@ export function navigateQuest(id: string) {
     return
   }
   if (!step) return goToSpot(def.map, def.giver)
+  if (step.event === 'trade' || step.nav === 'market') {
+    closeUi()
+    panel.value = 'market'
+    return
+  }
   if (t.map) return goToSpot(t.map, spotFor(t.map, step, t.hotspot))
   // Doable anywhere: prefer a spot right here, else the giver's map.
   const here = mode.value === 'world' ? spotFor(mapId.value, step, t.hotspot) : null
