@@ -55,6 +55,9 @@ export const SNACKS: Snack[] = [
 
 export const SNACK_BY_ID: Record<string, Snack> = Object.fromEntries(SNACKS.map((s) => [s.id, s]))
 
+/** First-person stall look (src/ui/stall). */
+export type StallKind = 'icecream' | 'amulet' | 'noodle' | 'mart' | 'souvenir' | 'snack' | 'costume' | 'teahouse' | 'rooster'
+
 export interface PlaceShop {
   id: string
   name: string
@@ -64,6 +67,14 @@ export interface PlaceShop {
   snacks: string[]
   /** The 7-บุญ convenience store also sells groceries / alms items. */
   mart?: boolean
+  /** Stall look; derived from the id / place / snacks when absent (see game/stalls.ts). */
+  kind?: StallKind
+  /** Collectible ids always in stock here, on top of the daily rotation. */
+  collectibles?: string[]
+  /** How many random collectibles roll into today's stock (default depends on the kind). */
+  rotation?: number
+  /** Extra NPC lines for the reply choices (mixed in with the defaults). */
+  lines?: { recommend?: string[]; haggle?: string[]; thanks?: string[]; buy?: string[] }
 }
 
 /** Hand-authored stalls (the rest fall back to `genericShop`). */
@@ -111,6 +122,11 @@ export const PLACE_SHOPS: Record<string, PlaceShop> = {
   kham_chanod_offerings: { id: 'kham_chanod_offerings', name: 'ของถวายพ่อปู่', npc: 'ป้าบุญมี', greeting: 'บายศรี มาลัยดาวเรือง น้ำแดง ถวายพญานาคจ้า', place: 'kham_chanod', snacks: ['red_soda', 'som_tam'] },
   that_phanom_somtam: { id: 'that_phanom_somtam', name: 'ตำแซ่บริมโขง', npc: 'แม่หนูพร', greeting: 'ตำไทยตำลาว ไก่ย่างข้าวเหนียว แซ่บหลายเด้อ', place: 'that_phanom', snacks: ['som_tam', 'gai_yang'] },
   ya_mo_padmee: { id: 'ya_mo_padmee', name: 'ผัดหมี่โคราชตลาดคืน', npc: 'ยายเบิ้ม', greeting: 'ผัดหมี่โคราชจ้า เผ็ดน้อยเผ็ดมากบอกยายเด้อ', place: 'ya_mo', snacks: ['pad_mee', 'som_tam'] },
+}
+
+/** Add stalls from other systems (hub markets, temple fairs…); same schema. */
+export function registerPlaceShops(shops: PlaceShop[]) {
+  for (const sh of shops) PLACE_SHOPS[sh.id] = sh
 }
 
 /** Best-effort stall for any `shop:<placeId>_<slug>` hotspot. */
