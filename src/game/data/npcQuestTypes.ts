@@ -11,8 +11,14 @@ export interface NpcQuestStep {
   target: number
   /** Short Thai instruction shown in the quest log, e.g. 'ให้อาหารปลาดุก 10 ครั้ง'. */
   text: string
-  /** Optional: only counts while the player is on this map id. */
+  /** Optional: only counts while the player is on this map id (interiors `<map>:<room>` count too). */
   map?: string
+  /** Optional: for `npc_talk`, only talking to this quest NPC counts (hotspot id `npc:<id>` or `shop:<id>`). */
+  npc?: string
+  /** Optional: hotspot id the quest log's "นำทาง" walks to (else guessed from the event). */
+  nav?: string
+  /** Optional: what the `npc` says when you reach them for this step (deliveries). */
+  say?: string
 }
 
 export interface NpcQuestReward {
@@ -45,6 +51,12 @@ export interface NpcQuestDef {
   reward: NpcQuestReward
   /** NPC line when the quest is turned in. */
   done: string
+  /** Optional backstory for the "เล่าให้ฟังหน่อย" reply (speech bubbles). */
+  lore?: string[]
+  /** Optional NPC line right after accepting. */
+  accepted?: string
+  /** Optional reminder while the quest is in progress. */
+  waiting?: string
   level?: number
   /** Quest ids that must be completed first (quest chains). */
   requires?: string[]
