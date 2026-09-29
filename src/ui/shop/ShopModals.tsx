@@ -344,7 +344,7 @@ export function ShopReveal() {
             </button>
           )}
           <button class="btn green grow" onClick={close}>
-            เยี่ยมไปเลย!
+            รับไว้เลย!
           </button>
         </div>
       </div>

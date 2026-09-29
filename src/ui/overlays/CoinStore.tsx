@@ -10,7 +10,8 @@ import { Btn, Coin, Icon, Sheet } from '../components/common'
 import { coinStoreOpen, tab } from '../store'
 import { OfferCard } from '../shop/ShopCards'
 import { ShopConfirm, ShopReveal } from '../shop/ShopModals'
-import { openConfirm } from '../shop/flow'
+import { checkout, checkoutBusy } from '../shop/flow'
+import { sfx } from '../../engine/audio'
 import '../shop/shop.css'
 
 export function CoinStore() {
@@ -30,7 +31,7 @@ export function CoinStore() {
       </div>
       <div class="sh-coin-grid">
         {COIN_PACKS.map((p, i) => (
-          <button key={p.id} class={`sh-coinpack tier-${i}`} onClick={() => openConfirm({ kind: 'pack', id: p.id })}>
+          <button key={p.id} class={`sh-coinpack tier-${i}`} disabled={!!checkoutBusy.value} onClick={() => (sfx.tap(), void checkout(p.id))}>
             {p.badge && <span class="sh-ribbon hot">{p.badge}</span>}
             <Icon name={p.art === 'chest' || p.art === 'temple' ? 'chest' : i === 0 ? 'coins' : 'coinbag'} size={36 + i * 4} />
             <span class="small">{p.name}</span>

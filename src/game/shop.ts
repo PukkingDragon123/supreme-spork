@@ -101,7 +101,7 @@ const DEAL_OFFS = [50, 40, 30]
 export function dailyDeals(s: GameState = game.value, day = dayKey()): Deal[] {
   const rng = new Rng(`deals:${day}:${s.player.friendCode}`)
   const lvl = levelFromMerit(s.merit).level
-  const outfits = OUTFITS.filter((o) => inGeneralShop(o) && o.price >= 60 && (o.level ?? 1) <= lvl + 2 && !s.outfits.includes(o.id))
+  const outfits = OUTFITS.filter((o) => inGeneralShop(o) && o.price >= 60 && (o.level ?? 1) <= lvl && !s.outfits.includes(o.id))
   const pets = PETS.filter((p) => buyable('pet', p.id) && !s.pets.includes(p.id))
   const pick: { kind: EntryKind; item: OutfitItem | PetDef }[] = []
   const petPick = rng.shuffle([...pets])[0]

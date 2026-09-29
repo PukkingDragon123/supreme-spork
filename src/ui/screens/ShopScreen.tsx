@@ -24,7 +24,7 @@ import { BUNDLES, FEATURED, buyable, claimGift, dailyDeals, entryById, fmtCountd
 import { BundleCard, DealsRow, FloodPackCard, GiftCard, ItemCard, OfferCard, StarterPackCard } from '../shop/ShopCards'
 import { HeroBanner, dressed, slideArt, type Slide } from '../shop/HeroBanner'
 import { ShopConfirm, ShopReveal } from '../shop/ShopModals'
-import { openConfirm } from '../shop/flow'
+import { checkout, checkoutBusy, openConfirm } from '../shop/flow'
 import { sfx } from '../../engine/audio'
 import '../shop/shop.css'
 
@@ -310,7 +310,7 @@ function PacksTab() {
       <Heading icon="coinbag" text="เติมบุญคอยน์" />
       <div class="sh-coin-grid">
         {COIN_PACKS.map((p, i) => (
-          <button key={p.id} class={`sh-coinpack tier-${i}`} onClick={() => openConfirm({ kind: 'pack', id: p.id })}>
+          <button key={p.id} class={`sh-coinpack tier-${i}`} disabled={!!checkoutBusy.value} onClick={() => (sfx.tap(), void checkout(p.id))}>
             {p.badge && <span class="sh-ribbon hot">{p.badge}</span>}
             <Icon name={p.art === 'chest' || p.art === 'temple' ? 'chest' : i === 0 ? 'coins' : 'coinbag'} size={36 + i * 4} />
             <span class="small">{p.name}</span>

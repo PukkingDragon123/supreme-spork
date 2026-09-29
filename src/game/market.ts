@@ -76,7 +76,7 @@ export function browseListings(s: GameState = game.value): Listing[] {
   for (let i = 0; i < 4; i++) add('item', r.pick(items).id, r.int(1, 4), r.range(0.75, 1.2))
   const furn = FURNITURE.filter((f) => !f.fixed)
   for (let i = 0; i < 4; i++) add('furniture', r.pick(furn).id, 1, r.range(0.9, 1.5))
-  const outfits = OUTFITS.filter((o) => !o.premium && o.price > 0 && !(o as { shopOnly?: string }).shopOnly && !s.outfits.includes(o.id))
+  const outfits = OUTFITS.filter((o) => !o.premium && !o.exclusive && o.price > 0 && !(o as { shopOnly?: string }).shopOnly && !s.outfits.includes(o.id))
   for (let i = 0; i < 4 && outfits.length; i++) add('outfit', r.pick(outfits).id, 1, r.range(0.85, 1.25))
   return out
 }
