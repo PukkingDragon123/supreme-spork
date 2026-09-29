@@ -53,6 +53,20 @@ export function setAmbientMood(m: 'day' | 'night') {
   ambientMood = m
 }
 
+let ambientHeld = false
+
+/** Rest the generative ambience while another soundtrack (the chant guide) plays. */
+export function holdAmbient(hold: boolean) {
+  ambientHeld = hold
+}
+
+/** The shared context and its sound/music buses for feature engines (null until audio can run). */
+export function audioBus(): { ctx: AudioContext; sfx: GainNode; music: GainNode; noise: AudioBuffer; sound: boolean; musicOn: boolean } | null {
+  const c = ac()
+  if (!c || !sfxGain || !musicGain || !noiseBuf) return null
+  return { ctx: c, sfx: sfxGain, music: musicGain, noise: noiseBuf, sound: enabled.sound, musicOn: enabled.music }
+}
+
 function env(g: GainNode, t: number, a: number, peak: number, decay: number) {
   g.gain.setValueAtTime(0.0001, t)
   g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + a)
@@ -211,7 +225,7 @@ function startAmbient() {
   let step = 0
   ambientTimer = setInterval(() => {
     const c = ac()
-    if (!c || !musicGain || c.state !== 'running') return
+    if (!c || !musicGain || c.state !== 'running' || ambientHeld) return
     const now = c.currentTime
     if (now < nextNote) return
     step++

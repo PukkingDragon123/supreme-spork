@@ -1,9 +1,10 @@
 // Prayer progression and rewards (the core loop): stage unlocks, stars,
-// streaks, merit/coins/material rewards.
+// streaks, merit/coins/material rewards. A stage is PASSED at 1★ (its pass
+// mark, see passMark()); passing opens the next stage.
 
 import { game, mutate, type GameState } from './state'
 import { addCoins, addMerit, track } from './actions'
-import { CHAPTERS, STAGES, STAGE_BY_ID, stagesOf, type PrayerStage } from './data/prayers'
+import { CHAPTERS, STAGES, STAGE_BY_ID, stagesOf, passMark, type PrayerStage } from './data/prayers'
 import type { AreaId } from './data/areas'
 import { MATERIAL_IDS, type MaterialId } from './materials'
 import { dayKey } from './time'
@@ -28,11 +29,24 @@ export function chapterUnlocked(ch: AreaId, s: GameState = game.value): boolean 
   return c.stars <= totalStars(s) || s.areas.includes(ch)
 }
 
+/** Passed = at least 1★ (the stage's pass mark). */
+export function stagePassed(st: PrayerStage, s: GameState = game.value): boolean {
+  return (s.prayer.stars[st.id] ?? 0) >= 1
+}
+
+export function prevStage(st: PrayerStage): PrayerStage | undefined {
+  return STAGES.find((x) => x.chapter === st.chapter && x.n === st.n - 1)
+}
+
+export function followingStage(st: PrayerStage): PrayerStage | undefined {
+  return STAGES.find((x) => x.chapter === st.chapter && x.n === st.n + 1)
+}
+
 export function stageUnlocked(st: PrayerStage, s: GameState = game.value): boolean {
   if (!chapterUnlocked(st.chapter, s)) return false
   if (st.n === 1) return true
-  const prev = STAGES.find((x) => x.chapter === st.chapter && x.n === st.n - 1)
-  return !prev || (s.prayer.stars[prev.id] ?? 0) >= 1
+  const prev = prevStage(st)
+  return !prev || stagePassed(prev, s)
 }
 
 /** The stage the player should do next: first unlocked stage without 3 stars, preferring uncleared ones. */
@@ -51,6 +65,13 @@ export interface PrayerReward {
   firstClear: boolean
   streak: number
   goalDone: boolean
+  /** Scored at least the pass mark this time. */
+  passed: boolean
+  passMark: number
+  /** This run opened the next stage for the first time. */
+  unlockedNext: string | null
+  /** Chapters opened by the stars from this run. */
+  chaptersOpened: AreaId[]
 }
 
 /** Pure reward maths (unit tested): what a finished prayer is worth. */
@@ -84,6 +105,9 @@ export function finishPrayer(stageId: string, r: ChantResult, mode: 'voice' | 't
   const seed = s.prayer.plays * 7919 + r.score
   const calc = computeReward(st, r, prevStars, mode, seed)
   const key = dayKey()
+  const next = followingStage(st)
+  const wasNextOpen = next ? stageUnlocked(next, s) : true
+  const chaptersBefore = CHAPTERS.filter((c) => chapterUnlocked(c.id, s)).map((c) => c.id)
   let streak = s.prayer.streak
   let goalDone = false
   mutate((d) => {
@@ -112,6 +136,9 @@ export function finishPrayer(stageId: string, r: ChantResult, mode: 'voice' | 't
   let coins = addCoins(calc.coins, { boost: true })
   if (goalDone) coins += addCoins(30)
   track('chant')
+  const passed = r.stars >= 1
+  if (passed) track('prayer_pass')
+  const after = game.value
   return {
     merit,
     coins,
@@ -122,6 +149,10 @@ export function finishPrayer(stageId: string, r: ChantResult, mode: 'voice' | 't
     firstClear: prevStars === 0 && r.stars > 0,
     streak,
     goalDone,
+    passed,
+    passMark: passMark(st),
+    unlockedNext: next && !wasNextOpen && stageUnlocked(next, after) ? next.id : null,
+    chaptersOpened: CHAPTERS.filter((c) => !chaptersBefore.includes(c.id) && chapterUnlocked(c.id, after)).map((c) => c.id),
   }
 }
 

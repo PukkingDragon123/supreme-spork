@@ -1,9 +1,13 @@
 // Dev page for the prayer hall scene: open /dev-prayer.html while running vite.
 // URL params: temple, deity, phase, voice, focus, sim (seconds to pre-run),
-// pose, zones=1, hits=perfect,good,…, bow=1, finale=1, panel=0, view=buddha.
+// pose, zones=1, hits=perfect,good,…, bow=1, finale=1, panel=0, view=buddha,
+// view=art (meaning-card illustrations; t=seconds, focus=0,1, z=zoom).
 import { buddhaSculpt } from '../art/hall'
 import { DEFAULT_LOOK } from '../art/avatar'
+import { ART_H, ART_W, drawChantArt } from '../art/chantArt'
+import { Surface } from '../engine/pixel'
 import { Stage } from '../engine/stage'
+import type { ChantArt } from '../game/data/chants'
 import { PrayerHallScene, type HallTemple, type KneelPose, type PrayerPhase, type ShrineDeity } from '../scenes/prayer'
 
 const q = new URLSearchParams(location.search)
@@ -21,7 +25,37 @@ function showCanvas(c: HTMLCanvasElement, zoom: number) {
   inspect.appendChild(el)
 }
 
-if (q.get('view') === 'buddha') {
+if (q.get('view') === 'art') {
+  inspect.style.display = 'block'
+  const z = Number(q.get('z') ?? 3)
+  const arts: ChantArt[] = ['bow', 'gems', 'virtues', 'dhamma', 'sangha', 'heart', 'metta', 'sila', 'ganesha', 'guanyin', 'lakshmi', 'jina', 'bahum', 'yatha']
+  const focus = q.get('focus') ? q.get('focus')!.split(',').map(Number) : null
+  const t0 = Number(q.get('t') ?? 1.3)
+  const surfaces = arts.map((a) => {
+    const wrap = document.createElement('div')
+    wrap.style.display = 'inline-block'
+    wrap.style.margin = '4px'
+    const s = new Surface(ART_W, ART_H)
+    s.canvas.style.width = `${ART_W * z}px`
+    s.canvas.style.height = `${ART_H * z}px`
+    s.canvas.style.imageRendering = 'pixelated'
+    const label = document.createElement('div')
+    label.textContent = a
+    wrap.append(s.canvas, label)
+    inspect.appendChild(wrap)
+    return { a, s }
+  })
+  const draw = (t: number) => surfaces.forEach(({ a, s }) => drawChantArt(s, a, { t, focus }))
+  draw(t0)
+  if (q.get('still') !== '1') {
+    const start = performance.now()
+    const loop = () => {
+      draw(t0 + (performance.now() - start) / 1000)
+      requestAnimationFrame(loop)
+    }
+    requestAnimationFrame(loop)
+  }
+} else if (q.get('view') === 'buddha') {
   inspect.style.display = 'block'
   const z = Number(q.get('z') ?? 4)
   for (const style of ['sukhothai', 'antique', 'lanna'] as const) showCanvas(buddhaSculpt(style, Number(q.get('s') ?? 1)).canvas, z)

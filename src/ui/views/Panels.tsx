@@ -10,14 +10,12 @@ import { furnitureSprite, furnitureThumb, materialSprite, surfaceThumb } from '.
 import { bake } from '../../engine/pixel'
 import { MATERIAL_IDS, MATERIAL_INFO, type MaterialId } from '../../game/materials'
 import { ITEM_BY_ID } from '../../game/data/items'
-import { CHANTS } from '../../game/data/chants'
-import { STAGES, chantById } from '../../game/data/prayers'
-import { stageUnlocked } from '../../game/prayer'
 import { addMerit } from '../../game/actions'
 import { spriteDataUrl } from '../../engine/sprite'
 import { toast } from '../../game/events'
 import { haptic, sfx } from '../../engine/audio'
-import { openPanel, panel, prayStage, prayAtHome, openShop, mode } from '../store'
+import { openPanel, panel, openShop } from '../store'
+import { ChantBook } from './ChantBook'
 import { DressUp } from '../DressUp'
 import { MarketWindow } from './Market'
 import { PlaceShopWindow } from './PlaceShop'
@@ -39,7 +37,7 @@ export function Panels() {
     case 'mala':
       return <MalaWindow />
     case 'chants':
-      return <ChantBook />
+      return <ChantBook onClose={close} />
     case 'reminder':
       return <ReminderWindow />
     case 'market':
@@ -370,56 +368,6 @@ function MalaWindow() {
 }
 
 // ---------------------------------------------------------------------------
-
-function ChantBook() {
-  const [open, setOpen] = useState<string | null>(null)
-  const all = [...CHANTS, chantById('namo1'), chantById('dedication')].filter((c, i, a) => a.findIndex((x) => x.id === c.id) === i)
-  return (
-    <Window title="หนังสือสวดมนต์" icon="book" onClose={close} wide>
-      <p class="small muted">อ่านบทสวดพร้อมคำแปลได้ทุกบทฟรี แตะเพื่อเปิดอ่าน หรือกดฝึกสวดเพื่อเล่นด่านที่ใช้บทนี้</p>
-      <div class="col" style={{ gap: '4px' }}>
-        {all.map((c) => {
-          const st = STAGES.find((x) => x.chant === c.id && stageUnlocked(x))
-          const isOpen = open === c.id
-          return (
-            <div class={`panel chant-entry ${isOpen ? 'open' : ''}`} key={c.id}>
-              <button class="chant-head" onClick={() => (sfx.tap(), setOpen(isOpen ? null : c.id))} aria-expanded={isOpen}>
-                <Icon name="book" size={20} />
-                <PT text={c.name} size={12} weight={600} {...TONE_TEXT.ink} />
-                <span class="grow" />
-                <span class="small muted">{isOpen ? '▴' : '▾'}</span>
-              </button>
-              {isOpen && (
-                <div class="chant-body">
-                  {c.lines.map((l, i) => (
-                    <p class="chant-line" key={i}>
-                      {l}
-                    </p>
-                  ))}
-                  <p class="small muted">{c.meaning}</p>
-                  {st && (
-                    <PBtn
-                      tone="green"
-                      size="small"
-                      icon="pray"
-                      onClick={() => {
-                        close()
-                        prayAtHome.value = mode.value === 'house'
-                        prayStage.value = st.id
-                      }}
-                    >
-                      ฝึกสวดบทนี้
-                    </PBtn>
-                  )}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </Window>
-  )
-}
 
 // ---------------------------------------------------------------------------
 

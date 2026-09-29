@@ -1,0 +1,5 @@
+{
+  "_help": "Chant recordings for the prayer stages. See README.md. Map a chant id to its file (and optional timing file), or just drop <chantId>.mp3 here: files are also found by name. Regenerate this list with: node scripts/chant-audio-manifest.mjs",
+  "probe": true,
+  "chants": {}
+}

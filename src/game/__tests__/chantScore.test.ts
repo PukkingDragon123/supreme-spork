@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildTimeline, ChantScorer, estimateSyllables, gradeFor, starsFor, type Judge, type TimelineWord } from '../chantScore'
+import { buildTimeline, ChantScorer, estimateSyllables, gradeFor, splitSyllables, starsFor, starsWith, type Judge, type TimelineWord } from '../chantScore'
 import { CHANTS } from '../data/chants'
 import type { VoiceFrame } from '../../engine/voice'
 
@@ -222,5 +222,88 @@ describe('grading', () => {
   it('maps scores to stars and grades', () => {
     expect([0, 49, 50, 71, 72, 87, 88, 100].map(starsFor)).toEqual([0, 0, 1, 1, 2, 2, 3, 3])
     expect([100, 95, 94, 85, 70, 69, 50, 10].map(gradeFor)).toEqual(['S', 'S', 'A', 'A', 'B', 'C', 'C', 'D'])
+  })
+})
+
+describe('splitSyllables', () => {
+  it('splits Pali written in Thai into syllables', () => {
+    expect(splitSyllables('นะโม')).toEqual(['นะ', 'โม'])
+    expect(splitSyllables('ภะคะวะโต')).toEqual(['ภะ', 'คะ', 'วะ', 'โต'])
+    expect(splitSyllables('สัมมาสัมพุทธัสสะ')).toEqual(['สัม', 'มา', 'สัม', 'พุท', 'ธัส', 'สะ'])
+    expect(splitSyllables('พุทโธ')).toEqual(['พุท', 'โธ'])
+    expect(splitSyllables('สวากขาโต')).toEqual(['สวาก', 'ขา', 'โต'])
+    expect(splitSyllables('ทักขิเณยโย')).toEqual(['ทัก', 'ขิ', 'เณย', 'โย'])
+    expect(splitSyllables('กวนซืออิม')).toEqual(['กวน', 'ซือ', 'อิม'])
+    expect(splitSyllables('ผ่อสัก')).toEqual(['ผ่อ', 'สัก'])
+    expect(splitSyllables('วิชชาจะระณะสัมปันโน')).toHaveLength(8)
+  })
+  it('joins back to the word and never splits empty text', () => {
+    for (const w of ['อัญชะลีกะระณีโย', 'ครีเมขะลัง', 'โอม', 'ศรี', 'คเณศายะ']) expect(splitSyllables(w).join('')).toBe(w)
+    expect(splitSyllables('')).toEqual([])
+    expect(splitSyllables('ok')).toEqual(['ok'])
+  })
+})
+
+describe('ChantScorer difficulty', () => {
+  it('tightens the tap windows with the judge level', () => {
+    const tl = buildTimeline(NAMO)
+    const late = (judge: 1 | 2 | 3 | 4, off: number) => {
+      const s = new ChantScorer(tl, { mode: 'tap', judge })
+      for (const w of tl.words) s.tap(w.start + off)
+      return s.finish()
+    }
+    expect(late(1, 0.13).perfect).toBe(tl.words.length)
+    expect(late(2, 0.13).perfect).toBe(0)
+    expect(late(4, 0.09).perfect).toBe(0)
+    expect(late(4, 0.07).perfect).toBe(tl.words.length)
+    // A tap late inside a long word only counts at the kinder levels.
+    const long = buildTimeline(['สัมมาสัมพุทธัสสะ'])
+    const w = long.words[0]
+    const kind = new ChantScorer(long, { mode: 'tap', judge: 1 })
+    expect(kind.tap(w.start + w.dur * 0.8)).toBe('good')
+    const strict = new ChantScorer(long, { mode: 'tap', judge: 4 })
+    expect(strict.tap(w.start + w.dur * 0.8)).toBeNull()
+  })
+  it('uses the stage star thresholds', () => {
+    const { tl } = tapAll(NAMO, 0)
+    const s = new ChantScorer(tl, { mode: 'tap', stars: [95, 99, 101] })
+    for (const w of tl.words) s.tap(w.start)
+    expect(s.finish().stars).toBe(2)
+    expect(starsWith(60, [62, 80, 92])).toBe(0)
+    expect(starsWith(62, [62, 80, 92])).toBe(1)
+  })
+  it('judges memory quiz answers: wrong is a miss, right is at least good', () => {
+    const tl = buildTimeline(NAMO)
+    const s = new ChantScorer(tl, { mode: 'tap', quiz: [1, 3] })
+    s.tap(tl.words[0].start)
+    expect(s.answer(1, tl.words[1].start - 0.9, true)).toBe('good')
+    s.tap(tl.words[2].start)
+    expect(s.answer(3, tl.words[3].start, false)).toBe('miss')
+    expect(s.answer(3, tl.words[3].start, true)).toBeNull()
+    // Quiz words stay open a little longer than normal words.
+    const w = tl.words[5]
+    const s2 = new ChantScorer(tl, { mode: 'tap', quiz: [5], judge: 4 })
+    s2.advance(w.start + w.dur + 0.2)
+    expect(s2.judgements[5]).toBeUndefined()
+    expect(s2.answer(5, w.start + w.dur + 0.2, true)).toBe('good')
+  })
+  it('estimates the score while chanting', () => {
+    const tl = buildTimeline(NAMO)
+    const s = new ChantScorer(tl, { mode: 'tap' })
+    expect(s.liveScore()).toBe(0)
+    for (const w of tl.words.slice(0, 5)) s.tap(w.start)
+    expect(s.liveScore()).toBeGreaterThan(85)
+    s.advance(tl.words[9].start + tl.words[9].dur + 0.5)
+    expect(s.liveScore()).toBeLessThan(70)
+    expect(s.tapOffset(0)).toBeCloseTo(0)
+    expect(s.tapOffset(6)).toBeNull()
+  })
+  it('gives every timeline word syllable windows that tile the word', () => {
+    for (const w of buildTimeline(TRIPLE).words) {
+      expect(w.syl.map((x) => x.text).join('')).toBe(w.text)
+      expect(w.syl[0].start).toBeCloseTo(w.start)
+      const last = w.syl[w.syl.length - 1]
+      expect(last.start + last.dur).toBeCloseTo(w.start + w.dur)
+    }
   })
 })
