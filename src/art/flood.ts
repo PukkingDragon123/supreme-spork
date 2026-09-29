@@ -279,9 +279,8 @@ export function rescuerSprite(frame: number, skin: string = SKIN[1]): Sprite {
 }
 
 /** Standing rescuer in the full kit (hub art / premium preview placeholder). */
-export function rescuerBigSprite(): Sprite {
-  return spr('crewbig', 20, 30, (g) => {
-    const skin = SKIN[1]
+export function rescuerBigSprite(skin: string = SKIN[1]): Sprite {
+  return spr(`crewbig:${skin}`, 20, 30, (g) => {
     // Helmet.
     g.ellipse(10, 5, 6, 5, '#fffaf0')
     g.rect(4, 5, 12, 2, '#f58f35')

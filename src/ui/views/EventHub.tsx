@@ -67,6 +67,7 @@ const BANNERS: Record<string, () => HTMLCanvasElement> = { flood: () => floodBan
 function tryPlay(id: string): boolean {
   if (!startRun(id)) {
     sfx.error()
+    if (isEventUnlocked(id)) eventUi.value = { ...eventUi.value, run: null, tab: 'missions' }
     toast(isEventUnlocked(id) ? 'ตั๋วหมดแล้ว รับเพิ่มจากภารกิจอีเวนต์ได้นะ' : `ปลดล็อกที่ Lv.${eventDef(id)?.level ?? 10}`, 'lock', 'warn')
     return false
   }

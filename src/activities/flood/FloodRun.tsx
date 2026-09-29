@@ -8,12 +8,13 @@ import { eventDef, eventProgress, finishRun, type RunReward } from '../../game/l
 import { tierProgress } from '../../game/battlepass'
 import { useStage } from '../kit'
 import { PBtn, Window } from '../../ui/components/kit'
-import { Coin, Icon, Merit } from '../../ui/components/common'
+import { AvatarImg, Coin, Icon, Merit } from '../../ui/components/common'
 import { FxCanvas } from '../../ui/components/FxCanvas'
 import { PT, TONE_TEXT, renderPixelText } from '../../ui/pixeltext'
 import { spriteDataUrl } from '../../engine/sprite'
 import { haptic, sfx } from '../../engine/audio'
-import { survivorSprite } from '../../art/flood'
+import { rescuerBigSprite, survivorSprite } from '../../art/flood'
+import { OUTFIT_BY_ID } from '../../game/data/outfits'
 import { SKIN_TONES } from '../../art/palette'
 import { eventIconUrl } from '../../art/eventIcons'
 import { FloodScene, type Bubble } from './scene'
@@ -289,6 +290,7 @@ export function FloodRun({ eventId, onExit, onAgain }: { eventId: string; onExit
           </div>
         )
       })}
+      {count && <SuitUp />}
       {count && (
         <div class="act-center">
           <div key={count} class="fl-count">
@@ -332,6 +334,28 @@ export function FloodRun({ eventId, onExit, onAgain }: { eventId: string; onExit
         </Window>
       )}
       {result && <FloodResult eventId={eventId} sum={result.sum} reward={result.reward} onExit={onExit} onAgain={onAgain} />}
+    </div>
+  )
+}
+
+/** "Auto-dressed as a rescuer" beat shown during the 3-2-1. */
+function SuitUp() {
+  const look = game.value.player.look
+  const suit = !!OUTFIT_BY_ID.suit_rescue
+  const url = useMemo(() => spriteDataUrl(rescuerBigSprite(SKIN_TONES[look.skin]?.b), 3), [look.skin])
+  return (
+    <div class="fl-suitup">
+      <span class="fl-suitup-art">
+        {suit ? (
+          <AvatarImg look={{ ...look, suit: 'suit_rescue', head: OUTFIT_BY_ID.head_rescue_helmet ? 'head_rescue_helmet' : look.head }} scale={2} />
+        ) : (
+          <img class="px" src={url} alt="ชุดหน่วยกู้ภัย" />
+        )}
+      </span>
+      <span class="fl-suitup-text">
+        <PT text="สวมชุดหน่วยกู้ภัยแล้ว!" size={12} weight={600} {...TONE_TEXT.ink} />
+        <span class="small muted">{game.value.player.name} พร้อมออกเรือช่วยชาวบ้าน</span>
+      </span>
     </div>
   )
 }

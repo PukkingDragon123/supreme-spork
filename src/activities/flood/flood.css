@@ -228,6 +228,48 @@
   animation: fl-bob 1.2s ease-in-out infinite;
 }
 
+.fl-suitup {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: calc(var(--safe-bottom) + 70px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 6px;
+  border-style: solid;
+  border-width: 6px;
+  border-image: var(--sk-card-gold) 3 fill / 6px repeat;
+  white-space: nowrap;
+  animation: fl-slide 0.45s cubic-bezier(0.3, 1.5, 0.5, 1);
+  pointer-events: none;
+}
+
+.fl-suitup-art img {
+  display: block;
+  height: 72px;
+  width: auto;
+  image-rendering: pixelated;
+}
+
+.fl-suitup-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+@keyframes fl-slide {
+  from {
+    transform: translate(-50%, 40px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
 .fl-hint-pill {
   display: inline-flex;
   align-items: center;

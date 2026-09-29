@@ -11,6 +11,7 @@ import { rewardName } from '../../game/events/rewards'
 import { OUTFIT_BY_ID } from '../../game/data/outfits'
 import { petArtIds, petIcon } from '../../art/pets'
 import { rescueDogBigSprite, rescuerBigSprite } from '../../art/flood'
+import { SKIN_TONES } from '../../art/palette'
 import { spriteDataUrl } from '../../engine/sprite'
 import { AvatarImg, Icon } from '../components/common'
 import { PBtn } from '../components/kit'
@@ -59,7 +60,7 @@ function PremiumPreview() {
   const look = game.value.player.look
   const hasSuit = !!OUTFIT_BY_ID.suit_rescue
   const hasDog = useMemo(() => petArtIds().includes('tub_rescue'), [])
-  const crew = useMemo(() => spriteDataUrl(rescuerBigSprite(), 3), [])
+  const crew = useMemo(() => spriteDataUrl(rescuerBigSprite(SKIN_TONES[look.skin]?.b), 3), [look.skin])
   const dog = useMemo(() => spriteDataUrl(hasDog ? petIcon('tub_rescue') : rescueDogBigSprite(), 3), [hasDog])
   return (
     <div class="ev-preview">

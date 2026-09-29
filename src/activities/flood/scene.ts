@@ -190,7 +190,7 @@ export class FloodScene implements Scene {
       if (d.y > this.h) (d.y = rand(-10, 0)), (d.x = rand(0, this.w + 40))
     }
     this.rainT -= dt
-    if (this.rainT <= 0) {
+    if (this.rainT <= 0 && !sim.done) {
       this.rainT = 1.2
       floodSfx.rain()
     }
