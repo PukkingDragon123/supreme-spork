@@ -1,7 +1,9 @@
 // HUD button for the live event: pulsing icon, season timer and a count of
 // things to claim. Below the level requirement it shows the lock.
 
-import { game } from '../../game/state'
+import { useEffect } from 'preact/hooks'
+import { game, mutate } from '../../game/state'
+import { toast } from '../../game/events'
 import { LIVE_EVENTS } from '../../game/events/registry'
 import { claimableCount, eventSeason, isEventUnlocked } from '../../game/liveEvents'
 import { fmtCountdownTiny } from '../../game/events/season'
@@ -19,6 +21,15 @@ export function EventBadge() {
   const unlocked = isEventUnlocked(def.id)
   const n = unlocked ? claimableCount(def.id) : 0
   const left = eventSeason(def.id).msLeft
+  // One-time "new event unlocked" nudge when the player reaches the level.
+  useEffect(() => {
+    const key = `event:${def.id}:unlocked`
+    if (!unlocked || game.value.seen.tips.includes(key)) return
+    mutate((d) => {
+      if (!d.seen.tips.includes(key)) d.seen.tips.push(key)
+    })
+    toast(`ปลดล็อกอีเวนต์ “${def.name}” แล้ว! แตะปุ่มอีเวนต์มุมขวาบนเลย`, 'gift')
+  }, [unlocked])
   return (
     <button
       class={`ev-badge ${unlocked ? '' : 'locked'}`}
@@ -37,10 +48,10 @@ export function EventBadge() {
         )}
       </span>
       <span class="ev-badge-label">
-        <PT text="อีเวนต์" size={10} weight={600} color="#fff6dc" shadow="#16324a" />
+        <PT text="อีเวนต์" size={13} weight={600} color="#fff6dc" outline="#16324a" scale={1} />
       </span>
       <span class="ev-badge-time">
-        <PT text={unlocked ? fmtCountdownTiny(left) : `Lv.${def.level}`} size={9} weight={600} color={unlocked ? '#5a3410' : '#fff1d6'} />
+        <PT text={unlocked ? fmtCountdownTiny(left) : `Lv.${def.level}`} size={12} weight={600} scale={1} color={unlocked ? '#5a3410' : '#fff1d6'} />
       </span>
       {n > 0 && <span class="badge num ev-badge-n">{n}</span>}
     </button>

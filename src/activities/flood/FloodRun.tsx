@@ -14,6 +14,7 @@ import { PT, TONE_TEXT, renderPixelText } from '../../ui/pixeltext'
 import { spriteDataUrl } from '../../engine/sprite'
 import { haptic, sfx } from '../../engine/audio'
 import { survivorSprite } from '../../art/flood'
+import { SKIN_TONES } from '../../art/palette'
 import { eventIconUrl } from '../../art/eventIcons'
 import { FloodScene, type Bubble } from './scene'
 import { KINDS, MAX_SEATS, STAR_RESCUES, type FloodSummary, type SurvivorKind } from './sim'
@@ -159,6 +160,7 @@ export function FloodRun({ eventId, onExit, onAgain }: { eventId: string; onExit
     const sc = scene.current
     if (!sc) return
     // Sign on the corner shop, printed with the pixel-text renderer.
+    sc.skin = SKIN_TONES[game.value.player.look.skin]?.b
     const sign = renderPixelText('ร้านชำ', { size: 8, weight: 600, color: '#fffaf0', shadow: '#23407a' })
     const img = new Image()
     img.src = sign.url
@@ -373,11 +375,11 @@ function FloodResult({ eventId, sum, reward, onExit, onAgain }: { eventId: strin
         <div class="fl-res-stars">
           {[0, 1, 2].map((i) => (
             <span key={i} class={`fl-bigstar ${shown > i && sum.stars > i ? 'on' : ''}`}>
-              <Icon name={sum.stars > i && shown > i ? 'star' : 'star_empty'} size={i === 1 ? 50 : 40} />
+              <Icon name={sum.stars > i && shown > i ? 'star' : 'star_empty'} size={i === 1 ? 44 : 34} />
             </span>
           ))}
         </div>
-        <PT text={STAR_TITLE[sum.stars]} size={16} weight={600} {...TONE_TEXT.ink} />
+        <PT text={STAR_TITLE[sum.stars]} size={14} weight={600} {...TONE_TEXT.ink} />
         <div class="fl-res-grid">
           <span class="panel soft fl-res-cell">
             <Mini kind="man" size={22} />
@@ -400,15 +402,15 @@ function FloodResult({ eventId, sum, reward, onExit, onAgain }: { eventId: strin
             <span class="small muted">ครอบครัว</span>
           </span>
         </div>
-        <div class="small muted">
+        <div class="small muted fl-res-line">
           ช่วยได้ {sum.rescued}/{sum.total} ชีวิต · เต็มลำสูงสุด {sum.bestTrip} · ชนขยะ {sum.crashes} ครั้ง
           {sum.timeBonus ? ` · โบนัสเวลา +${sum.timeBonus}` : ''}
+          {sum.missed > 0 ? ` · อีก ${sum.missed} ชีวิต ทีม ฮ. รับช่วงต่อแล้ว` : ''}
         </div>
-        {sum.missed > 0 && <div class="small muted">ที่เหลือ {sum.missed} ชีวิต ทีมเฮลิคอปเตอร์รับช่วงต่อแล้ว ไม่ต้องห่วง</div>}
         <div class="panel gold fl-res-points">
           <div class="row">
             <EvIcon name="ev_points" size={26} />
-            <PT text={`+${reward?.points ?? sum.score} ${def.pointsName}`} size={15} weight={600} {...TONE_TEXT.gold} />
+            <PT text={`+${reward?.points ?? sum.score} ${def.pointsName}`} size={13} weight={600} {...TONE_TEXT.gold} />
             <span class="grow" />
             {reward?.best && <span class="chip pink small">สถิติใหม่!</span>}
           </div>
@@ -421,7 +423,7 @@ function FloodResult({ eventId, sum, reward, onExit, onAgain }: { eventId: strin
           </div>
           {up > 0 && fill > 0 && (
             <div class="fl-res-up">
-              <PT text={`ขึ้นขั้น ${reward!.tierBefore} → ${reward!.tierAfter}! มีรางวัลรออยู่`} size={12} weight={600} color="#2f6e36" />
+              <PT text={`ขึ้นเป็นขั้น ${reward!.tierAfter} แล้ว! มีรางวัลรอรับ`} size={13} weight={600} color="#2f6e36" scale={1} />
             </div>
           )}
         </div>

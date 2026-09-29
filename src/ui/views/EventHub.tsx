@@ -111,7 +111,7 @@ function Banner({ id, locked }: { id: string; locked: boolean }) {
       <span class="ev-flash" />
       <div class="ev-banner-title">
         <PT text={def.name} size={15} weight={600} color="#fffaf0" outline="#16324a" />
-        <span class="ev-banner-tag">
+        <span class="ev-banner-tag" hidden={locked}>
           <PT text={`ซีซัน ${season.index + 1}`} size={12} weight={600} color="#5a3410" scale={1} />
         </span>
       </div>
@@ -262,7 +262,7 @@ function Missions({ id, onReveal }: { id: string; onReveal: (items: Revealed[], 
                   <span class="ev-mini-reward">
                     <EvIcon name="ev_points" size={14} />+{md.points} แต้ม
                   </span>
-                  {md.mode === 'max' && <span class="muted">นับรอบที่ดีที่สุด</span>}
+                  {md.mode === 'max' && !ready && !m.claimed && <span class="muted ev-mission-note">นับรอบที่ดีที่สุด</span>}
                 </div>
               </div>
               {m.claimed ? (

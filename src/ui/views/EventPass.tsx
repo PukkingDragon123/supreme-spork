@@ -109,9 +109,9 @@ function Upsell({ def, onBuy, busy }: { def: LiveEventDef; onBuy: (id: string) =
         {def.pass.products.map((p) => (
           <PBtn key={p.id} tone={p.bonusPoints ? 'pink' : 'gold'} class="ev-buy" disabled={busy} onClick={() => onBuy(p.id)}>
             <span class="ev-buy-in">
-              <PT text={p.bonusPoints ? `${p.title}` : `ปลดล็อกแถว${def.pass.premiumName}`} size={12} weight={600} {...(p.bonusPoints ? TONE_TEXT.pink : TONE_TEXT.gold)} />
+              <PT text={p.bonusPoints ? `พลัส +${Math.round(p.bonusPoints / def.pass.pointsPerTier)} ขั้น` : `ปลดล็อก${def.pass.premiumName}`} size={12} weight={600} {...(p.bonusPoints ? TONE_TEXT.pink : TONE_TEXT.gold)} />
               <span class="ev-buy-price">
-                <PT text={`฿${p.priceTHB}`} size={13} weight={600} {...(p.bonusPoints ? TONE_TEXT.pink : TONE_TEXT.gold)} />
+                <PT text={`฿${p.priceTHB}`} size={12} weight={600} {...(p.bonusPoints ? TONE_TEXT.pink : TONE_TEXT.gold)} />
               </span>
             </span>
             {p.badge && <span class="ev-buy-badge">{p.badge}</span>}

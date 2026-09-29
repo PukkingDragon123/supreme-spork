@@ -40,12 +40,12 @@
 
 .ev-badge-label {
   line-height: 0;
-  margin-top: -2px;
+  margin-top: 1px;
 }
 
 .ev-badge-time {
   line-height: 0;
-  padding: 2px 4px;
+  padding: 2px 5px 3px;
   background: #ffd54f;
   box-shadow: 0 0 0 2px #5a3410;
   border-radius: 2px;
@@ -156,6 +156,10 @@
   line-height: 0;
 }
 
+.ev-banner-tag[hidden] {
+  display: none;
+}
+
 .ev-banner-tag {
   padding: 2px 5px;
   background: #ffd54f;
@@ -181,6 +185,7 @@
 .ev-banner-lock {
   position: absolute;
   inset: 0;
+  padding-top: 28px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -498,6 +503,14 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
+  white-space: nowrap;
+}
+
+.ev-mission-note {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 /* ---------- pass ---------- */
@@ -811,14 +824,15 @@
 
 .ev-pass-foot {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
 }
 
 .ev-detail {
-  flex: 1;
-  min-height: 34px;
-  line-height: 1.3;
+  min-height: 20px;
+  padding: 0 4px;
+  line-height: 1.35;
 }
 
 .ev-upsell {

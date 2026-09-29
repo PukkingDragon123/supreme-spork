@@ -6,7 +6,7 @@ import type { PointerInfo, Scene } from '../../engine/stage'
 import type { Surface } from '../../engine/pixel'
 import { Particles } from '../../engine/particles'
 import { rand, pick } from '../../engine/rng'
-import { drawText, textWidth } from '../../engine/font'
+import { drawText } from '../../engine/font'
 import { haptic, sfx } from '../../engine/audio'
 import * as ART from '../../art/flood'
 import { FloodSim, KINDS, type SimEvent, type Steer, type Survivor, type SurvivorKind } from './sim'
@@ -58,6 +58,9 @@ export class FloodScene implements Scene {
   private sign: HTMLImageElement | null = null
   private monkWave = 0
   private notes: { x: number; y: number; t: number; c: string }[] = []
+  private helis: { x: number; y: number; t: number; kind: SurvivorKind; dir: number }[] = []
+  /** Player's skin tone for the rescuer sprite. */
+  skin: string | undefined
 
   constructor(private seed: string | number = Date.now()) {}
 
@@ -65,10 +68,8 @@ export class FloodScene implements Scene {
     this.w = w
     this.h = h
     this.bottom = h
-    if (!this.sim) {
-      this.sim = new FloodSim({ w, seed: this.seed })
-      this.camY = this.sim.shoreY - 30
-    }
+    if (!this.sim) this.sim = new FloodSim({ w, seed: this.seed })
+    this.camY = this.camTarget()
     this.hill = ART.bakeHill(this.sim.w, this.sim.shoreY)
     this.rain = []
     for (let i = 0; i < Math.round((w * h) / 900); i++) this.rain.push({ x: rand(0, w), y: rand(0, h), v: rand(150, 230), l: rand(3, 6) })
@@ -80,7 +81,19 @@ export class FloodScene implements Scene {
   }
 
   setSafe(top: number) {
-    this.top = Math.max(0, Math.round(top))
+    const t = Math.max(0, Math.round(top))
+    if (t === this.top) return
+    this.top = t
+    if (!this.sim?.started) this.camY = this.camTarget()
+  }
+
+  private camTarget(): number {
+    const sim = this.sim
+    if (!sim) return 0
+    const viewH = this.bottom - this.top
+    const want = sim.boat.y - this.top - viewH * 0.5
+    const maxY = Math.max(0, sim.h - this.h + 10)
+    return Math.max(-this.top, Math.min(maxY, want))
   }
 
   start() {
@@ -120,6 +133,7 @@ export class FloodScene implements Scene {
 
   say(x: number, y: number, text: string, tone: Bubble['tone'] = 'info', life = 1.6) {
     this.bubbles = this.bubbles.filter((b) => b.text !== text)
+    x = Math.max(24, Math.min(this.w - 24, x))
     // Stack instead of overlapping another bubble nearby.
     for (let k = 0; k < 4; k++) {
       const hit = this.bubbles.find((b) => Math.abs(b.x - x) < 50 && Math.abs(b.y - y) < 11)
@@ -148,11 +162,7 @@ export class FloodScene implements Scene {
     sim.update(dt, this.steer())
     for (const e of sim.takeEvents()) this.handle(e)
     // Camera: keep the boat in the middle of the free area.
-    const viewH = this.bottom - this.top
-    const want = sim.boat.y - this.top - viewH * 0.5
-    const maxY = Math.max(0, sim.h - this.h + 10)
-    const target = Math.max(-this.top, Math.min(maxY, want))
-    this.camY += (target - this.camY) * Math.min(1, dt * 4)
+    this.camY += (this.camTarget() - this.camY) * Math.min(1, dt * 4)
     // Wake behind the moving boat.
     const b = sim.boat
     const sp = Math.hypot(b.vx, b.vy)
@@ -169,6 +179,8 @@ export class FloodScene implements Scene {
         this.notes.push({ x, y, t: 0, c: pick(['#fff3a6', '#ff9fc0', '#9fd0ff']) })
       }
     }
+    for (const hh of this.helis) hh.t += dt
+    this.helis = this.helis.filter((hh) => hh.t < 3.2)
     for (const n of this.notes) (n.t += dt), (n.y -= 10 * dt), (n.x += Math.sin(n.t * 4) * 6 * dt)
     this.notes = this.notes.filter((n) => n.t < 1.6)
     // Rain.
@@ -249,6 +261,7 @@ export class FloodScene implements Scene {
         break
       case 'heli':
         floodSfx.heli()
+        if (!e.swam) this.helis.push({ x: e.x, y: e.y, t: 0, kind: e.kind, dir: e.x < this.w / 2 ? 1 : -1 })
         this.say(e.x, e.y - 10, e.swam ? 'ว่ายเข้าฝั่งเองได้ เก่งมาก!' : 'ทีมเฮลิคอปเตอร์รับไปแล้ว', 'info', 1.8)
         break
       case 'crash':
@@ -350,6 +363,7 @@ export class FloodScene implements Scene {
     for (const d of list) d.f()
     this.drawPickRing(g)
     this.drawDropZone(g)
+    for (const hh of this.helis) this.drawHeliLift(g, hh)
     for (const n of this.notes) {
       if (n.t > 1.2 && Math.floor(n.t * 10) % 2) continue
       const x = Math.round(n.x)
@@ -425,12 +439,23 @@ export class FloodScene implements Scene {
     }
   }
 
+  /** Gold crown + sparkle over the VIP (pregnant) cat. */
   private drawVip(g: Surface, x: number, y: number) {
     const b = Math.round(Math.sin(this.t * 4) * 1)
-    const w = textWidth('VIP')
-    g.rect(x - w / 2 - 2, y - 3 + b, w + 4, 8, '#ffd54f')
-    g.frame(x - w / 2 - 2, y - 3 + b, w + 4, 8, '#b8742a')
-    drawText(g, 'VIP', x - w / 2, y - 1 + b, '#7e2436')
+    const cx = Math.round(x)
+    const cy = Math.round(y) + b
+    g.rect(cx - 4, cy, 9, 3, '#b8742a')
+    g.rect(cx - 3, cy, 7, 2, '#ffd54f')
+    g.px(cx - 4, cy - 2, '#ffd54f')
+    g.px(cx - 4, cy - 1, '#ffd54f')
+    g.px(cx, cy - 3, '#ffd54f')
+    g.px(cx, cy - 2, '#ffd54f')
+    g.px(cx, cy - 1, '#ffd54f')
+    g.px(cx + 4, cy - 2, '#ffd54f')
+    g.px(cx + 4, cy - 1, '#ffd54f')
+    g.px(cx - 2, cy + 1, '#e8514a')
+    g.px(cx + 2, cy + 1, '#5a8de0')
+    if (Math.floor(this.t * 3) % 3 === 0) g.px(cx + 6, cy - 3, '#ffffff')
   }
 
   private drawAdrift(g: Surface, s: Survivor) {
@@ -483,7 +508,7 @@ export class FloodScene implements Scene {
     type P = [number, number, () => void]
     const people: P[] = []
     const [cx, cy] = ART.seatPos(x, y, b.angle, 3)
-    const crew = ART.rescuerSprite(sp > 8 ? Math.floor(t * 6) : 0)
+    const crew = ART.rescuerSprite(sp > 8 ? Math.floor(t * 6) : 0, this.skin)
     people.push([cx, cy, () => g.drawPart(crew.canvas, 0, 0, crew.w, crew.h - 3, Math.round(cx - crew.w / 2), Math.round(cy - crew.h + 6))])
     const seatOrder = [0, 1, 2, 4, 5]
     let seat = 0
@@ -523,6 +548,24 @@ export class FloodScene implements Scene {
     }
   }
 
+  /** The helicopter swoops in, winches the survivor up and flies off. */
+  private drawHeliLift(g: Surface, hh: { x: number; y: number; t: number; kind: SurvivorKind; dir: number }) {
+    const t = hh.t
+    const hover = Math.min(1, t / 0.8)
+    const away = Math.max(0, t - 1.6)
+    const hx = hh.x - hh.dir * (1 - hover) * 60 + hh.dir * away * away * 40
+    const hy = hh.y - 34 - (1 - hover) * 20 - away * away * 18
+    const lift = Math.min(1, Math.max(0, (t - 0.8) / 0.8))
+    const sy = hh.y - lift * 24 - away * away * 18
+    const sx = hx + (hh.x - hx) * (1 - lift)
+    if (t > 0.6) g.line(hx, hy + 4, sx, sy - 8, '#e4ddd6')
+    if (t > 0.8) {
+      const sp = ART.survivorSprite(hh.kind, Math.floor(this.t * 6), true)
+      g.draw(sp.canvas, Math.round(sx - sp.w / 2), Math.round(sy - sp.h + 2))
+    }
+    ART.drawHeli(g, hx, hy, this.t)
+  }
+
   /** Pulsing drop-off line along the temple bank while carrying people. */
   private drawDropZone(g: Surface) {
     const sim = this.sim!
@@ -556,7 +599,8 @@ export class FloodScene implements Scene {
       if (seen.size >= 4) break
       const [, wy] = sim.dockOf(s)
       const y = wy - cam
-      if (y > top - 6 && y < this.h + 8) continue
+      const headY = (s.state === 'wait' ? this.roofY(s) - 10 : s.y - 8) - cam
+      if (y > top - 6 && headY < this.h - 6) continue
       const up = y <= top
       const bx = Math.round(Math.max(12, Math.min(this.w - 12, s.x)))
       const key = Math.round(bx / 22) * 2 + (up ? 1 : 0)

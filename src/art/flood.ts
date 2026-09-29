@@ -253,8 +253,8 @@ export function rescueDogSprite(frame: number): Sprite {
 // ---------------------------------------------------------------------------
 // The rescue crew (หน่วยกู้ภัย): white/orange helmet, orange reflective vest.
 
-export function rescuerSprite(frame: number): Sprite {
-  return spr(`crew:${frame & 1}`, 11, 12, (g) => {
+export function rescuerSprite(frame: number, skin: string = SKIN[1]): Sprite {
+  return spr(`crew:${frame & 1}:${skin}`, 11, 12, (g) => {
     g.setCamera(-1, -1)
     // Helmet.
     g.rect(2, 0, 6, 3, '#fffaf0')
@@ -263,7 +263,7 @@ export function rescuerSprite(frame: number): Sprite {
     g.px(8, 2, '#fffaf0')
     g.px(4, 0, '#e4ddd6')
     // Face.
-    g.rect(3, 3, 4, 3, SKIN[1])
+    g.rect(3, 3, 4, 3, skin)
     g.px(3, 4, OUT)
     g.px(6, 4, OUT)
     g.px(4, 5, '#c0504a')
@@ -274,7 +274,7 @@ export function rescuerSprite(frame: number): Sprite {
     g.vline(5, 6, 9, '#2f3f6a')
     // Arm on the tiller.
     g.rect(8, 7 - (frame & 1), 2, 1, '#2f3f6a')
-    g.px(9, 8 - (frame & 1), SKIN[1])
+    g.px(9, 8 - (frame & 1), skin)
   })
 }
 
@@ -883,6 +883,28 @@ export function bakeHill(w: number, shoreY: number): HTMLCanvasElement {
     for (let x = cx - 8; x < cx + 8; x += 3) g.vline(x, shoreY - 2, shoreY + 7, '#6e4a35')
     g.rect(cx - 8, shoreY - 2, 16, 1, '#c28e5c')
   })
+}
+
+/** Rescue helicopter (side view) for survivors the boat could not reach. */
+export function drawHeli(g: Surface, x: number, y: number, t: number) {
+  const X = Math.round(x)
+  const Y = Math.round(y)
+  // Rotor blur.
+  const k = Math.floor(t * 20) % 2
+  g.hline(X - 12 + k * 2, X + 12 - k * 2, Y - 8, '#e4ddd6')
+  g.vline(X, Y - 8, Y - 6, '#5a5563')
+  // Body and tail.
+  g.ellipse(X, Y - 2, 8, 4.5, '#e8514a')
+  g.rect(X + 6, Y - 4, 11, 3, '#e8514a')
+  g.rect(X + 15, Y - 7, 2, 5, '#b8343f')
+  g.px(X + 16 + k, Y - 8, '#e4ddd6')
+  g.ellipse(X - 4, Y - 3, 3.5, 2.2, '#b3eef4')
+  g.px(X - 5, Y - 4, '#ffffff')
+  g.rect(X - 2, Y, 8, 1, '#fffaf0')
+  // Skids.
+  g.hline(X - 7, X + 5, Y + 4, '#5a5563')
+  g.px(X - 4, Y + 3, '#5a5563')
+  g.px(X + 3, Y + 3, '#5a5563')
 }
 
 /** A small monk waving at the pier (welcomes each boat). */
