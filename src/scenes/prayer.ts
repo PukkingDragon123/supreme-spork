@@ -162,6 +162,30 @@ export class PrayerHallScene implements Scene {
     }
   }
 
+  /** Combo milestone: a lotus ring blooms around the player and light rises to the halo. */
+  milestone(level = 1) {
+    const L = this.layers?.L
+    if (!L) return
+    const [hx, hy] = this.handsPos()
+    this.add({ k: 'ring', x: hx, y: hy, vx: 0, vy: 0, max: 0.9, size: 26 + level * 8, c: '#ffe7a0' })
+    this.add({ k: 'ring', x: L.headX, y: L.headY, vx: 0, vy: 0, max: 1.1, size: 40 * L.s + level * 10, c: '#fff3c0' })
+    const n = 10 + level * 4
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2
+      const [c, c2] = PETALS[i % PETALS.length]
+      this.add({ k: 'petal', x: hx + Math.cos(a) * 6, y: hy + Math.sin(a) * 3, vx: Math.cos(a) * rand(18, 30), vy: Math.sin(a) * rand(10, 18) - 26, max: rand(1.3, 1.9), size: 1, c, c2 })
+    }
+    this.haloKick = 1
+    this.sparks.sparkles(L.headX, L.headY, 10, '#fff6a8', 18)
+  }
+
+  /** A gentle, encouraging glow when a stage was not passed yet. */
+  soften() {
+    const L = this.layers?.L
+    if (!L) return
+    for (let i = 0; i < 14; i++) this.add({ k: 'mote', x: L.playerX + rand(-20, 20), y: L.playerY - rand(10, 50), vx: rand(-4, 4), vy: rand(-14, -6), max: rand(1.6, 2.6), size: 1, c: '#ffe7b0' })
+  }
+
   /** One full กราบ (~1.3 s). Calls chain; each `done` fires as its bow ends. */
   bow(done?: () => void) {
     this.bowQueue.push(done)

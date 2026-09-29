@@ -336,13 +336,14 @@ export const CHANTS: Chant[] = [
 ]
 
 /** Longer "boss" recitations built from whole chants. */
-const SETS: { id: string; name: string; short: string; parts: string[]; merit: number; when: string }[] = [
+const SETS: { id: string; name: string; short: string; parts: string[]; merit: number; meaning: string; when: string }[] = [
   {
     id: 'wai_set',
     name: 'ชุดไหว้พระ: นะโม + ไตรสรณคมน์',
     short: 'นะโม ตัสสะ… พุทธัง สะระณัง คัจฉามิ',
     parts: ['namo', 'refuge'],
     merit: 24,
+    meaning: 'นอบน้อมพระพุทธเจ้า ๓ จบ แล้วขอถึงพระพุทธ พระธรรม พระสงฆ์ เป็นที่พึ่ง ครบ ๓ ครั้ง',
     when: 'ชุดสั้นที่สุดของการไหว้พระประจำวัน ว่านะโม ๓ จบ แล้วขอถึงพระรัตนตรัยเป็นที่พึ่ง',
   },
   {
@@ -351,6 +352,7 @@ const SETS: { id: string; name: string; short: string; parts: string[]; merit: n
     short: 'โอม ศรี คเณศายะ… นำโม กวนซืออิม…',
     parts: ['ganesha', 'guanyin', 'lakshmi'],
     merit: 30,
+    meaning: 'ขอนอบน้อมพระพิฆเนศผู้ขจัดอุปสรรค เจ้าแม่กวนอิมผู้เปี่ยมเมตตา และพระแม่ลักษมีผู้ประทานความมั่งคั่ง',
     when: 'ไหว้สักการะที่ลานเทพ เริ่มจากพระพิฆเนศผู้ขจัดอุปสรรค ต่อด้วยเจ้าแม่กวนอิม และพระแม่ลักษมี',
   },
   {
@@ -359,6 +361,7 @@ const SETS: { id: string; name: string; short: string; parts: string[]; merit: n
     short: 'อิติปิ โส… สวากขาโต… สุปะฏิปันโน…',
     parts: ['itipiso', 'dhamma', 'sangha'],
     merit: 44,
+    meaning: 'สรรเสริญคุณพระพุทธ ๙ ประการ คุณพระธรรม ๖ ประการ และคุณพระสงฆ์ ๙ ประการ ครบชุดพระรัตนตรัย',
     when: 'บทสรรเสริญคุณพระรัตนตรัยครบชุด สวดในทำวัตรเช้า-เย็นและก่อนนอน',
   },
 ]
@@ -378,7 +381,7 @@ function buildSet(def: (typeof SETS)[number]): Chant {
     name: def.name,
     short: def.short,
     lines,
-    meaning: parts.map((p) => p.meaning).join(' · '),
+    meaning: def.meaning,
     when: def.when,
     art: parts[0].art,
     verses,
