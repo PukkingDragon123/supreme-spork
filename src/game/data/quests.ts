@@ -29,6 +29,19 @@ export type GameEvent =
   | 'group_merit'
   | 'job'
   | 'cook'
+  // v4 systems (shared by NPC quests, stalls, events)
+  | 'place_visit'
+  | 'npc_talk'
+  | 'npc_quest'
+  | 'stall_buy'
+  | 'collectible'
+  | 'trade'
+  | 'dish_alms'
+  | 'prayer_pass'
+  | 'flood_run'
+  | 'flood_rescue'
+  | 'fair_game'
+  | 'hub_visit'
 
 export interface QuestDef {
   id: string
@@ -61,7 +74,6 @@ export const QUEST_POOL: QuestDef[] = [
   { id: 'q_lottery', text: 'ขูดเลขต้นตะเคียน', event: 'lottery', target: 1, coins: 5, merit: 2 },
   { id: 'q_gold', text: 'ปิดทององค์พระ 1 แผ่น', event: 'gold_leaf', target: 1, coins: 12, merit: 6 },
   { id: 'q_donate', text: 'หยอดตู้ทำบุญ 1 ครั้ง', event: 'donate', target: 1, coins: 8, merit: 4 },
-  { id: 'q_dedicate', text: 'กรวดน้ำอุทิศส่วนกุศล', event: 'dedicate', target: 1, coins: 10, merit: 5 },
   { id: 'q_sathu', text: 'กดสาธุให้เพื่อน 3 ครั้ง', event: 'sathu', target: 3, coins: 8, merit: 4 },
   { id: 'q_krathong', text: 'ลอยกระทงขอพรที่วัดริมน้ำ', event: 'krathong', target: 1, coins: 15, merit: 8, level: 6, area: 'river' },
   { id: 'q_catfish', text: 'ให้อาหารปลาสวาย 10 ชิ้น', event: 'catfish_fed', target: 10, coins: 12, merit: 6, level: 6, area: 'river' },
@@ -95,5 +107,4 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'a_charity', name: 'ผู้ใจบุญ', desc: 'ร่วมบริจาคกองบุญครบ 300 เหรียญ', event: 'charity', target: 300, coins: 100, icon: 'heart' },
   { id: 'a_sathu_20', name: 'อนุโมทนาบุญ', desc: 'กดสาธุให้เพื่อนครบ 20 ครั้ง', event: 'sathu', target: 20, coins: 40, icon: 'wai' },
   { id: 'a_login_7', name: 'สายบุญ 7 วันติด', desc: 'เข้าวัดต่อเนื่อง 7 วัน', event: 'login', target: 7, coins: 100, icon: 'calendar' },
-  { id: 'a_dedicate_5', name: 'ลูกกตัญญู', desc: 'กรวดน้ำอุทิศส่วนกุศล 5 ครั้ง', event: 'dedicate', target: 5, coins: 50, icon: 'water' },
 ]

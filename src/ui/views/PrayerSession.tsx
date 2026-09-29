@@ -14,7 +14,7 @@ import { finishPrayer, setPrayerMode, stageUnlocked, type PrayerReward } from '.
 import { game } from '../../game/state'
 import { adsLeft, grantMeritRaw, rewardAd } from '../../game/actions'
 import { ads } from '../../services/ads'
-import { openActivity, openPanel, prayAtHome, prayStage } from '../store'
+import { openPanel, prayAtHome, prayStage } from '../store'
 import { PBtn, Stars, Window } from '../components/kit'
 import { PT, TONE_TEXT } from '../pixeltext'
 import { Coin, Icon, Merit } from '../components/common'
@@ -504,11 +504,6 @@ function ResultWindow({
             {!doubled && adsLeft() > 0 && (
               <PBtn tone="blue" size="small" class="grow" icon="tv" onClick={double}>
                 บุญ x2
-              </PBtn>
-            )}
-            {!game.value.daily.dedicated && (
-              <PBtn tone="pink" size="small" class="grow" icon="vessel" onClick={() => (onExit(), openActivity('dedicate'))}>
-                กรวดน้ำ
               </PBtn>
             )}
           </div>

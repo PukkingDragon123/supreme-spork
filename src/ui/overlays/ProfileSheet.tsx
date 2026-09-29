@@ -21,7 +21,6 @@ const STAT_LABELS: [string, string, string][] = [
   ['gold_leaf', 'ปิดทอง', 'goldleaf'],
   ['holy_water', 'ตักน้ำมนต์', 'vessel'],
   ['charity', 'บริจาคกองบุญ (คอยน์)', 'charity'],
-  ['dedicate', 'กรวดน้ำ', 'vessel'],
 ]
 
 export function ProfileSheet() {

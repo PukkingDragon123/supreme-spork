@@ -198,9 +198,6 @@ export function HallActivity({ req }: { req: ActivityRequest }) {
               <HallBtn icon="fortune" label="เซียมซี" onClick={() => openActivity('siamsi', { back: 'hall' })} />
               <HallBtn icon="goldleaf" label="ปิดทองพระ" onClick={() => openActivity('gold_leaf', { back: 'hall' })} />
             </div>
-            <Btn tone="pink" block onClick={() => openActivity('dedicate', { back: 'hall' })}>
-              <Icon name="vessel" size={18} /> กรวดน้ำอุทิศส่วนกุศล
-            </Btn>
           </div>
         </div>
       )}

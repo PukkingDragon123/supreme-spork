@@ -8,7 +8,7 @@ import { adsLeft, grantMeritRaw, rewardAd } from '../game/actions'
 import { ads } from '../services/ads'
 import { Btn, Coin, Icon, Merit } from '../ui/components/common'
 import { FxCanvas } from '../ui/components/FxCanvas'
-import { coinStoreOpen, openActivity, activity } from '../ui/store'
+import { coinStoreOpen, activity } from '../ui/store'
 import { signal } from '@preact/signals'
 import { PT, TONE_TEXT } from '../ui/pixeltext'
 import { GOALS } from './goals'
@@ -97,7 +97,6 @@ export function ResultCard({ r, onDone, again }: { r: ResultData; onDone: () => 
     setDoubled(true)
     sfx.chime()
   }
-  const dedicated = game.value.daily.dedicated
   return (
     <div class="modal-backdrop celebrate">
       <FxCanvas mode="sparkle" />
@@ -129,11 +128,6 @@ export function ResultCard({ r, onDone, again }: { r: ResultData; onDone: () => 
           {again && (
             <Btn tone="paper" block onClick={again.run}>
               {again.label}
-            </Btn>
-          )}
-          {!dedicated && (
-            <Btn tone="pink" block onClick={() => openActivity('dedicate')}>
-              <Icon name="vessel" size={18} /> กรวดน้ำอุทิศส่วนกุศล
             </Btn>
           )}
           <Btn tone="green" block onClick={onDone}>

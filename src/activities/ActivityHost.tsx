@@ -12,7 +12,6 @@ import { HallActivity } from './hall'
 import { WishActivity } from './wish'
 import { SiamsiActivity } from './siamsi'
 import { GoldLeafActivity } from './goldleaf'
-import { DedicateActivity } from './dedicate'
 import { AlmsActivity } from './alms'
 import { KoiActivity } from './koi'
 import { DogActivity } from './dog'
@@ -33,7 +32,6 @@ const REGISTRY: Partial<Record<ActivityId, FunctionComponent<{ req: ActivityRequ
   wish: WishActivity,
   siamsi: SiamsiActivity,
   gold_leaf: GoldLeafActivity,
-  dedicate: DedicateActivity,
   alms: AlmsActivity,
   koi: KoiActivity,
   dog: DogActivity,

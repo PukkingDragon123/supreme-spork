@@ -397,6 +397,17 @@ export const EVENT_MATERIALS: Partial<Record<GameEvent, MaterialId>> = {
 }
 export const EVENT_MATERIAL_DAILY = 3
 
+/** Extra systems (NPC quests, events, battle pass…) listen to every tracked event here. */
+export const trackListeners: ((event: GameEvent, amount: number) => void)[] = []
+
+export function onTrack(fn: (event: GameEvent, amount: number) => void): () => void {
+  trackListeners.push(fn)
+  return () => {
+    const i = trackListeners.indexOf(fn)
+    if (i >= 0) trackListeners.splice(i, 1)
+  }
+}
+
 export function track(event: GameEvent, amount = 1) {
   const unlocked: { id: string; name: string; coins: number }[] = []
   const mat = EVENT_MATERIALS[event]
@@ -429,6 +440,7 @@ export function track(event: GameEvent, amount = 1) {
   })
   for (const u of unlocked) notify({ kind: 'achievement', ...u })
   if (dropped && mat) toast(`ได้${MATERIAL_INFO[mat].name} +1 ไว้ทำเฟอร์นิเจอร์`, 'hammer')
+  for (const fn of [...trackListeners]) fn(event, amount)
 }
 
 export function claimQuest(id: string): boolean {
