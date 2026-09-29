@@ -22,8 +22,17 @@ import {
   spendRecipe,
   storeFurniture,
   unlockSurface,
+  starterLayout,
+  switchRoom,
+  unlockRoom,
+  viewRoom,
+  roomLayout,
+  clearZones,
+  fixedLayout,
   type HouseState,
 } from '../house'
+import { ROOMS, ROOM_IDS, isRoomId } from '../data/rooms'
+import { ROOM_FLOORS, ROOM_WALLPAPERS } from '../data/roomFurniture'
 
 const withStored = (id: string, n = 1): HouseState => addToStorage(defaultHouse(), id, n)
 
@@ -58,8 +67,8 @@ describe('catalogue', () => {
     expect(FURNITURE_BY_ID.altar_shelf.interact).toBe('altar')
     expect(FURNITURE_BY_ID.workbench.interact).toBe('workbench')
     expect(FURNITURE_BY_ID.workbench.fixed).toBeFalsy()
-    expect(WALLPAPERS).toHaveLength(5)
-    expect(FLOORS).toHaveLength(4)
+    expect(WALLPAPERS).toHaveLength(5 + ROOM_WALLPAPERS.length)
+    expect(FLOORS).toHaveLength(4 + ROOM_FLOORS.length)
   })
 })
 
@@ -288,5 +297,145 @@ describe('normalizeHouse', () => {
     expect(h.placed.filter((p) => p.id === 'door')).toHaveLength(1)
     expect(h.placed.filter((p) => p.id === 'chair_rattan')).toHaveLength(1)
     for (const p of h.placed) expect(canPlace(h, p.id, p.x, p.y, p.uid)).toBe(true)
+  })
+})
+
+describe('rooms', () => {
+  it('defines every room with valid built-ins, surfaces and a starter layout that fits', () => {
+    expect(ROOMS.length).toBe(10)
+    for (const r of ROOMS) {
+      expect(r.name).toMatch(/[฀-๿]/)
+      expect(WALLPAPERS.some((w) => w.id === r.wallpaper)).toBe(true)
+      expect(FLOORS.some((f) => f.id === r.floor)).toBe(true)
+      expect(r.fixed.some((f) => f.id === 'door')).toBe(true)
+      for (const f of r.fixed) expect(FURNITURE_BY_ID[f.id]?.fixed).toBe(true)
+      const lay = starterLayout(r.id)
+      const h: HouseState = { ...defaultHouse(), ...lay, room: r.id }
+      for (const p of lay.placed) expect(canPlace(h, p.id, p.x, p.y, p.uid), `${r.id}:${p.id}@${p.x},${p.y}`).toBe(true)
+      const uids = lay.placed.map((p) => p.uid)
+      expect(new Set(uids).size).toBe(uids.length)
+    }
+  })
+
+  it('keeps the wardrobe front clear only in the bedroom', () => {
+    expect(clearZones('bedroom')).toHaveLength(2)
+    expect(clearZones('kitchen')).toHaveLength(1)
+    expect(fixedLayout('shrine').map((p) => p.id)).toContain('altar_grand')
+  })
+
+  it('switches rooms, saving the old layout and opening the new one with its starter set', () => {
+    let h = unlockRoom(defaultHouse(), 'shrine')
+    expect(h.owned).toContain('shrine')
+    const bedroomPlaced = h.placed
+    h = switchRoom(h, 'shrine')
+    expect(h.room).toBe('shrine')
+    expect(h.wallpaper).toBe('wp_rotnam')
+    expect(h.surfaces).toContain('wp_rotnam')
+    expect(h.placed.some((p) => p.id === 'altar_grand')).toBe(true)
+    expect(h.rooms.bedroom?.placed).toEqual(bedroomPlaced)
+    expect(h.rooms.shrine).toBeUndefined()
+    // Rearrange the shrine, walk out and back in: the change is remembered.
+    h = placeFurniture(addToStorage(h, 'lamp_paper'), 'lamp_paper', 0, 6)
+    const back = switchRoom(h, 'bedroom')
+    expect(back.placed).toEqual(bedroomPlaced)
+    const again = switchRoom(back, 'shrine')
+    expect(again.placed.some((p) => p.id === 'lamp_paper')).toBe(true)
+    // Storage is shared by every room.
+    expect(again.storage).toEqual(h.storage)
+  })
+
+  it('refuses rooms the player does not own unless they are free for them', () => {
+    const h = defaultHouse()
+    expect(switchRoom(h, 'north')).toBe(h)
+    expect(switchRoom(h, 'bogus' as never)).toBe(h)
+    expect(switchRoom(h, 'north', ['north']).room).toBe('north')
+    expect(unlockRoom(h, 'bogus' as never)).toBe(h)
+  })
+
+  it('uses the room rules when placing', () => {
+    const h = switchRoom(unlockRoom(addToStorage(defaultHouse(), 'chair_rattan'), 'kitchen'), 'kitchen')
+    // No wardrobe in the kitchen, so its front is free; the counter is not.
+    expect(canPlace(h, 'chair_rattan', 0, 1)).toBe(true)
+    expect(canPlace(h, 'chair_rattan', 1, 0)).toBe(false)
+  })
+
+  it('previews a room without changing anything', () => {
+    const h = defaultHouse()
+    const v = viewRoom(h, 'bkk')
+    expect(v.room).toBe('bkk')
+    expect(v.placed.some((p) => p.id === 'window_wide')).toBe(true)
+    expect(h.room).toBe('bedroom')
+    expect(roomLayout(h, 'bkk')).toBeNull()
+    expect(viewRoom(h, 'bedroom')).toBe(h)
+  })
+
+  it('counts copies in every room', () => {
+    let h = unlockRoom(addToStorage(defaultHouse(), 'lamp_paper', 2), 'shrine')
+    h = placeFurniture(h, 'lamp_paper', 1, 6)
+    h = switchRoom(h, 'shrine')
+    h = placeFurniture(h, 'lamp_paper', 0, 6)
+    expect(ownedCount(h, 'lamp_paper')).toBe(2)
+  })
+
+  it('knows its room ids', () => {
+    expect(ROOM_IDS).toContain('isan')
+    expect(isRoomId('isan')).toBe(true)
+    expect(isRoomId('attic')).toBe(false)
+  })
+})
+
+describe('room migration', () => {
+  it('turns a single-room save into room 1 (the bedroom), keeping everything', () => {
+    const old = {
+      wallpaper: 'wp_mint',
+      floor: 'fl_mat',
+      placed: [
+        { uid: 'fixed:wardrobe_mirror', id: 'wardrobe_mirror', x: 0, y: 0 },
+        { uid: 'u1', id: 'bed_simple', x: 2, y: 0 },
+        { uid: 'u7', id: 'tv_flat', x: 5, y: 3 },
+      ],
+      storage: { chair_rattan: 2 },
+      surfaces: ['wp_cream', 'fl_oak', 'wp_mint', 'fl_mat'],
+    }
+    const h = normalizeHouse(old)
+    expect(h.room).toBe('bedroom')
+    expect(h.owned).toEqual(['bedroom'])
+    expect(h.rooms).toEqual({})
+    expect(h.wallpaper).toBe('wp_mint')
+    expect(h.floor).toBe('fl_mat')
+    expect(h.storage).toEqual({ chair_rattan: 2 })
+    expect(h.placed.find((p) => p.uid === 'u7')).toMatchObject({ id: 'tv_flat', x: 5, y: 3 })
+    for (const f of FIXED_LAYOUT) expect(h.placed.some((p) => p.uid === f.uid)).toBe(true)
+    // And the migrated room is a proper room: walking out and back keeps it.
+    const round = switchRoom(switchRoom(unlockRoom(h, 'shrine'), 'shrine'), 'bedroom')
+    expect(round.placed).toEqual(h.placed)
+  })
+
+  it('round-trips a multi-room save through JSON', () => {
+    let h = unlockRoom(unlockRoom(defaultHouse(), 'shrine'), 'kitchen')
+    h = switchRoom(h, 'shrine')
+    h = switchRoom(h, 'kitchen')
+    const again = normalizeHouse(JSON.parse(JSON.stringify(h)))
+    expect(again).toEqual(h)
+  })
+
+  it('repairs saved rooms: bad rooms dropped, misfits back to storage', () => {
+    const h = normalizeHouse({
+      ...defaultHouse(),
+      room: 'shrine',
+      wallpaper: 'nope', // unknown → the room's own default
+      owned: ['shrine', 'bogus', 'shrine'],
+      placed: [{ uid: 'u1', id: 'chair_rattan', x: 3, y: 0 }], // under the big altar → storage
+      rooms: {
+        bedroom: defaultHouse(),
+        attic: { wallpaper: 'wp_cream', floor: 'fl_oak', placed: [] },
+      },
+    })
+    expect(h.room).toBe('shrine')
+    expect(h.owned).toEqual(['bedroom', 'shrine'])
+    expect(Object.keys(h.rooms)).toEqual(['bedroom'])
+    expect(h.storage.chair_rattan).toBe(1)
+    expect(h.placed.some((p) => p.id === 'altar_grand')).toBe(true)
+    expect(h.wallpaper).toBe('wp_rotnam')
   })
 })

@@ -2,6 +2,8 @@
 // floors for the player's room (บ้านของฉัน). Art lives in art/furniture.ts;
 // placement rules live in game/house.ts.
 
+import { ROOM_FLOORS, ROOM_FURNITURE, ROOM_WALLPAPERS } from './roomFurniture'
+
 export type MaterialId = 'wood' | 'cloth' | 'clay' | 'gold' | 'flower'
 
 export interface Material {
@@ -502,6 +504,9 @@ FURNITURE.push(
   },
 )
 
+// --- Extra rooms: built-ins, regional pieces and rank rewards (roomFurniture.ts)
+FURNITURE.push(...ROOM_FURNITURE)
+
 export const FURNITURE_BY_ID: Record<string, Furniture> = Object.fromEntries(FURNITURE.map((f) => [f.id, f]))
 
 /** Everything the player can craft at the workbench (built-ins excluded). */
@@ -532,6 +537,9 @@ export const FLOORS: Surfacing[] = [
   { id: 'fl_terrazzo', name: 'พื้นหินขัด', desc: 'หินขัดแบบบ้านคุณยาย เย็นเท้าสบาย', recipe: { clay: 4 }, coins: 20, level: 3 },
   { id: 'fl_mat', name: 'พื้นเสื่อสาน', desc: 'เสื่อไม้ไผ่สานเต็มห้อง บรรยากาศบ้านสวน', recipe: { flower: 2, wood: 2 }, level: 2 },
 ]
+
+WALLPAPERS.push(...ROOM_WALLPAPERS)
+FLOORS.push(...ROOM_FLOORS)
 
 export const WALLPAPER_BY_ID: Record<string, Surfacing> = Object.fromEntries(WALLPAPERS.map((w) => [w.id, w]))
 export const FLOOR_BY_ID: Record<string, Surfacing> = Object.fromEntries(FLOORS.map((f) => [f.id, f]))

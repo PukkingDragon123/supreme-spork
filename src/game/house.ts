@@ -13,6 +13,7 @@ import {
   type MaterialId,
   type Recipe,
 } from './data/furniture'
+import { isRoomId, ROOM_BY_ID, ROOMS, type RoomId } from './data/rooms'
 
 export interface PlacedFurniture {
   uid: string
@@ -23,14 +24,29 @@ export interface PlacedFurniture {
   flip?: boolean
 }
 
-export interface HouseState {
+/** One room's look and furniture. */
+export interface RoomLayout {
   wallpaper: string
   floor: string
   placed: PlacedFurniture[]
-  /** Crafted items waiting in the storage box, by furniture id. */
+}
+
+/**
+ * The whole home. The room on screen keeps its layout in the top-level
+ * `wallpaper` / `floor` / `placed` (so every placement helper works on it);
+ * the other rooms wait in `rooms` until the player walks into them.
+ */
+export interface HouseState extends RoomLayout {
+  /** Crafted items waiting in the storage box, by furniture id (shared by all rooms). */
   storage: Record<string, number>
   /** Wallpaper and floor ids the player owns (can switch between freely). */
   surfaces: string[]
+  /** The room on screen. */
+  room: RoomId
+  /** Saved layouts of the rooms that are not on screen. */
+  rooms: Partial<Record<RoomId, RoomLayout>>
+  /** Rooms bought or earned (the home-region room is free on top of these). */
+  owned: RoomId[]
 }
 
 /**
@@ -47,40 +63,103 @@ export interface TileRect {
   h: number
 }
 
-/** Floor tiles that must stay walkable (in front of the door and wardrobe). Rugs are fine. */
-export const CLEAR_ZONES: TileRect[] = [
-  { x: 8, y: 0, w: 2, h: 1 },
-  { x: 0, y: 1, w: 2, h: 1 },
-]
+/** Built-ins of a room. Their uids are stable (`fixed:<id>`). */
+export function fixedLayout(room: RoomId): PlacedFurniture[] {
+  return (ROOM_BY_ID[room] ?? ROOM_BY_ID.bedroom).fixed.map((f) => ({ uid: `fixed:${f.id}`, id: f.id, x: f.x, y: f.y }))
+}
 
-/** Where the built-ins live. Their uids are stable (`fixed:<id>`). */
-export const FIXED_LAYOUT: PlacedFurniture[] = [
-  { uid: 'fixed:wardrobe_mirror', id: 'wardrobe_mirror', x: 0, y: 0 },
-  { uid: 'fixed:altar_shelf', id: 'altar_shelf', x: 2, y: 0 },
-  { uid: 'fixed:window_big', id: 'window_big', x: 4, y: 0 },
-  { uid: 'fixed:door', id: 'door', x: 8, y: 2 },
-]
+/** Floor tiles that must stay walkable in a room (in front of the door, and the wardrobe in the bedroom). Rugs are fine. */
+export function clearZones(room: RoomId): TileRect[] {
+  const zones: TileRect[] = [{ x: 8, y: 0, w: 2, h: 1 }]
+  if (fixedLayout(room).some((p) => p.id === 'wardrobe_mirror')) zones.push({ x: 0, y: 1, w: 2, h: 1 })
+  return zones
+}
+
+/** The bedroom's clear zones (kept for older callers). */
+export const CLEAR_ZONES: TileRect[] = clearZones('bedroom')
+
+/** Where the bedroom's built-ins live. */
+export const FIXED_LAYOUT: PlacedFurniture[] = fixedLayout('bedroom')
 
 export const DEFAULT_WALLPAPER = 'wp_cream'
 export const DEFAULT_FLOOR = 'fl_oak'
 
+/** A room as it looks the first time it opens: built-ins plus its free starter furniture. */
+export function starterLayout(room: RoomId): RoomLayout {
+  const def = ROOM_BY_ID[room] ?? ROOM_BY_ID.bedroom
+  return {
+    wallpaper: def.wallpaper,
+    floor: def.floor,
+    placed: [
+      ...fixedLayout(def.id),
+      ...def.starter.map((p, i) => {
+        const q: PlacedFurniture = { uid: `u${i + 1}`, id: p.id, x: p.x, y: p.y }
+        if (p.flip) q.flip = true
+        return q
+      }),
+    ],
+  }
+}
+
 /** A cosy starter room: bed under the altar shelf, a reed mat, a plant and the workbench. */
 export function defaultHouse(): HouseState {
   return {
-    wallpaper: DEFAULT_WALLPAPER,
-    floor: DEFAULT_FLOOR,
-    placed: [
-      ...FIXED_LAYOUT.map((p) => ({ ...p })),
-      { uid: 'u1', id: 'bed_simple', x: 2, y: 0 },
-      { uid: 'u2', id: 'side_table', x: 4, y: 0 },
-      { uid: 'u3', id: 'plant_monstera', x: 7, y: 0 },
-      { uid: 'u4', id: 'rug_mat', x: 4, y: 4 },
-      { uid: 'u5', id: 'workbench', x: 7, y: 6 },
-    ],
+    ...starterLayout('bedroom'),
     storage: { cushion_khwan: 1 },
     surfaces: [...WALLPAPERS.filter((w) => w.starter).map((w) => w.id), ...FLOORS.filter((f) => f.starter).map((f) => f.id)],
+    room: 'bedroom',
+    rooms: {},
+    owned: ['bedroom'],
   }
 }
+
+// ---------------------------------------------------------------------------
+// Rooms
+
+/** Layout of any room: the one on screen, a saved one, or null if never opened. */
+export function roomLayout(h: HouseState, room: RoomId): RoomLayout | null {
+  if (room === h.room) return { wallpaper: h.wallpaper, floor: h.floor, placed: h.placed }
+  return h.rooms[room] ?? null
+}
+
+/** A house object showing `room` (for previews and still renders). Doesn't grant anything. */
+export function viewRoom(h: HouseState, room: RoomId): HouseState {
+  if (room === h.room) return h
+  const lay = roomLayout(h, room) ?? starterLayout(room)
+  return { ...h, ...lay, room }
+}
+
+export function ownsRoom(h: HouseState, room: RoomId, extra: RoomId[] = []): boolean {
+  return room === 'bedroom' || h.owned.includes(room) || extra.includes(room)
+}
+
+/** Mark a room as bought / earned. */
+export function unlockRoom(h: HouseState, room: RoomId): HouseState {
+  if (!isRoomId(room) || h.owned.includes(room)) return h
+  return { ...h, owned: [...h.owned, room] }
+}
+
+/**
+ * Walk into another room. The current layout is saved, the target's layout is
+ * loaded (its starter layout and surfaces on the first visit). `extra` lists
+ * rooms the player may use without owning them (the home-region room).
+ */
+export function switchRoom(h: HouseState, room: RoomId, extra: RoomId[] = []): HouseState {
+  if (!isRoomId(room) || room === h.room || !ownsRoom(h, room, extra)) return h
+  const first = !h.rooms[room]
+  const lay = h.rooms[room] ?? starterLayout(room)
+  const rooms: Partial<Record<RoomId, RoomLayout>> = { ...h.rooms, [h.room]: { wallpaper: h.wallpaper, floor: h.floor, placed: h.placed } }
+  delete rooms[room]
+  let surfaces = h.surfaces
+  if (first) {
+    const def = ROOM_BY_ID[room]
+    surfaces = [...new Set([...surfaces, def.wallpaper, def.floor])]
+  }
+  return { ...h, ...lay, surfaces, rooms, room }
+}
+
+/** Rooms in switcher order. */
+export const ROOM_ORDER: RoomId[] = ROOMS.map((r) => r.id)
 
 // ---------------------------------------------------------------------------
 // Geometry
@@ -121,7 +200,7 @@ export function canPlace(h: HouseState, id: string, x: number, y: number, ignore
   const f = FURNITURE_BY_ID[id]
   if (!f || !inBounds(f, x, y)) return false
   const r = { x, y, w: f.w, h: f.h }
-  if (f.kind === 'floor' && !f.fixed && CLEAR_ZONES.some((z) => overlaps(r, z))) return false
+  if (f.kind === 'floor' && !f.fixed && clearZones(h.room ?? 'bedroom').some((z) => overlaps(r, z))) return false
   for (const p of h.placed) {
     if (p.uid === ignoreUid) continue
     const o = FURNITURE_BY_ID[p.id]
@@ -169,9 +248,11 @@ export function storedCount(h: HouseState, id: string): number {
   return h.storage[id] ?? 0
 }
 
-/** Stored + placed copies of an item. */
+/** Stored + placed copies of an item, across every room. */
 export function ownedCount(h: HouseState, id: string): number {
-  return storedCount(h, id) + h.placed.filter((p) => p.id === id).length
+  let n = storedCount(h, id) + h.placed.filter((p) => p.id === id).length
+  for (const [room, lay] of Object.entries(h.rooms ?? {})) if (room !== h.room && lay) n += lay.placed.filter((p) => p.id === id).length
+  return n
 }
 
 export function addToStorage(h: HouseState, id: string, n = 1): HouseState {
@@ -361,32 +442,18 @@ export function cosyTier(score: number): { index: number; name: string; next: nu
 // Save loading
 
 /**
- * Repair a loaded (possibly old or hand-edited) house: fills missing fields,
- * drops unknown ids, restores the built-ins and moves overlapping items back
- * into storage.
+ * Repair one room's layout: known ids only, built-ins restored, anything that
+ * no longer fits goes back into `storage` (mutated).
  */
-export function normalizeHouse(raw: unknown): HouseState {
-  const def = defaultHouse()
-  if (!raw || typeof raw !== 'object') return def
-  const r = raw as Partial<HouseState>
-  const surfaces = Array.isArray(r.surfaces) ? r.surfaces.filter((s) => typeof s === 'string' && (WALLPAPER_BY_ID[s] || FLOOR_BY_ID[s])) : []
-  for (const s of def.surfaces) if (!surfaces.includes(s)) surfaces.push(s)
-  const storage: Record<string, number> = {}
-  if (r.storage && typeof r.storage === 'object') {
-    for (const [id, n] of Object.entries(r.storage)) {
-      const f = FURNITURE_BY_ID[id]
-      if (f && !f.fixed && typeof n === 'number' && n > 0) storage[id] = Math.floor(n)
-    }
-  }
-  let h: HouseState = {
-    wallpaper: typeof r.wallpaper === 'string' && WALLPAPER_BY_ID[r.wallpaper] ? r.wallpaper : def.wallpaper,
-    floor: typeof r.floor === 'string' && FLOOR_BY_ID[r.floor] ? r.floor : def.floor,
-    placed: FIXED_LAYOUT.map((p) => ({ ...p })),
-    storage,
-    surfaces,
-  }
-  if (!h.surfaces.includes(h.wallpaper)) h.surfaces.push(h.wallpaper)
-  if (!h.surfaces.includes(h.floor)) h.surfaces.push(h.floor)
+function normalizeLayout(raw: unknown, room: RoomId, storage: Record<string, number>, surfaces: string[]): RoomLayout {
+  const def = starterLayout(room)
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Partial<RoomLayout>
+  const wallpaper = typeof r.wallpaper === 'string' && WALLPAPER_BY_ID[r.wallpaper] ? r.wallpaper : def.wallpaper
+  const floor = typeof r.floor === 'string' && FLOOR_BY_ID[r.floor] ? r.floor : def.floor
+  if (!surfaces.includes(wallpaper)) surfaces.push(wallpaper)
+  if (!surfaces.includes(floor)) surfaces.push(floor)
+  // Place against a scratch house so canPlace sees this room's rules.
+  let h: HouseState = { wallpaper, floor, placed: fixedLayout(room), storage: {}, surfaces: [], room, rooms: {}, owned: [] }
   const seen = new Set(h.placed.map((p) => p.uid))
   const list = Array.isArray(r.placed) ? r.placed : []
   for (const p of list) {
@@ -401,10 +468,42 @@ export function normalizeHouse(raw: unknown): HouseState {
       h = { ...h, placed: [...h.placed, q] }
       seen.add(uid)
     } else {
-      h = addToStorage(h, p.id)
+      storage[p.id] = (storage[p.id] ?? 0) + 1
     }
   }
-  return h
+  return { wallpaper, floor, placed: h.placed }
+}
+
+/**
+ * Repair a loaded (possibly old or hand-edited) house: fills missing fields,
+ * drops unknown ids, restores the built-ins and moves overlapping items back
+ * into storage. Saves from before multi-room homes become the bedroom (room 1).
+ */
+export function normalizeHouse(raw: unknown): HouseState {
+  const def = defaultHouse()
+  if (!raw || typeof raw !== 'object') return def
+  const r = raw as Partial<HouseState>
+  const surfaces = Array.isArray(r.surfaces) ? r.surfaces.filter((s) => typeof s === 'string' && (WALLPAPER_BY_ID[s] || FLOOR_BY_ID[s])) : []
+  for (const s of def.surfaces) if (!surfaces.includes(s)) surfaces.push(s)
+  const storage: Record<string, number> = {}
+  if (r.storage && typeof r.storage === 'object') {
+    for (const [id, n] of Object.entries(r.storage)) {
+      const f = FURNITURE_BY_ID[id]
+      if (f && !f.fixed && typeof n === 'number' && n > 0) storage[id] = Math.floor(n)
+    }
+  }
+  const owned: RoomId[] = ['bedroom']
+  if (Array.isArray(r.owned)) for (const id of r.owned) if (isRoomId(id) && !owned.includes(id)) owned.push(id)
+  const room: RoomId = isRoomId(r.room) ? r.room : 'bedroom'
+  const cur = normalizeLayout(r, room, storage, surfaces)
+  const rooms: Partial<Record<RoomId, RoomLayout>> = {}
+  if (r.rooms && typeof r.rooms === 'object') {
+    for (const [id, lay] of Object.entries(r.rooms)) {
+      if (!isRoomId(id) || id === room || !lay) continue
+      rooms[id] = normalizeLayout(lay, id, storage, surfaces)
+    }
+  }
+  return { ...cur, storage, surfaces, room, rooms, owned }
 }
 
 /** All furniture ids, for iteration in UI/tests. */
