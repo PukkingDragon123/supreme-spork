@@ -256,7 +256,7 @@ function FashionShop() {
   const s = game.value
   const lv = level.value.level
   const [cat, setCat] = useState<FashionCat>('all')
-  const items = OUTFITS.filter((o) => !o.premium && !ownsOutfit(o.id) && o.price > 0).filter((o) => {
+  const items = OUTFITS.filter((o) => !o.premium && !ownsOutfit(o.id) && o.price > 0 && !(o as { shopOnly?: string }).shopOnly).filter((o) => {
     const c = (o as { category?: string }).category ?? 'modern'
     if (cat === 'all') return true
     if (cat === 'accessory') return ['head', 'neck', 'hand', 'shoes', 'back'].includes(o.slot as string)

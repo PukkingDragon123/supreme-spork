@@ -20,6 +20,7 @@ import { haptic, sfx } from '../../engine/audio'
 import { openPanel, panel, prayStage, prayAtHome, openShop, mode } from '../store'
 import { DressUp } from '../DressUp'
 import { MarketWindow } from './Market'
+import { PlaceShopWindow } from './PlaceShop'
 import { PBtn, Slot, Tabs, Window, Check } from '../components/kit'
 import { PT, TONE_TEXT } from '../pixeltext'
 import { Coin, Icon } from '../components/common'
@@ -41,6 +42,8 @@ export function Panels() {
       return <ReminderWindow />
     case 'market':
       return <MarketWindow />
+    case 'placeShop':
+      return <PlaceShopWindow />
     case 'dress':
       return (
         <div class="dress-screen">

@@ -105,7 +105,7 @@ await step('home and crafting', async () => {
   await page.locator('.hot').first().click()
   await page.waitForSelector('.house')
   await page.getByRole('button', { name: 'ทำเฟอร์นิเจอร์' }).click()
-  await page.waitForSelector('.craft-list')
+  await page.waitForSelector('.craft-locked, .craft-grid')
   await page.locator('.win-x').last().click()
   await page.getByRole('button', { name: 'จัดห้อง' }).click()
   await page.waitForSelector('.edit-tray')

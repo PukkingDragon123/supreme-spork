@@ -1569,3 +1569,13 @@ body,
 .deal {
   align-self: flex-start;
 }
+
+.shop-greet {
+  padding: 2px 4px;
+  margin-bottom: 6px;
+}
+
+.shop-thumb {
+  background: #e6cc98;
+  flex-shrink: 0;
+}

@@ -291,9 +291,18 @@ export function ownsOutfit(id: string) {
   return game.value.outfits.includes(id)
 }
 
-export function buyOutfit(id: string): boolean {
+/** Buy from a place shop: allowed for place-exclusive items too. */
+export function buyOutfitAnywhere(id: string): boolean {
+  return buyOutfit(id, true)
+}
+
+export function buyOutfit(id: string, atPlace = false): boolean {
   const o = OUTFIT_BY_ID[id]
   if (!o || ownsOutfit(id) || o.premium) return false
+  if ((o as { shopOnly?: string }).shopOnly && !atPlace) {
+    toast('ชุดนี้มีขายที่ร้านประจำสถานที่เท่านั้นนะ', 'map', 'warn')
+    return false
+  }
   if ((o.level ?? 1) > levelFromMerit(game.value.merit).level) {
     toast(`ปลดล็อกที่เลเวล ${o.level}`, 'lock', 'warn')
     return false
