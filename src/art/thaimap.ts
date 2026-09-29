@@ -6,6 +6,7 @@
 // inset. Everything static is baked once; the scene animates on top.
 
 import { bake, createCanvas, ditherOn, mix, Surface, type Color } from '../engine/pixel'
+import { HUB_ICON_DRAW } from './thaimap-hubs'
 import { outlineCanvas, cached, type Sprite } from '../engine/sprite'
 import { BANGKOK, INSET, MAP, proj, unproj, type Region } from '../game/data/places'
 
@@ -2105,6 +2106,8 @@ const ICON_DRAW: Record<string, (g: Surface) => void> = {
     bellChedi(g, 11, 7, 3, 3, -2, GO)
     sparkle(g, 17, 3)
   },
+  // --- Hub markets and the temple fair (thaimap-hubs.ts) ---
+  ...HUB_ICON_DRAW,
 }
 
 export const ICON_W = 24

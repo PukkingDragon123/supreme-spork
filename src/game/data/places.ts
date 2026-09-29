@@ -569,7 +569,7 @@ export const PLACES: Place[] = [
     en: 'Maeklong Railway Market',
     province: 'สมุทรสงคราม',
     region: 'central',
-    ...at(99.998, 13.4072, 5, 24),
+    ...at(99.998, 13.4072, 14, 30),
     scene: 'river',
     tagline: 'รถไฟมา แม่ค้าหุบร่ม!',
     about:
@@ -586,7 +586,7 @@ export const PLACES: Place[] = [
     en: 'Tha Phae Gate Walking Street',
     province: 'เชียงใหม่',
     region: 'north',
-    ...at(98.9933, 18.7877, 16, 12),
+    ...at(98.9933, 18.7877, 22, -4),
     scene: 'mountain',
     tagline: 'โคมล้านนาเต็มถนน งานคราฟต์ ข้าวซอย',
     about:

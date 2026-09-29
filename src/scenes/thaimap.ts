@@ -10,6 +10,7 @@ import { drawText, textWidth } from '../engine/font'
 import { bakeCloud, glint, softGlow } from '../art/cinematic'
 import { cityPoints, ICON_BASE, ICON_H, ICON_W, mapData, mapLabels, MC, placeIconArt, seededRand, smoothPath, thaiMapArt } from '../art/thaimap'
 import { ALL_PLACES, BANGKOK, INSET, MAP, PLACE_BY_ID, proj, type Place } from '../game/data/places'
+import { hubCrowd } from '../game/hubs'
 
 export interface ThaiMapCallbacks {
   /** A pin was tapped (also fires when re-tapping the selected pin). */
@@ -693,6 +694,11 @@ export class ThaiMapScene implements Scene {
         ring(s, p.x, p.y + 1.5, r + 1, r * 0.34 + 0.4, '#e9a53a')
       } else if (p.id === cur) ring(s, p.x, p.y + 0.5, 10, 3, '#ff9fc0')
       s.draw(icon.canvas, x0, y0)
+      if (p.kind && open) {
+        // Social hubs: a small "online" dot; the selected one shows how many are there.
+        if (sel || p.id === cur) drawHubBadge(s, p, y0, t)
+        else onlineDot(s, x0 + ICON_W - 5, y0 + 4, t + p.x)
+      }
       if (!open) {
         drawLock(s, x0 + ICON_W - 8, y0 + 1)
         drawStarTag(s, p.x, p.y + 4, p.stars)
@@ -793,6 +799,36 @@ function drawStarTag(g: Surface, cx: number, y: number, n: number) {
     for (let c = 0; c < 5; c++) if (row[c] === '#') g.px(x + 2 + c, y + 2 + r, r < 2 ? '#ffd54f' : '#e9a53a')
   })
   drawText(g, txt, x + 8, y + 2, '#6e4a35')
+}
+
+/** Hub markets and the fair: a crowd badge (people glyph + simulated players there now). */
+function drawHubBadge(g: Surface, p: Place, y0: number, t: number) {
+  const txt = String(hubCrowd(p.id))
+  const col = p.kind === 'fair' ? '#8a5ac8' : '#e8514a'
+  const w = 3 + 4 + textWidth(txt) + 3
+  const x = Math.round(p.x - w / 2)
+  const y = Math.round(y0 - 6 + (Math.sin(t * 2 + p.x) > 0.6 ? -1 : 0))
+  g.rect(x, y, w, 9, MC.ink)
+  g.rect(x + 1, y + 1, w - 2, 7, col)
+  g.hline(x + 1, x + w - 2, y + 1, p.kind === 'fair' ? '#b890f0' : '#ff8a7a')
+  g.px(Math.round(p.x), y + 9, MC.ink)
+  g.px(Math.round(p.x) - 1, y + 9, MC.ink)
+  g.px(Math.round(p.x), y + 10, MC.ink)
+  onlineDot(g, x + 3, y + 4, t + p.x, false)
+  drawText(g, txt, x + 6, y + 2, '#fffaf0')
+}
+
+/** Blinking green "online now" dot (3×3 plus tips), optionally with an ink ring. */
+function onlineDot(g: Surface, cx: number, cy: number, t: number, ring = true) {
+  const on = Math.floor(t * 1.5) % 4 !== 0
+  const c = on ? '#6cf07a' : '#3a9a4a'
+  if (ring) {
+    g.rect(cx - 2, cy - 1, 5, 3, MC.ink)
+    g.rect(cx - 1, cy - 2, 3, 5, MC.ink)
+  }
+  g.rect(cx - 1, cy - 1, 3, 3, c)
+  g.px(cx, cy - 2 + (ring ? 1 : 0), c)
+  g.px(cx, cy, on ? '#e8ffe8' : c)
 }
 
 function playerPin(): Sprite {
