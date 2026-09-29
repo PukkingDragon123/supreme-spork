@@ -56,32 +56,44 @@ export interface QuestDef {
 }
 
 export const QUEST_POOL: QuestDef[] = [
-  { id: 'q_alms', text: 'ตักบาตรพระ 1 รอบ', event: 'alms', target: 1, coins: 15, merit: 10 },
-  { id: 'q_job', text: 'ทำงานอาสาในวัด 1 งาน', event: 'job', target: 1, coins: 10, merit: 5 },
-  { id: 'q_job2', text: 'ทำงานอาสาในวัด 3 งาน', event: 'job', target: 3, coins: 20, merit: 10, level: 3 },
-  { id: 'q_chant', text: 'สวดมนต์ 1 บท', event: 'chant', target: 1, coins: 10, merit: 5 },
-  { id: 'q_chant2', text: 'สวดมนต์ 2 บท', event: 'chant', target: 2, coins: 15, merit: 8, level: 3 },
-  { id: 'q_meditate', text: 'นั่งสมาธิรวม 1 นาที', event: 'meditate_sec', target: 60, coins: 12, merit: 6 },
-  { id: 'q_koi', text: 'ให้อาหารปลาคาร์ฟ 10 เม็ด', event: 'koi_fed', target: 10, coins: 10, merit: 5 },
-  { id: 'q_dog', text: 'ให้อาหารน้องหมาวัด 2 ครั้ง', event: 'dog_fed', target: 2, coins: 12, merit: 6 },
-  { id: 'q_pet', text: 'ลูบหัวน้องหมา 1 ตัว', event: 'dog_pet', target: 1, coins: 6, merit: 3 },
-  { id: 'q_bell', text: 'ตีระฆังให้ครบทั้งแถว', event: 'bell_round', target: 1, coins: 8, merit: 4 },
-  { id: 'q_wish', text: 'จุดธูปขอพร 1 ครั้ง', event: 'wish', target: 1, coins: 8, merit: 4 },
-  { id: 'q_siamsi', text: 'เสี่ยงเซียมซี 1 ครั้ง', event: 'siamsi', target: 1, coins: 6, merit: 3 },
-  { id: 'q_deity', text: 'ไหว้เทพ 1 องค์', event: 'deity', target: 1, coins: 10, merit: 5 },
-  { id: 'q_deity2', text: 'ไหว้เทพ 2 องค์', event: 'deity', target: 2, coins: 16, merit: 8, level: 4 },
-  { id: 'q_holy', text: 'ตักน้ำมนต์เสริมสิริมงคล', event: 'holy_water', target: 1, coins: 8, merit: 4 },
-  { id: 'q_lottery', text: 'ขูดเลขต้นตะเคียน', event: 'lottery', target: 1, coins: 5, merit: 2 },
-  { id: 'q_gold', text: 'ปิดทององค์พระ 1 แผ่น', event: 'gold_leaf', target: 1, coins: 12, merit: 6 },
-  { id: 'q_donate', text: 'หยอดตู้ทำบุญ 1 ครั้ง', event: 'donate', target: 1, coins: 8, merit: 4 },
-  { id: 'q_sathu', text: 'กดสาธุให้เพื่อน 3 ครั้ง', event: 'sathu', target: 3, coins: 8, merit: 4 },
-  { id: 'q_krathong', text: 'ลอยกระทงขอพรที่วัดริมน้ำ', event: 'krathong', target: 1, coins: 15, merit: 8, level: 6, area: 'river' },
-  { id: 'q_catfish', text: 'ให้อาหารปลาสวาย 10 ชิ้น', event: 'catfish_fed', target: 10, coins: 12, merit: 6, level: 6, area: 'river' },
-  { id: 'q_circle', text: 'เวียนเทียนรอบเจดีย์ 3 รอบ', event: 'circle_chedi', target: 1, coins: 15, merit: 8, level: 10, area: 'mountain' },
+  { id: 'q_alms', text: 'ตักบาตรพระ 1 รอบ', event: 'alms', target: 1, coins: 25, merit: 10 },
+  { id: 'q_job', text: 'ทำงานอาสาในวัด 1 งาน', event: 'job', target: 1, coins: 18, merit: 5 },
+  { id: 'q_job2', text: 'ทำงานอาสาในวัด 3 งาน', event: 'job', target: 3, coins: 35, merit: 10, level: 3 },
+  { id: 'q_chant', text: 'สวดมนต์ 1 บท', event: 'chant', target: 1, coins: 18, merit: 5 },
+  { id: 'q_chant2', text: 'สวดมนต์ 2 บท', event: 'chant', target: 2, coins: 28, merit: 8, level: 3 },
+  { id: 'q_meditate', text: 'นั่งสมาธิรวม 1 นาที', event: 'meditate_sec', target: 60, coins: 20, merit: 6 },
+  { id: 'q_koi', text: 'ให้อาหารปลาคาร์ฟ 10 เม็ด', event: 'koi_fed', target: 10, coins: 16, merit: 5 },
+  { id: 'q_dog', text: 'ให้อาหารน้องหมาวัด 2 ครั้ง', event: 'dog_fed', target: 2, coins: 18, merit: 6 },
+  { id: 'q_pet', text: 'ลูบหัวน้องหมา 1 ตัว', event: 'dog_pet', target: 1, coins: 12, merit: 3 },
+  { id: 'q_bell', text: 'ตีระฆังให้ครบทั้งแถว', event: 'bell_round', target: 1, coins: 15, merit: 4 },
+  { id: 'q_wish', text: 'จุดธูปขอพร 1 ครั้ง', event: 'wish', target: 1, coins: 14, merit: 4 },
+  { id: 'q_siamsi', text: 'เสี่ยงเซียมซี 1 ครั้ง', event: 'siamsi', target: 1, coins: 12, merit: 3 },
+  { id: 'q_deity', text: 'ไหว้เทพ 1 องค์', event: 'deity', target: 1, coins: 18, merit: 5 },
+  { id: 'q_deity2', text: 'ไหว้เทพ 2 องค์', event: 'deity', target: 2, coins: 30, merit: 8, level: 4 },
+  { id: 'q_holy', text: 'ตักน้ำมนต์เสริมสิริมงคล', event: 'holy_water', target: 1, coins: 14, merit: 4 },
+  { id: 'q_lottery', text: 'ขูดเลขต้นตะเคียน', event: 'lottery', target: 1, coins: 10, merit: 2 },
+  { id: 'q_gold', text: 'ปิดทององค์พระ 1 แผ่น', event: 'gold_leaf', target: 1, coins: 20, merit: 6 },
+  { id: 'q_donate', text: 'หยอดตู้ทำบุญ 1 ครั้ง', event: 'donate', target: 1, coins: 14, merit: 4 },
+  { id: 'q_sathu', text: 'กดสาธุให้เพื่อน 3 ครั้ง', event: 'sathu', target: 3, coins: 12, merit: 4 },
+  { id: 'q_krathong', text: 'ลอยกระทงขอพรที่วัดริมน้ำ', event: 'krathong', target: 1, coins: 28, merit: 8, level: 6, area: 'river' },
+  { id: 'q_catfish', text: 'ให้อาหารปลาสวาย 10 ชิ้น', event: 'catfish_fed', target: 10, coins: 20, merit: 6, level: 6, area: 'river' },
+  { id: 'q_circle', text: 'เวียนเทียนรอบเจดีย์ 3 รอบ', event: 'circle_chedi', target: 1, coins: 30, merit: 8, level: 10, area: 'mountain' },
+  // v4: NPC quests, places, stalls, souvenirs, cooking.
+  { id: 'q_npc_talk', text: 'คุยกับชาวบ้านหรือแม่ค้า 2 คน', event: 'npc_talk', target: 2, coins: 15, merit: 5 },
+  { id: 'q_npc_quest', text: 'ช่วยชาวบ้านทำเควสต์สำเร็จ 1 เควสต์', event: 'npc_quest', target: 1, coins: 35, merit: 12 },
+  { id: 'q_prayer_pass', text: 'สวดมนต์ผ่านด่าน 1 ด่าน', event: 'prayer_pass', target: 1, coins: 20, merit: 8 },
+  { id: 'q_place', text: 'ไปทำบุญที่สถานที่จริงบนแผนที่ 1 แห่ง', event: 'place_visit', target: 1, coins: 22, merit: 8, level: 2 },
+  { id: 'q_stall', text: 'อุดหนุนร้านค้าประจำสถานที่ 1 ครั้ง', event: 'stall_buy', target: 1, coins: 15, merit: 5, level: 2 },
+  { id: 'q_collect', text: 'สะสมของที่ระลึกใหม่ 1 ชิ้น', event: 'collectible', target: 1, coins: 22, merit: 6, level: 3 },
+  { id: 'q_hub', text: 'แวะเดินเล่นย่านตลาดสายบุญ 1 ครั้ง', event: 'hub_visit', target: 1, coins: 15, merit: 5, level: 3 },
+  { id: 'q_fair', text: 'เล่นเกมซุ้มงานวัด 1 ครั้ง', event: 'fair_game', target: 1, coins: 18, merit: 5, level: 4 },
+  { id: 'q_trade', text: 'แลกเปลี่ยนของในตลาด 1 ครั้ง', event: 'trade', target: 1, coins: 22, merit: 6, level: 5 },
+  { id: 'q_cook', text: 'ทำอาหารที่ครัวบ้าน 1 จาน', event: 'cook', target: 1, coins: 22, merit: 8, level: 10 },
+  { id: 'q_dish_alms', text: 'ใส่บาตรด้วยอาหารฝีมือตัวเอง 1 จาน', event: 'dish_alms', target: 1, coins: 32, merit: 12, level: 10 },
 ]
 
 export const QUESTS_PER_DAY = 4
-export const ALL_QUESTS_BONUS = { coins: 30, merit: 20 }
+export const ALL_QUESTS_BONUS = { coins: 60, merit: 20 }
 
 export interface AchievementDef {
   id: string
@@ -107,4 +119,9 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'a_charity', name: 'ผู้ใจบุญ', desc: 'ร่วมบริจาคกองบุญครบ 300 เหรียญ', event: 'charity', target: 300, coins: 100, icon: 'heart' },
   { id: 'a_sathu_20', name: 'อนุโมทนาบุญ', desc: 'กดสาธุให้เพื่อนครบ 20 ครั้ง', event: 'sathu', target: 20, coins: 40, icon: 'wai' },
   { id: 'a_login_7', name: 'สายบุญ 7 วันติด', desc: 'เข้าวัดต่อเนื่อง 7 วัน', event: 'login', target: 7, coins: 100, icon: 'calendar' },
+  { id: 'a_npc_1', name: 'มือช่วยชาวบ้าน', desc: 'ทำเควสต์ NPC สำเร็จครั้งแรก', event: 'npc_quest', target: 1, coins: 30, icon: 'scroll' },
+  { id: 'a_npc_10', name: 'ขวัญใจชาวบ้าน', desc: 'ทำเควสต์ NPC ครบ 10 เควสต์', event: 'npc_quest', target: 10, coins: 100, icon: 'heart' },
+  { id: 'a_npc_30', name: 'ฮีโร่สายบุญ', desc: 'ทำเควสต์ NPC ครบ 30 เควสต์', event: 'npc_quest', target: 30, coins: 250, icon: 'star' },
+  { id: 'a_talk_20', name: 'คุยเก่งทั่วไทย', desc: 'คุยกับชาวบ้านและแม่ค้าครบ 20 ครั้ง', event: 'npc_talk', target: 20, coins: 40, icon: 'friends' },
+  { id: 'a_place_10', name: 'นักเดินทางสายบุญ', desc: 'ไปเยือนสถานที่จริงครบ 10 ครั้ง', event: 'place_visit', target: 10, coins: 80, icon: 'map' },
 ]

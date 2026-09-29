@@ -14,6 +14,7 @@ import { defaultHomeland, normalizeHomeland, type HomelandState } from './homela
 import { weekKey } from './time'
 import { defaultLiveEvents, normalizeLiveEvents, type LiveEventsState } from './events/save'
 import { emptyCollection, normalizeCollection, type CollectionState } from './collectionState'
+import { emptyNpcQuests, normalizeNpcQuests, type NpcQuestsState } from './npcQuestState'
 
 export const SAVE_KEY = 'boondee.save.v1'
 export const SAVE_VERSION = 2
@@ -181,6 +182,8 @@ export interface GameState {
   liveEvents: LiveEventsState
   /** v4 shop & bag bookkeeping (see ShopState). */
   shop: ShopState
+  /** NPC quest givers: accepted quests, completions, tracked quest (src/game/npcQuests.ts). */
+  npcQuests: NpcQuestsState
 }
 
 export function makeFriendCode(): string {
@@ -254,6 +257,7 @@ export function defaultState(): GameState {
     lastArea: 'wat',
     liveEvents: defaultLiveEvents(),
     shop: defaultShop(),
+    npcQuests: emptyNpcQuests(),
   }
 }
 
@@ -285,6 +289,7 @@ export function migrate(raw: unknown): GameState {
     liveEvents: normalizeLiveEvents(s.liveEvents),
     collection: normalizeCollection(s.collection),
     shop: normalizeShop(s.shop),
+    npcQuests: normalizeNpcQuests(s.npcQuests),
     v: SAVE_VERSION,
   }
   // v1 called the main temple 'home'; it is 'wat' now that players have a house.

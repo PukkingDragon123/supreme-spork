@@ -1,6 +1,7 @@
 // What each world hotspot lets you do.
 
 import { openActivity, openShop, openSocial, mapOpen, openPanel, goHome, openPlaceShop } from './store'
+import { openQuestDialog, questChoicesFor } from './quest/questUi'
 
 export interface HotspotAction {
   label: string
@@ -17,8 +18,10 @@ export function hotspotActions(id: string): HotspotAction[] {
   }
   if (id.startsWith('shop:')) {
     const shop = id.slice(5)
-    return [{ label: 'เข้าร้าน', icon: 'shop', run: () => openPlaceShop(shop) }]
+    return [{ label: 'เข้าร้าน', icon: 'shop', run: () => openPlaceShop(shop) }, ...questChoicesFor(shop).map((c) => ({ label: c.label, icon: c.icon, tone: 'gold', run: c.onPick }))]
   }
+  // Quest-giver NPCs (src/game/data/questNpcs.ts).
+  if (id.startsWith('npc:')) return [{ label: 'คุยด้วย', icon: 'wai', run: () => openQuestDialog(id) }]
   if (id.startsWith('pray')) return [{ label: 'สวดมนต์', icon: 'pray', run: () => openPanel('pray') }]
   if (id.startsWith('cook')) return [{ label: 'ทำอาหาร', icon: 'bowl', run: () => openActivity('cook') }]
   switch (id) {

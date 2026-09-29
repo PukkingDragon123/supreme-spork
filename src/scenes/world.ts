@@ -32,6 +32,7 @@ import { DOG_BY_ID } from '../game/data/dogs'
 import { bake } from '../engine/pixel'
 import { OUTFITS } from '../game/data/outfits'
 import { SKIN_TONES } from '../art/palette'
+import { drawWorldMarker, mergeQuestNpcs, type MarkerFn } from './questLayer'
 
 export type Facing = 'up' | 'down' | 'left' | 'right'
 
@@ -338,6 +339,8 @@ export class WorldScene implements Scene {
   /** When false the scene ignores input (used for the title screen). */
   interactive = true
   highlight: string | null = null
+  /** Quest/shop markers above hotspots (see questLayer.ts); set by the UI. */
+  private markerFn: MarkerFn | null = null
 
   constructor(
     readonly map: MapDef,
@@ -345,6 +348,8 @@ export class WorldScene implements Scene {
     private cb: WorldCallbacks,
     opts: WorldOptions = {},
   ) {
+    // Quest-giver NPCs registered for this map join its hotspots and actors.
+    this.map = map = mergeQuestNpcs(map)
     this.look = look
     this.grid = new NavGrid(map.w, map.h, 4)
     for (const r of map.obstacles) this.grid.block(r)
@@ -406,6 +411,11 @@ export class WorldScene implements Scene {
 
   setLook(look: AvatarLook) {
     this.look = look
+  }
+
+  /** Floating quest markers: fn(hotspotId) → marker or null (null fn = none). */
+  setMarkers(fn: MarkerFn | null) {
+    this.markerFn = fn
   }
 
   setCompanion(id: string | null) {
@@ -1256,6 +1266,7 @@ export class WorldScene implements Scene {
     // Hotspot twinkles and the hall beacon (above the tint so they read at night).
     if (this.interactive) {
       m.hotspots.forEach((h, i) => this.drawMarker(g, h, i, t))
+      this.drawQuestMarkers(g, t)
       for (const d of this.dogs) {
         if (d.state === 'follow') continue
         const bob = Math.round(Math.sin(t * 3 + d.w.x) * 1)
@@ -1315,8 +1326,21 @@ export class WorldScene implements Scene {
     }
   }
 
+  private drawQuestMarkers(g: Surface, t: number) {
+    const fn = this.markerFn
+    if (!fn) return
+    for (const h of this.map.hotspots) {
+      const qm = fn(h.id)
+      if (!qm) continue
+      const mk = h.marker ?? { x: h.rect.x + h.rect.w / 2, y: h.rect.y - 4 }
+      if (!this.onScreen(mk.x, mk.y, 24)) continue
+      drawWorldMarker(g, qm, mk.x, mk.y, t, this.highlight === h.id || this.near === h)
+    }
+  }
+
   private drawMarker(g: Surface, h: Hotspot, i: number, t: number) {
     const mk = h.marker ?? { x: h.rect.x + h.rect.w / 2, y: h.rect.y - 4 }
+    if (this.markerFn?.(h.id)) return
     if (!this.onScreen(mk.x, mk.y, 20)) return
     const hi = this.highlight === h.id || this.near === h
     if (h.beacon) {

@@ -24,6 +24,8 @@ import { PrayerSelect } from './views/PrayerSelect'
 import { PrayerSession } from './views/PrayerSession'
 import { Panels, useReminderTicker } from './views/Panels'
 import { Window } from './components/kit'
+import { QuestHost } from './quest/QuestDialog'
+import { QuestTracker } from './quest/QuestTracker'
 
 const SCREEN: Partial<Record<Tab, { title: string; icon: string }>> = {
   quests: { title: 'ภารกิจ', icon: 'scroll' },
@@ -81,6 +83,7 @@ export function App() {
         {inGame && !act && !praying && tab.value === 'temple' && !(m === 'house' && houseEditing.value) && (
           <>
             <Hud />
+            {m === 'world' && <QuestTracker />}
             <Hotbar />
           </>
         )}
@@ -96,6 +99,7 @@ export function App() {
             {mapOpen.value && <MapModal />}
             {settingsOpen.value && <SettingsSheet />}
             {profileOpen.value && <ProfileSheet />}
+            <QuestHost />
           </>
         )}
         <Overlays />
