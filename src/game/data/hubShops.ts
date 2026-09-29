@@ -48,40 +48,40 @@ const shop = (id: string, place: string, name: string, npc: string, greeting: st
 
 export const HUB_SHOPS: Record<string, PlaceShop> = Object.fromEntries([
   // ตลาดนัดจตุจักร
-  shop('hub_chatuchak_coconut', 'hub_chatuchak', 'ไอติมมะพร้าวหน้าโครงการ 1', 'พี่มะพร้าว', 'ไอติมมะพร้าวลูกละ 60 จ้า เอ๊ย 25 บุญคอยน์! ต่อคิวตรงนี้เลย', ['hub_coconut_icecream', 'chayen']),
-  shop('hub_chatuchak_mango', 'hub_chatuchak', 'ข้าวเหนียวมะม่วงแม่วรรณ', 'แม่วรรณ', 'ข้าวเหนียวมะม่วงสูตรที่ไปดังเมืองนอกจ้า มีรุ่นพิสตาชิโอด้วยนะ', ['hub_mango_pistachio', 'mango_sticky', 'hub_matcha']),
-  shop('hub_chatuchak_vintage', 'hub_chatuchak', 'ร้านวินเทจโซน 2016', 'เจ๊วิน', 'เสื้อยุค 2016 กลับมาฮิตแล้ว! ปีนี้คือ 2016 ใหม่นะคะ', ['hub_matcha', 'chayen']),
-  shop('hub_chatuchak_pants', 'hub_chatuchak', 'กางเกงช้างทุกสีทุกไซส์', 'พี่ช้าง', 'ตัวละร้อย สามตัวสองร้อยห้า! ใส่แล้วเดินตลาดสบายสุด', ['hub_coconut_icecream']),
+  shop('hub_chatuchak_coconut', 'hub_chatuchak', 'ไอติมมะพร้าวอ่อน', 'พี่มะพร้าว', 'ไอติมมะพร้าวลูกละ 60 จ้า เอ๊ย 25 บุญคอยน์! ต่อคิวตรงนี้เลย', ['hub_coconut_icecream', 'chayen']),
+  shop('hub_chatuchak_mango', 'hub_chatuchak', 'ข้าวเหนียวมะม่วง', 'แม่วรรณ', 'ข้าวเหนียวมะม่วงสูตรที่ไปดังเมืองนอกจ้า มีรุ่นพิสตาชิโอด้วยนะ', ['hub_mango_pistachio', 'mango_sticky', 'hub_matcha']),
+  shop('hub_chatuchak_vintage', 'hub_chatuchak', 'วินเทจโซน 2016', 'เจ๊วิน', 'เสื้อยุค 2016 กลับมาฮิตแล้ว! ปีนี้คือ 2016 ใหม่นะคะ', ['hub_matcha', 'chayen']),
+  shop('hub_chatuchak_pants', 'hub_chatuchak', 'กางเกงช้างทุกสี', 'พี่ช้าง', 'ตัวละร้อย สามตัวสองร้อยห้า! ใส่แล้วเดินตลาดสบายสุด', ['hub_coconut_icecream']),
   shop('hub_chatuchak_hippo', 'hub_chatuchak', 'ร้านตุ๊กตาหมูดึ๋ง', 'น้องดึ๋ง', 'ฮิปโปแคระสุดไวรัล กัดเบา ๆ ไม่เจ็บ! มีแพนเค้กหน้าหมูดึ๋งด้วย', ['hub_hippo_pancake']),
   shop('hub_chatuchak_blindbox', 'hub_chatuchak', 'ป๊อปบุญ กล่องสุ่ม', 'พนักงานป๊อปบุญ', 'ต่อคิวหนึ่งคนหนึ่งกล่องนะคะ~ ของหมดไวมาก (หมดทุกห้านาที)', ['hub_blindbox_soda']),
-  shop('hub_chatuchak_pets', 'hub_chatuchak', 'โซนสัตว์เลี้ยงป้าส้ม', 'ป้าส้ม', 'ดูได้ อุ้มได้ แต่ห้ามแอบใส่กระเป๋ากลับบ้านนะ!', ['hub_catface_icecream']),
-  shop('hub_chatuchak_paella', 'hub_chatuchak', 'ข้าวผัดกระทะยักษ์ลุงโจ้', 'ลุงโจ้', 'กระทะนี้เลี้ยงคนได้ทั้งซอย! รับจานนึงไหมครับ', ['hub_giant_paella']),
+  shop('hub_chatuchak_pets', 'hub_chatuchak', 'โซนสัตว์เลี้ยง', 'ป้าส้ม', 'ดูได้ อุ้มได้ แต่ห้ามแอบใส่กระเป๋ากลับบ้านนะ!', ['hub_catface_icecream']),
+  shop('hub_chatuchak_paella', 'hub_chatuchak', 'ข้าวผัดกระทะยักษ์', 'ลุงโจ้', 'กระทะนี้เลี้ยงคนได้ทั้งซอย! รับจานนึงไหมครับ', ['hub_giant_paella']),
   // ตลาดน้ำดำเนินสะดวก
-  shop('hub_damnoen_noodle', 'hub_damnoen', 'เรือก๋วยเตี๋ยวป้าสมใจ', 'ป้าสมใจ', 'ก๋วยเตี๋ยวเรือชามละนิดเดียว สั่งห้าชามเลยลูก!', ['hub_boat_noodle', 'hub_pad_thai_boat']),
-  shop('hub_damnoen_fruit', 'hub_damnoen', 'เรือผลไม้ยายเพียร', 'ยายเพียร', 'มะม่วง มังคุด เงาะ ส้มโอ สดจากสวนเมื่อเช้าจ้า', ['hub_coconut_water', 'mango_sticky']),
-  shop('hub_damnoen_krok', 'hub_damnoen', 'เรือขนมครกน้าแดง', 'น้าแดง', 'ขนมครกร้อน ๆ ระวังลวกปากนะจ๊ะ', ['hub_kanom_krok']),
+  shop('hub_damnoen_noodle', 'hub_damnoen', 'ก๋วยเตี๋ยวเรือ', 'ป้าสมใจ', 'ก๋วยเตี๋ยวเรือชามละนิดเดียว สั่งห้าชามเลยลูก!', ['hub_boat_noodle', 'hub_pad_thai_boat']),
+  shop('hub_damnoen_fruit', 'hub_damnoen', 'เรือผลไม้', 'ยายเพียร', 'มะม่วง มังคุด เงาะ ส้มโอ สดจากสวนเมื่อเช้าจ้า', ['hub_coconut_water', 'mango_sticky']),
+  shop('hub_damnoen_krok', 'hub_damnoen', 'ขนมครกน้าแดง', 'น้าแดง', 'ขนมครกร้อน ๆ ระวังลวกปากนะจ๊ะ', ['hub_kanom_krok']),
   shop('hub_damnoen_hats', 'hub_damnoen', 'ร้านงอบริมคลอง', 'ลุงสาน', 'งอบใบลานกันแดดได้ กันฝนได้ กันคำถามว่าไปไหนมาไม่ได้', ['hub_coconut_water']),
   // ตลาดร่มหุบ แม่กลอง
   shop('hub_maeklong_platu', 'hub_maeklong', 'แผงปลาทูลุงเปี๊ยก', 'ลุงเปี๊ยก', 'ปลาทูแม่กลองแท้ หน้างอคอหัก! รีบซื้อก่อนรถไฟมา', ['hub_platu']),
-  shop('hub_maeklong_fruit', 'hub_maeklong', 'ผลไม้ริมรางป้าหน่อย', 'ป้าหน่อย', 'ลิ้นจี่ค่อมหวาน ๆ วางไว้ริมราง รถไฟผ่านไม่โดนนะ (เฉียด ๆ)', ['hub_lychee', 'coconut_sugar']),
+  shop('hub_maeklong_fruit', 'hub_maeklong', 'ผลไม้ริมราง', 'ป้าหน่อย', 'ลิ้นจี่ค่อมหวาน ๆ วางไว้ริมราง รถไฟผ่านไม่โดนนะ (เฉียด ๆ)', ['hub_lychee', 'coconut_sugar']),
   shop('hub_maeklong_kanom', 'hub_maeklong', 'ขนมไทยแม่กลอง', 'แม่ละเอียด', 'ขนมตาล ขนมชั้น น้ำตาลมะพร้าวแท้ ทำเองทุกวัน', ['hub_kanom_tan', 'coconut_sugar']),
   // ถนนคนเดินเชียงใหม่
   shop('hub_thaphae_khaosoi', 'hub_thaphae', 'ข้าวซอยแม่คำปัน', 'แม่คำปัน', 'ข้าวซอยน้ำข้น ๆ เผ็ดหอมกลิ่นเครื่องแกงเจ้า', ['khao_soi', 'hub_nam_ngiao', 'sai_ua']),
   shop('hub_thaphae_umbrella', 'hub_thaphae', 'ร่มบ่อสร้างวาดสด', 'พี่ปอ', 'ร่มกระดาษสาวาดมือทีละคัน วาดชื่อให้ฟรีเจ้า', ['hub_longan_juice']),
   shop('hub_thaphae_roti', 'hub_thaphae', 'โรตีป้าเฮาะ', 'ป้าเฮาะ', 'โรตีกล้วยไข่ราดนมเจ้า คิวยาวแต่ป้ามือไว!', ['hub_roti_banana', 'hub_longan_juice']),
   // ตลาดกิมหยง
-  shop('hub_kimyong_chicken', 'hub_kimyong', 'ไก่ทอดหาดใหญ่เจ๊ยะ', 'เจ๊ยะ', 'ไก่ทอดหอมเจียวกรอบ ๆ กับข้าวเหนียว หรอยจังฮู้!', ['hub_kai_tod_hatyai']),
+  shop('hub_kimyong_chicken', 'hub_kimyong', 'ไก่ทอดหาดใหญ่', 'เจ๊ยะ', 'ไก่ทอดหอมเจียวกรอบ ๆ กับข้าวเหนียว หรอยจังฮู้!', ['hub_kai_tod_hatyai']),
   shop('hub_kimyong_dates', 'hub_kimyong', 'อินทผลัมบังดีน', 'บังดีน', 'ชิมก่อนได้ครับ สามเม็ดฟรี! เม็ดที่สี่เริ่มคิดเงิน', ['hub_dates', 'hub_cashew']),
-  shop('hub_kimyong_dried', 'hub_kimyong', 'ของแห้งกิมหยงเฮียหลี', 'เฮียหลี', 'หมึกแห้ง กุ้งแห้ง เม็ดมะม่วง ช็อกโกแลตจากข้ามแดน ครบจบที่เดียว', ['dried_squid', 'hub_cashew']),
+  shop('hub_kimyong_dried', 'hub_kimyong', 'ของแห้งเฮียหลี', 'เฮียหลี', 'หมึกแห้ง กุ้งแห้ง เม็ดมะม่วง ช็อกโกแลตจากข้ามแดน ครบจบที่เดียว', ['dried_squid', 'hub_cashew']),
   shop('hub_kimyong_roti', 'hub_kimyong', 'โรตีชาชักกะลีมะห์', 'กะลีมะห์', 'ชาชักฟองนุ่ม โรตีมะตะบะร้อน ๆ ค่ะ', ['cha_chak', 'hub_mataba']),
   // ตลาดอินโดจีน
-  shop('hub_indochina_naem', 'hub_indochina', 'แหนมเนืองลุงเหงียน', 'ลุงเหงียน', 'ม้วนเองนะ ผักเยอะ ๆ ห่อแน่น ๆ แบบลุงสอน', ['hub_naem_nueang', 'hub_khao_jee']),
-  shop('hub_indochina_silk', 'hub_indochina', 'ผ้าไหมแม่ใหญ่คำพอง', 'แม่ใหญ่คำพอง', 'ผ้าไหมทอมือเด้อลูก กาแฟลาวร้อน ๆ ก็มีเด้อ', ['hub_lao_coffee']),
-  shop('hub_indochina_mookata', 'hub_indochina', 'หมูกระทะริมโขงเจ๊นก', 'เจ๊นก', 'เตาร้อนแล้ว! หมูสามชั้นจัดเต็ม ชมโขงไปย่างไป', ['hub_moo_kata', 'som_tam']),
-  shop('hub_indochina_toys', 'hub_indochina', 'ของเล่นจีนร้อยแปด', 'อาเฮีย', 'ของเล่นไขลาน ไฟกระพริบ ร้อยแปดพันเก้า เลือกเลย', ['hub_khao_jee', 'hub_lao_coffee']),
+  shop('hub_indochina_naem', 'hub_indochina', 'แหนมเนืองริมโขง', 'ลุงเหงียน', 'ม้วนเองนะ ผักเยอะ ๆ ห่อแน่น ๆ แบบลุงสอน', ['hub_naem_nueang', 'hub_khao_jee']),
+  shop('hub_indochina_silk', 'hub_indochina', 'ผ้าไหมแม่คำพอง', 'แม่ใหญ่คำพอง', 'ผ้าไหมทอมือเด้อลูก กาแฟลาวร้อน ๆ ก็มีเด้อ', ['hub_lao_coffee']),
+  shop('hub_indochina_mookata', 'hub_indochina', 'หมูกระทะริมโขง', 'เจ๊นก', 'เตาร้อนแล้ว! หมูสามชั้นจัดเต็ม ชมโขงไปย่างไป', ['hub_moo_kata', 'som_tam']),
+  shop('hub_indochina_toys', 'hub_indochina', 'ของเล่นร้อยแปด', 'อาเฮีย', 'ของเล่นไขลาน ไฟกระพริบ ร้อยแปดพันเก้า เลือกเลย', ['hub_khao_jee', 'hub_lao_coffee']),
   // งานวัด
   shop('fair_temple_icepop', 'fair_temple', 'ไอติมหลอดลุงชื่น', 'ลุงชื่น', 'ไอติมหลอดหลอดละสิบบาท~ สีแดง สีเขียว สีฟ้าเลือกเลย!', ['hub_ice_pop']),
   shop('fair_temple_saimai', 'fair_temple', 'สายไหมป้าจุก', 'ป้าจุก', 'สายไหมฟู ๆ เท่าหัวหนู! ชมพูหรือฟ้าจ๊ะ', ['hub_sai_mai']),
   shop('fair_temple_lookchin', 'fair_temple', 'ลูกชิ้นทอดพี่หนุ่ม', 'พี่หนุ่ม', 'ลูกชิ้นทอดพอง ๆ น้ำจิ้มสูตรเด็ด เผ็ดน้อยเผ็ดมาก?', ['hub_lookchin_tod']),
-  shop('fair_temple_popcorn', 'fair_temple', 'ข้าวโพดคั่วเฮียป๊อก', 'เฮียป๊อก', 'ป๊อก ๆ ๆ หอมไหม! คาราเมลหรือเนย?', ['hub_popcorn', 'chayen']),
+  shop('fair_temple_popcorn', 'fair_temple', 'ข้าวโพดคั่ว', 'เฮียป๊อก', 'ป๊อก ๆ ๆ หอมไหม! คาราเมลหรือเนย?', ['hub_popcorn', 'chayen']),
 ])

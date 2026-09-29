@@ -12,7 +12,7 @@ import { sfx } from '../../../engine/audio'
 import * as G from '../../../art/garden'
 import { CloudShadows, SunRays, TapZones, type Life } from '../../life'
 import { Gags, gagFx, type Gag } from '../../gags'
-import { concrete, crates, basket, fruitGoods, jarGoods, noticeBoard, platuGoods, railTrack, tiles, hooksAt, type Goods } from '../../../art/places/hub-kit'
+import { concrete, crates, basket, fruitGoods, jarGoods, menuBoard, noticeBoard, platuGoods, railTrack, tiles, hooksAt, type Goods } from '../../../art/places/hub-kit'
 import { bufferStop, crossingSignal, drawAwning, drawTray, drawTrain, platuStack, sideFacade, stallTable, stationBuilding } from '../../../art/places/hub-maeklong'
 import { fairSfx } from '../../../activities/fair/sound'
 import { HubArrival, Hawkers, OrangeCats, giverGag, hs, hubChat, look, personGag } from './hub-common'
@@ -29,7 +29,8 @@ const SLOT = 46
 const SLOTS = Array.from({ length: Math.floor((MARKET_BOT - MARKET_TOP) / SLOT) }, (_, i) => MARKET_TOP + 24 + i * SLOT)
 const LT = 62
 const RT = 238
-const GATE = { x: 60, y: 1060 }
+// Kept clear of the bottom ~50px, which sits under the hotbar.
+const GATE = { x: 60, y: 1030 }
 
 /** Shared train status (read by the notice board). */
 export const MK_TRAIN = { phase: 'idle' as 'idle' | 'warn' | 'in' | 'dwell' | 'out', eta: 20 }
@@ -303,6 +304,8 @@ export function maeklongMap(): MapDef {
     { sprite: signal, x: 120, y: 988 },
     { sprite: signal, x: 180, y: 988, flip: true },
     { sprite: basket('#9fb4c8'), x: 88, y: 1010 },
+    // Green signpost at the market exit.
+    { sprite: menuBoard('mk_exit', '#3d8a6a'), x: GATE.x - 18, y: GATE.y - 4, shadow: [6, 2] },
     { sprite: crates(2, '#e8514a', 5), x: 240, y: 1020 },
     { sprite: G.shrub(0), x: 20, y: 1040 },
     { sprite: G.shrub(1), x: 280, y: 1042 },
@@ -340,6 +343,7 @@ export function maeklongMap(): MapDef {
       { x: 116, y: 982, w: 8, h: 7 },
       { x: 176, y: 982, w: 8, h: 7 },
       { x: 81, y: 1004, w: 14, h: 7 },
+      { x: GATE.x - 23, y: GATE.y - 8, w: 10, h: 5 },
       { x: 233, y: 1010, w: 14, h: 11 },
       { x: 14, y: 1034, w: 12, h: 7 },
       { x: 274, y: 1036, w: 12, h: 7 },
@@ -355,7 +359,7 @@ export function maeklongMap(): MapDef {
       hs(`board:${ID}`, 'บอร์ดข่าวตลาดร่มหุบ', 'ตารางรถไฟ · กิจกรรมวันนี้ · ใครตามหาอะไร', 'scroll', { x: 210, y: 192, w: 32, h: 34 }, { x: 226, y: 238 }, { marker: { x: 226, y: 190 } }),
       hs('gate', 'ทางออกตลาดร่มหุบ', 'กลับบ้าน หรือไปที่อื่น', 'map', { x: GATE.x - 22, y: GATE.y - 30, w: 44, h: 32 }, { x: GATE.x, y: GATE.y }, { face: 'down', marker: { x: GATE.x, y: GATE.y - 34 }, near: 12 }),
     ],
-    spawn: { x: GATE.x + 10, y: 1040, face: 'up' },
+    spawn: { x: GATE.x + 10, y: 1012, face: 'up' },
     entries: {},
     pickupSpots: [
       { x: 180, y: 180 },
@@ -365,7 +369,7 @@ export function maeklongMap(): MapDef {
       { x: 200, y: 680 },
       { x: 100, y: 820 },
       { x: 200, y: 930 },
-      { x: 150, y: 1030 },
+      { x: 150, y: 1018 },
     ],
     lights: [
       ...hooksAt(station, 'lamp', 66, 204).map((p) => ({ x: p.x, y: p.y, r: 20, color: '#ffe7a8' })),
@@ -383,7 +387,7 @@ export function maeklongMap(): MapDef {
         new Gags(s, gags()),
         new OrangeCats(s, [
           { x: 180, y: 204, pose: 'sleep' },
-          { x: 214, y: 1030, pose: 'loaf' },
+          { x: 214, y: 1024, pose: 'loaf' },
         ]),
         new Hawkers(
           s,
@@ -410,7 +414,7 @@ export function maeklongMap(): MapDef {
       { x: 84, y: MARKET_TOP + 10, w: 34, h: MARKET_BOT - MARKET_TOP - 30 },
       { x: 182, y: MARKET_TOP + 10, w: 34, h: MARKET_BOT - MARKET_TOP - 30 },
       { x: 170, y: 160, w: 90, h: 60 },
-      { x: 20, y: 1000, w: 90, h: 50 },
+      { x: 20, y: 992, w: 90, h: 40 },
       { x: 196, y: 1000, w: 80, h: 40 },
     ],
     pois: SLOTS.flatMap((y, i) =>
