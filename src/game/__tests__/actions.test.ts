@@ -119,9 +119,12 @@ describe('purchases', () => {
     expect(game.value.purchases[0].id).toBe('boondee.coins.300')
   })
 
-  it('unlocks the limited shirt with the starter pack', () => {
+  it('grants the elephant hat, pants and ช้างน้อย with the starter pack', () => {
     A.completePurchase('boondee.starter', 'test-2')
     expect(game.value.starterBought).toBe(true)
-    expect(game.value.outfits).toContain('top_boondee')
+    expect(game.value.outfits).toContain('hat_elephant')
+    expect(game.value.outfits).toContain('bottom_elephant_pants')
+    expect(game.value.pets).toContain('chang_noi')
+    expect(game.value.pet).toBe('chang_noi')
   })
 })
