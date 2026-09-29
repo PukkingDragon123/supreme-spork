@@ -6,6 +6,7 @@ import { coinStoreOpen, mode, openPanel, profileOpen, settingsOpen, tab, type Ta
 import { signOut } from './account'
 import { soldCount } from '../game/market'
 import { presence } from '../services/presence'
+import { game } from '../game/state'
 import { sfx } from '../engine/audio'
 
 export function Menu() {
@@ -44,6 +45,9 @@ export function Menu() {
         </PBtn>
         <PBtn size="small" tone="gold" icon="market" onClick={() => openPanel('market')}>
           ตลาดนัด{soldCount() ? ` (${soldCount()})` : ''}
+        </PBtn>
+        <PBtn size="small" tone="pink" icon="gift" onClick={() => openPanel('collection')}>
+          สมุดสะสม{game.value.collection.fresh.length ? ` (${game.value.collection.fresh.length})` : ''}
         </PBtn>
         <PBtn size="small" tone="gold" icon="coin" onClick={() => (close(), (coinStoreOpen.value = true))}>
           บุญคอยน์

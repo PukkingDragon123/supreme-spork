@@ -11,8 +11,12 @@ import { OUTFITS, OUTFIT_BY_ID } from './data/outfits'
 import { simulatedProfile } from '../services/social'
 import { Rng } from '../engine/rng'
 import { notify, toast } from './events'
+import { COLLECTIBLES, COLLECTIBLE_BY_ID } from './data/collectibles'
+import type { Rarity } from './data/collectibleTypes'
+import { addToCollection, removeFromCollection } from './collectibles'
+import { track } from './actions'
 
-export type TradeKind = 'mat' | 'item' | 'furniture' | 'outfit'
+export type TradeKind = 'mat' | 'item' | 'furniture' | 'outfit' | 'collectible'
 
 export interface Listing {
   id: string
@@ -42,6 +46,7 @@ export function tradeName(kind: TradeKind, id: string): string {
   if (kind === 'mat') return MATERIAL_INFO[id as MaterialId]?.name ?? id
   if (kind === 'item') return ITEM_BY_ID[id]?.name ?? id
   if (kind === 'furniture') return FURNITURE_BY_ID[id]?.name ?? id
+  if (kind === 'collectible') return COLLECTIBLE_BY_ID[id]?.name ?? id
   return OUTFIT_BY_ID[id]?.name ?? id
 }
 
@@ -54,6 +59,7 @@ export function baseValue(kind: TradeKind, id: string): number {
     if (!f) return 30
     return Math.round(Object.values(f.recipe).reduce((a, n) => a + (n ?? 0) * 10, 0) + (f.coins ?? 0) + 10)
   }
+  if (kind === 'collectible') return Math.max(5, COLLECTIBLE_BY_ID[id]?.value ?? 25)
   return Math.max(20, OUTFIT_BY_ID[id]?.price ?? 50)
 }
 
@@ -78,14 +84,30 @@ export function browseListings(s: GameState = game.value): Listing[] {
   for (let i = 0; i < 4; i++) add('furniture', r.pick(furn).id, 1, r.range(0.9, 1.5))
   const outfits = OUTFITS.filter((o) => !o.premium && o.price > 0 && !(o as { shopOnly?: string }).shopOnly && !s.outfits.includes(o.id))
   for (let i = 0; i < 4 && outfits.length; i++) add('outfit', r.pick(outfits).id, 1, r.range(0.85, 1.25))
+  // Collectors trade souvenirs too – rarer ones are scarcer and pricier, and
+  // out-of-season items only turn up here.
+  const pool = COLLECTIBLES.filter((c) => c.tradeable !== false)
+  const MARKUP: Record<Rarity, [number, number]> = { common: [0.8, 1.2], uncommon: [0.9, 1.3], rare: [1, 1.45], epic: [1.1, 1.6], legendary: [1.2, 1.9] }
+  for (let i = 0; i < 6 && pool.length; i++) {
+    const total = pool.reduce((a, c) => a + MARKET_RARITY_WEIGHT[c.rarity], 0)
+    let roll = r.float() * total
+    const k = Math.max(0, pool.findIndex((x) => (roll -= MARKET_RARITY_WEIGHT[x.rarity]) < 0))
+    const c = pool.splice(k, 1)[0]
+    const [lo, hi] = MARKUP[c.rarity]
+    add('collectible', c.id, c.rarity === 'common' && r.chance(0.3) ? 2 : 1, r.range(lo, hi) * (c.season && c.season !== 'always' ? 1.15 : 1))
+  }
   return out
 }
+
+/** Collectors list rarer things more often than shops stock them. */
+export const MARKET_RARITY_WEIGHT: Record<Rarity, number> = { common: 40, uncommon: 30, rare: 18, epic: 7, legendary: 2 }
 
 /** How many of something you own and could sell. */
 export function owned(kind: TradeKind, id: string, s: GameState = game.value): number {
   if (kind === 'mat') return s.materials[id as MaterialId] ?? 0
   if (kind === 'item') return s.inventory[id] ?? 0
   if (kind === 'furniture') return s.house.storage[id] ?? 0
+  if (kind === 'collectible') return COLLECTIBLE_BY_ID[id]?.tradeable === false ? 0 : s.collection.owned[id] ?? 0
   return 0
 }
 
@@ -93,6 +115,7 @@ function give(d: GameState, kind: TradeKind, id: string, qty: number) {
   if (kind === 'mat') d.materials[id as MaterialId] = (d.materials[id as MaterialId] ?? 0) + qty
   else if (kind === 'item') d.inventory[id] = (d.inventory[id] ?? 0) + qty
   else if (kind === 'furniture') d.house = { ...d.house, storage: { ...d.house.storage, [id]: (d.house.storage[id] ?? 0) + qty } }
+  else if (kind === 'collectible') addToCollection(d, id, qty)
   else if (!d.outfits.includes(id)) d.outfits.push(id)
 }
 
@@ -100,6 +123,7 @@ function take(d: GameState, kind: TradeKind, id: string, qty: number) {
   if (kind === 'mat') d.materials[id as MaterialId] = Math.max(0, (d.materials[id as MaterialId] ?? 0) - qty)
   else if (kind === 'item') d.inventory[id] = Math.max(0, (d.inventory[id] ?? 0) - qty)
   else if (kind === 'furniture') d.house = { ...d.house, storage: { ...d.house.storage, [id]: Math.max(0, (d.house.storage[id] ?? 0) - qty) } }
+  else if (kind === 'collectible') removeFromCollection(d, id, qty)
 }
 
 export function buyListing(l: Listing): boolean {
@@ -117,6 +141,8 @@ export function buyListing(l: Listing): boolean {
     d.market.bought.push(l.id)
     if (d.market.bought.length > 200) d.market.bought = d.market.bought.slice(-200)
   })
+  track('trade')
+  if (l.kind === 'collectible') track('collectible', l.qty)
   return true
 }
 
@@ -164,6 +190,7 @@ export function collectSales(): number {
     d.market.earned += coins
   })
   notify({ kind: 'reward', title: 'ขายของในตลาดได้แล้ว!', merit: 0, coins, note: sold.map((l) => `${tradeName(l.kind, l.itemId)} ×${l.qty}`).join(' · ') })
+  track('trade', sold.length)
   return coins
 }
 

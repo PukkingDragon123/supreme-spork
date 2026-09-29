@@ -31,12 +31,16 @@ import { Coin, Icon, Portrait } from '../components/common'
 import { thumbFor, applyItem } from '../DressUp'
 import { toast } from '../../game/events'
 import { sfx } from '../../engine/audio'
+import { COLLECTIBLE_BY_ID, RARITY_INFO } from '../../game/data/collectibles'
+import { collectibleUrl } from '../../art/collectibles'
+import './collection.css'
 
 function TradeIcon({ kind, id, size = 40 }: { kind: TradeKind; id: string; size?: number }) {
   const look = game.value.player.look
   const src = useMemo(() => {
     if (kind === 'mat') return spriteDataUrl(materialSprite(id as MaterialId), 3)
     if (kind === 'furniture') return spriteDataUrl(furnitureThumb(id), 2)
+    if (kind === 'collectible') return collectibleUrl(id, 2)
     if (kind === 'outfit') {
       const o = OUTFIT_BY_ID[id]
       return o ? thumbFor(applyItem(look, o, o.slot as never), o.slot) : ''
@@ -59,7 +63,7 @@ export function MarketWindow() {
   const sold = soldCount()
   return (
     <Window title="ตลาดนัดสายบุญ" icon="market" tone="gold" onClose={() => openPanel(null)} wide>
-      <p class="small muted">ซื้อขายวัสดุ ของทำบุญ เฟอร์นิเจอร์ และชุดกับผู้เล่นคนอื่น · ค่าธรรมเนียมตลาด {Math.round(MARKET_FEE * 100)}%</p>
+      <p class="small muted">ซื้อขายวัสดุ ของทำบุญ เฟอร์นิเจอร์ ชุด และของสะสมกับผู้เล่นคนอื่น · ค่าธรรมเนียมตลาด {Math.round(MARKET_FEE * 100)}%</p>
       <Tabs
         tabs={[
           { id: 'buy', label: 'ซื้อ', icon: 'coin' },
@@ -100,6 +104,7 @@ function BuyTab() {
             ['item', 'ของทำบุญ'],
             ['furniture', 'เฟอร์นิเจอร์'],
             ['outfit', 'ชุด'],
+            ['collectible', 'ของสะสม'],
           ] as const
         ).map(([id, label]) => (
           <button key={id} class={`chip ${filter === id ? 'green' : ''}`} onClick={() => (sfx.tap(), setFilter(id))}>
@@ -124,6 +129,7 @@ function BuyTab() {
                   <Portrait look={simulatedProfile(l.seller.code).look} size={18} /> แผงของ{l.seller.name}
                 </span>
                 {deal && <span class="chip green small deal">ราคาดี!</span>}
+                {l.kind === 'collectible' && COLLECTIBLE_BY_ID[l.itemId] && <RarityTag id={l.itemId} />}
               </div>
               <PBtn tone="gold" size="small" onClick={() => buy(l)}>
                 <Coin n={l.price} size={14} />
@@ -138,6 +144,15 @@ function BuyTab() {
   )
 }
 
+function RarityTag({ id }: { id: string }) {
+  const r = RARITY_INFO[COLLECTIBLE_BY_ID[id].rarity]
+  return (
+    <span class="market-rar" style={{ background: r.color, color: r.dark }}>
+      {'★'.repeat(r.stars)} {r.name}
+    </span>
+  )
+}
+
 function SellTab({ onListed }: { onListed: () => void }) {
   const s = game.value
   const options: { kind: TradeKind; id: string; n: number }[] = [
@@ -148,6 +163,9 @@ function SellTab({ onListed }: { onListed: () => void }) {
     ...Object.entries(s.house.storage)
       .filter(([id, n]) => n > 0 && FURNITURE_BY_ID[id])
       .map(([id, n]) => ({ kind: 'furniture' as const, id, n })),
+    ...Object.keys(s.collection.owned)
+      .filter((id) => COLLECTIBLE_BY_ID[id])
+      .map((id) => ({ kind: 'collectible' as const, id, n: owned('collectible', id, s) })),
   ].filter((o) => o.n > 0)
   const [pick, setPick] = useState<{ kind: TradeKind; id: string } | null>(options[0] ?? null)
   const have = pick ? owned(pick.kind, pick.id) : 0

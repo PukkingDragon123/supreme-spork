@@ -52,4 +52,36 @@ export interface CollectibleDef {
   art: CollectibleArt
   /** False for bound rewards that cannot be traded. Default true. */
   tradeable?: boolean
+  /** A specific stall id (placeShops) that always stocks it, e.g. a fair booth. */
+  shop?: string
+  /**
+   * Where it comes from. 'reward' items (quests, ranks, events, set prizes)
+   * never roll into random shop stock. Default 'shop'.
+   */
+  source?: 'shop' | 'reward'
+  /** Extra "where to find it" hint for the collection book. */
+  hint?: string
+}
+
+/** Collection-book metadata for a series (optional; unknown series get defaults). */
+export interface CollectibleSeries {
+  /** Same string as CollectibleDef.series. */
+  id: string
+  /** Short subtitle for the book page. */
+  blurb?: string
+  /** Page colour. */
+  color?: string
+  /** Motif used for the series tab icon. */
+  motif?: string
+  /** Coins for completing the whole set (defaults to ~30% of its value). */
+  reward?: number
+  /** Order in the book (lower first). */
+  order?: number
+}
+
+/** A group file (souvenirs, pop culture, ranks, hub markets, fair, flood…). */
+export interface CollectibleGroup {
+  id: string
+  items: CollectibleDef[]
+  series?: CollectibleSeries[]
 }

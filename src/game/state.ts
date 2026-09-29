@@ -13,6 +13,7 @@ import { defaultHouse, normalizeHouse, type HouseState } from './house'
 import { defaultHomeland, normalizeHomeland, type HomelandState } from './homelandState'
 import { weekKey } from './time'
 import { defaultLiveEvents, normalizeLiveEvents, type LiveEventsState } from './events/save'
+import { emptyCollection, normalizeCollection, type CollectionState } from './collectionState'
 
 export const SAVE_KEY = 'boondee.save.v1'
 export const SAVE_VERSION = 2
@@ -118,6 +119,8 @@ export interface GameState {
   places: { bought: string[]; visited: string[]; current: string | null }
   /** Player market: your stall and what you bought from others. */
   market: { mine: import('./market').MyListing[]; bought: string[]; earned: number }
+  /** Collectibles & souvenirs: owned counts, first-found days, daily stall stock (see game/collectibles.ts). */
+  collection: CollectionState
   player: { name: string; birthDay: number; friendCode: string; look: AvatarLook }
   merit: number
   coins: number
@@ -190,6 +193,7 @@ export function defaultState(): GameState {
     pet: null,
     places: { bought: [], visited: [], current: null },
     market: { mine: [], bought: [], earned: 0 },
+    collection: emptyCollection(),
     player: { name: 'สายบุญ', birthDay: new Date().getDay(), friendCode: makeFriendCode(), look: { ...DEFAULT_LOOK } },
     merit: 0,
     coins: 100,
@@ -245,6 +249,7 @@ export function migrate(raw: unknown): GameState {
     places: { ...base.places, ...(s.places ?? {}) },
     market: { ...base.market, ...(s.market ?? {}) },
     liveEvents: normalizeLiveEvents(s.liveEvents),
+    collection: normalizeCollection(s.collection),
     v: SAVE_VERSION,
   }
   // v1 called the main temple 'home'; it is 'wat' now that players have a house.

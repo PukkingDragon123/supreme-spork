@@ -1,0 +1,392 @@
+/* Collection book (สมุดสะสม) and the market's rarity tag. Prefix: .cbook- */
+
+.cbook-win .win-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cbook-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 6px;
+}
+
+.cbook-sum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 4px;
+}
+
+.cbook-sum .grow {
+  flex: 1;
+}
+
+.cbook-timer {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.cbook-rar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.cbook-rar-chip {
+  display: inline-block;
+  padding: 1px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.35;
+  border-radius: 3px;
+  box-shadow: 0 2px 0 rgba(59, 38, 22, 0.3);
+  white-space: nowrap;
+}
+
+/* Series tabs */
+.cbook-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 10px 2px 4px;
+  scrollbar-width: none;
+}
+
+.cbook-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.cbook-tab {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 52px;
+  padding: 3px 0 2px;
+  border: 3px solid #8a5a32;
+  border-radius: 6px 6px 3px 3px;
+  background: color-mix(in srgb, var(--sc) 35%, #fff6e4);
+  box-shadow: 0 3px 0 #6e4a35;
+  cursor: pointer;
+  transition: transform 120ms;
+}
+
+.cbook-tab.on {
+  background: color-mix(in srgb, var(--sc) 75%, #fff6e4);
+  transform: translateY(-4px);
+  box-shadow: 0 5px 0 #6e4a35;
+}
+
+.cbook-tab img {
+  image-rendering: pixelated;
+}
+
+.cbook-tab-n {
+  font-size: 11px;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.cbook-dot {
+  position: absolute;
+  top: -10px;
+  right: -6px;
+  padding: 0 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--red);
+  border-radius: 6px;
+  box-shadow: 0 1px 0 #7e2436;
+  animation: cbook-pulse 1.2s ease-in-out infinite;
+}
+
+.cbook-check {
+  position: absolute;
+  top: -8px;
+  left: -6px;
+  width: 16px;
+  height: 16px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+  color: #fff;
+  background: var(--leaf-d);
+  border-radius: 50%;
+}
+
+@keyframes cbook-pulse {
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+/* A page of the book */
+.cbook-page {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(0deg, rgba(122, 90, 62, 0.06) 0 1px, transparent 1px 18px),
+    color-mix(in srgb, var(--sc) 18%, #fffaf0);
+  box-shadow:
+    inset 0 0 0 3px color-mix(in srgb, var(--sc) 60%, #8a5a32),
+    inset 8px 0 0 -2px rgba(122, 90, 62, 0.15);
+  animation: cbook-flip-next 320ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+.cbook-page.prev {
+  animation-name: cbook-flip-prev;
+}
+
+@keyframes cbook-flip-next {
+  from {
+    opacity: 0;
+    transform: perspective(600px) rotateY(-28deg) translateX(24px);
+    transform-origin: 0 50%;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes cbook-flip-prev {
+  from {
+    opacity: 0;
+    transform: perspective(600px) rotateY(28deg) translateX(-24px);
+    transform-origin: 100% 50%;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.cbook-page-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cbook-page-head .center {
+  text-align: center;
+}
+
+.cbook-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.cbook-item {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 3px solid color-mix(in srgb, var(--rar) 75%, #6e4a35);
+  background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--rar) 40%, #fff) 0 35%, #fff6e4 75%);
+  box-shadow: 0 3px 0 rgba(59, 38, 22, 0.25);
+  cursor: pointer;
+  animation: cbook-pop 260ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+
+.cbook-item.miss {
+  background: repeating-linear-gradient(45deg, #efe2c8 0 4px, #e8d8ba 4px 8px);
+  border-style: dashed;
+}
+
+.cbook-item img {
+  image-rendering: pixelated;
+}
+
+.cbook-item.have.epic img,
+.cbook-item.have.legendary img {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--rar) 80%, #fff));
+}
+
+.cbook-item:active {
+  transform: translateY(2px);
+}
+
+@keyframes cbook-pop {
+  from {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.cbook-q {
+  position: absolute;
+  font-family: var(--num);
+  font-size: 22px;
+  font-weight: 600;
+  color: #fffaf0;
+  text-shadow: 0 2px 0 #8a7a5a;
+}
+
+.cbook-count {
+  position: absolute;
+  right: 2px;
+  bottom: 0;
+  font-size: 11px;
+  color: var(--ink);
+  background: #fff6e4;
+  border-radius: 4px;
+  padding: 0 2px;
+}
+
+.cbook-new {
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #7a4a00;
+  background: #ffe45e;
+  border-radius: 4px;
+  box-shadow: 0 1px 0 #b8742a;
+  transform: rotate(8deg);
+  animation: cbook-pulse 1.1s ease-in-out infinite;
+}
+
+.cbook-stars {
+  position: absolute;
+  left: 3px;
+  top: 1px;
+  font-size: 8px;
+  letter-spacing: -1px;
+  color: color-mix(in srgb, var(--rar) 70%, #3b2616);
+}
+
+.cbook-reward {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+}
+
+.cbook-reward .grow {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Item sheet */
+.cbook-sheet-back {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(28, 16, 10, 0.45);
+  animation: fade-in 140ms ease-out;
+}
+
+.cbook-sheet {
+  position: relative;
+  width: min(100%, 300px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px;
+  text-align: center;
+  animation: pop-in 240ms cubic-bezier(0.2, 0.9, 0.3, 1.25);
+}
+
+.cbook-sheet-x {
+  position: absolute !important;
+  top: -14px;
+  right: -12px;
+}
+
+.cbook-sheet-art {
+  position: relative;
+  width: 136px;
+  height: 136px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--rar) 60%, #fff) 0 30%, color-mix(in srgb, var(--rar) 25%, #fff6e4) 62%, #fff6e4 100%);
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--rar) 70%, #3b2616);
+}
+
+.cbook-sheet-art img {
+  width: 130px;
+  height: 130px;
+  image-rendering: pixelated;
+  animation: stall-float 2.4s ease-in-out infinite;
+}
+
+.cbook-sheet-name {
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.cbook-season {
+  color: #2f77a8;
+  font-weight: 700;
+}
+
+.cbook-desc {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.35;
+}
+
+.cbook-meta {
+  color: var(--ink);
+}
+
+.cbook-where {
+  margin: 0;
+  padding: 4px 6px 4px 22px;
+  text-align: left;
+  color: var(--ink-soft);
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 4px;
+  align-self: stretch;
+}
+
+.cbook-where li {
+  margin: 1px 0;
+}
+
+/* Market rarity tag */
+.market-rar {
+  display: inline-block;
+  align-self: flex-start;
+  margin-top: 1px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+  border-radius: 3px;
+  box-shadow: 0 1px 0 rgba(59, 38, 22, 0.3);
+}
+
+.reduce-motion .cbook-page,
+.reduce-motion .cbook-item {
+  animation-duration: 1ms !important;
+}
