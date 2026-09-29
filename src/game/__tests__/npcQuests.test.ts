@@ -8,7 +8,7 @@ import { PLACE_SHOPS, shopFor } from '../data/placeShops'
 import { OUTFIT_BY_ID } from '../data/outfits'
 import { PET_BY_ID } from '../data/pets'
 import { ITEM_BY_ID } from '../data/items'
-import { QUEST_POOL } from '../data/quests'
+import { ACHIEVEMENTS, QUEST_POOL } from '../data/quests'
 import { meritForLevel } from '../economy'
 import { normalizeNpcQuests } from '../npcQuestState'
 import { notices } from '../events'
@@ -132,7 +132,10 @@ describe('npc quest engine', () => {
     const gold = game.value.inventory.gold_leaf ?? 0
     const got = Q.turnInQuest('dum_3')!
     expect(got.coins).toBe(def.reward.coins)
-    expect(game.value.coins).toBe(coins + def.reward.coins)
+    // Turning in also unlocks the first-NPC-quest medal (it pays coins too).
+    const medal = ACHIEVEMENTS.find((a) => a.id === 'a_npc_1')!
+    expect(game.value.achievements.a_npc_1).toBeTruthy()
+    expect(game.value.coins).toBe(coins + def.reward.coins + medal.coins)
     expect(game.value.inventory.gold_leaf).toBe(gold + 2)
     expect(Q.questStatus(def)).toBe('done')
     expect(game.value.stats.npc_quest).toBe(1)
