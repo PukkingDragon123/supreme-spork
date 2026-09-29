@@ -112,6 +112,7 @@ export function finishPrayer(stageId: string, r: ChantResult, mode: 'voice' | 't
   let coins = addCoins(calc.coins, { boost: true })
   if (goalDone) coins += addCoins(30)
   track('chant')
+  if (r.stars >= 1) track('prayer_pass')
   return {
     merit,
     coins,

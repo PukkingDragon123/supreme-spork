@@ -341,6 +341,7 @@ export function AlmsActivity({ req }: { req: ActivityRequest }) {
       const m = addMerit(it.merit + bonus, { key: 'alms_item', free: 12, morning: true, area: boat ? 'river' : 'wat' })
       meritRef.current += m
       itemsRef.current += 1
+      if (it.category === 'dish') track('dish_alms')
       setTotal(meritRef.current)
       sc.particles.popText(sc.standX - 8, sc.groundY - 70, `+${m}`)
       sfx.merit()
