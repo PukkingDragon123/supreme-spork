@@ -33,19 +33,30 @@ export interface SpecialOffer {
   oneTime?: boolean
   /** Monthly pass: daily coin drip for 30 days. */
   monthly?: { daily: number; days: number }
+  /** Visual theme of the pack card in the shop (e.g. 'flood'). */
+  tag?: string
 }
 
 export const SPECIAL_OFFERS: SpecialOffer[] = [
   {
     id: 'boondee.starter',
-    name: 'แพ็กเริ่มต้นสายบุญ',
-    desc: '200 คอยน์ + เสื้อบุญดีลิมิเต็ด + ชุดสังฆทาน + บุญ x2 นาน 1 ชั่วโมง',
+    name: 'แพ็กเริ่มต้นช้างน้อย',
+    desc: '300 คอยน์ + หมวกช้าง + กางเกงช้าง + ช้างน้อยใส่กางเกงช้าง (บุญ +5%)',
     priceTHB: 49,
-    coins: 200,
-    items: { sangkhathan: 1, gold_leaf: 2 },
-    outfits: ['top_boondee'],
-    buff: { kind: 'merit', mult: 2, minutes: 60 },
+    coins: 300,
+    outfits: ['hat_elephant', 'bottom_elephant_pants'],
+    pets: ['chang_noi'],
     oneTime: true,
+  },
+  {
+    id: 'boondee.pack.flood',
+    name: 'แพ็กพิเศษหนีภัยน้ำท่วม',
+    desc: 'ชุดดำน้ำ + ตีนกบ + ปลากัดลอยฟ่องในฟองน้ำ (เหรียญ +5%) + 250 คอยน์',
+    priceTHB: 129,
+    coins: 250,
+    outfits: ['suit_scuba', 'shoes_flippers'],
+    pets: ['betta'],
+    tag: 'flood',
   },
   {
     id: 'boondee.pet.dragon',

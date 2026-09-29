@@ -6,6 +6,9 @@
 // Prices are in Boon Coins. `premium` pets are only granted by real-money
 // packs; their `price` is the coin-equivalent value shown on the card.
 
+import type { Exclusive } from './outfits'
+import { V4_PETS } from './petsV4'
+
 export type PetRarity = 'common' | 'rare' | 'epic' | 'legend'
 
 /** What a pet's perk boosts. */
@@ -40,6 +43,10 @@ export interface PetDef {
   flying: boolean
   perk: PetPerk
   sound?: PetSound
+  /** Granted only (packs, battle pass, events); never sold for coins. */
+  exclusive?: Exclusive
+  /** Paddles with a swim animation when near water. */
+  swims?: boolean
 }
 
 export const RARITY: Record<PetRarity, { name: string; color: string; order: number }> = {
@@ -225,11 +232,17 @@ export const PETS: PetDef[] = [
     perk: { kind: 'merit', pct: 8 },
     sound: 'roar',
   },
+  ...V4_PETS,
 ]
 
 export const PET_BY_ID: Record<string, PetDef> = Object.fromEntries(PETS.map((p) => [p.id, p]))
 
-/** Pets sorted for the shop: rarity, then price. */
+/** Pack / pass / event pets that are only ever granted. */
+export function isExclusivePet(p: PetDef | null | undefined): boolean {
+  return !!p?.exclusive
+}
+
+/** Pets sorted for the shop: rarity, then price (granted-only pets excluded). */
 export function petsForShop(): PetDef[] {
-  return [...PETS].sort((a, b) => RARITY[a.rarity].order - RARITY[b.rarity].order || a.price - b.price)
+  return PETS.filter((p) => !p.exclusive).sort((a, b) => RARITY[a.rarity].order - RARITY[b.rarity].order || a.price - b.price)
 }

@@ -3,7 +3,7 @@
 // ship before (or without) their art.
 
 import { mutate, game } from '../state'
-import { addCoins, grantMeritRaw } from '../actions'
+import { addCoins, grantMeritRaw, grantOutfit, grantPet } from '../actions'
 import { ITEM_BY_ID } from '../data/items'
 import { OUTFIT_BY_ID } from '../data/outfits'
 import { PET_BY_ID } from '../data/pets'
@@ -85,10 +85,14 @@ export function grantReward(r: Reward): GrantResult {
         return { ok: true, dupe: true, label: `${rewardName(r)} (มีแล้ว แลกเป็น ${DUPE_COINS} คอยน์)` }
       }
       const id = r.id
-      mutate((d) => {
-        if (r.kind === 'outfit') d.outfits.push(id)
-        else d.pets.push(id)
-      })
+      // Known cosmetics go through the wardrobe/pet grants (records "new" for the bag);
+      // unknown ids are still kept so a later content update can draw them.
+      const granted = r.kind === 'outfit' ? grantOutfit(id) : grantPet(id)
+      if (!granted)
+        mutate((d) => {
+          if (r.kind === 'outfit') d.outfits.push(id)
+          else d.pets.push(id)
+        })
       return { ok: true, label: rewardLabel(r) }
     }
   }

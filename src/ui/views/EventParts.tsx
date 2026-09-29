@@ -11,6 +11,12 @@ import { Icon } from '../components/common'
 import { PBtn } from '../components/kit'
 import { FxCanvas } from '../components/FxCanvas'
 import { PT, TONE_TEXT } from '../pixeltext'
+import { OUTFIT_BY_ID } from '../../game/data/outfits'
+import { PET_BY_ID } from '../../game/data/pets'
+import { petIcon } from '../../art/pets'
+import { spriteDataUrl } from '../../engine/sprite'
+import { game } from '../../game/state'
+import { applyItem, thumbFor } from '../DressUp'
 
 export function EvIcon({ name, size = 24, class: cls }: { name: string; size?: number; class?: string }) {
   const scale = Math.max(1, Math.ceil((size * (window.devicePixelRatio || 1)) / 16))
@@ -25,7 +31,19 @@ export function RewardIcon({ r, size = 32 }: { r: EventReward; size?: number }) 
   if (r.kind === 'ticket') return <EvIcon name="ev_ticket" size={size} />
   if (r.kind === 'item') return <Icon name={ITEM_BY_ID[r.id ?? '']?.icon ?? 'gift'} size={size} />
   const id = r.id ?? ''
+  if ((r.kind === 'outfit' && OUTFIT_BY_ID[id]) || (r.kind === 'pet' && PET_BY_ID[id])) return <CosmeticThumb kind={r.kind} id={id} size={size} />
   return hasEventIcon(id) ? <EvIcon name={id} size={size} /> : <Icon name={r.kind === 'pet' ? 'paw' : 'shirt'} size={size} />
+}
+
+/** Real wardrobe / pet art for pass cosmetics (the avatar wearing it, or the pet). */
+function CosmeticThumb({ kind, id, size }: { kind: 'outfit' | 'pet'; id: string; size: number }) {
+  const look = game.value.player.look
+  const url = useMemo(() => {
+    if (kind === 'pet') return spriteDataUrl(petIcon(id), 3)
+    const o = OUTFIT_BY_ID[id]
+    return thumbFor(applyItem(look, o, o.slot as never), o.slot)
+  }, [kind, id, kind === 'outfit' ? look : null])
+  return <img class="px" src={url} width={size} height={size} alt="" draggable={false} />
 }
 
 /** Short amount under a reward card: "+60", "x5" or nothing for cosmetics. */

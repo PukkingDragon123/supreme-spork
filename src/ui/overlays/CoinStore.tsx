@@ -1,41 +1,24 @@
 // Boon Coin store: real-money packs (sandbox in the prototype) and free coins.
+// Uses the storefront's confirm modal and celebration reveal.
 
-import { useState } from 'preact/hooks'
 import { game } from '../../game/state'
-import { COIN_PACKS, SPECIAL_OFFERS, AD_REWARD_COINS, type CoinPack, type SpecialOffer } from '../../game/data/store'
-import { adsLeft, completePurchase, rewardAd } from '../../game/actions'
-import { payments } from '../../services/payments'
+import { COIN_PACKS, SPECIAL_OFFERS, AD_REWARD_COINS } from '../../game/data/store'
+import { adsLeft, rewardAd } from '../../game/actions'
 import { ads } from '../../services/ads'
 import { toast } from '../../game/events'
 import { Btn, Coin, Icon, Sheet } from '../components/common'
-import { coinStoreOpen } from '../store'
+import { coinStoreOpen, tab } from '../store'
+import { OfferCard } from '../shop/ShopCards'
+import { ShopConfirm, ShopReveal } from '../shop/ShopModals'
+import { checkout, checkoutBusy } from '../shop/flow'
 import { sfx } from '../../engine/audio'
-
-const PACK_ICON: Record<CoinPack['art'], string> = {
-  'pouch-s': 'coins',
-  'pouch-m': 'coinbag',
-  'pouch-l': 'coinbag',
-  chest: 'gift',
-  temple: 'temple',
-}
+import '../shop/shop.css'
 
 export function CoinStore() {
   const s = game.value
-  const [busy, setBusy] = useState<string | null>(null)
   const close = () => (coinStoreOpen.value = false)
-
-  const buy = async (id: string, price: number, title: string) => {
-    if (busy) return
-    setBusy(id)
-    const r = await payments().purchase(id, price, title)
-    setBusy(null)
-    if (r.ok && r.transactionId) {
-      completePurchase(id, r.transactionId)
-      sfx.purchase()
-    }
-  }
-
-  const offers = SPECIAL_OFFERS.filter((o) => !(o.oneTime && s.starterBought))
+  // starter first, then the flood pack, then the rest
+  const offers = SPECIAL_OFFERS.filter((o) => !(o.oneTime && s.starterBought)).sort((a, b) => Number(!!b.oneTime) - Number(!!a.oneTime) || Number(b.tag === 'flood') - Number(a.tag === 'flood'))
   return (
     <Sheet title="เติมบุญคอยน์" onClose={close}>
       <div class="row" style={{ margin: '0 4px 8px' }}>
@@ -46,27 +29,21 @@ export function CoinStore() {
           ใช้ซื้อของใส่บาตร ของถวาย ชุดใหม่ และปลดล็อกวัด
         </span>
       </div>
-      {offers.map((o: SpecialOffer) => (
-        <button key={o.id} class="panel promo" disabled={!!busy} onClick={() => buy(o.id, o.priceTHB, o.name)}>
-          {o.oneTime && <span class="ribbon">ครั้งเดียว</span>}
-          <Icon name={o.monthly ? 'calendar' : 'gift'} size={40} />
-          <div class="grow" style={{ textAlign: 'left' }}>
-            <div class="subtitle">{o.name}</div>
-            <div class="small muted">{o.desc}</div>
-          </div>
-          <span class="price num">฿{o.priceTHB}</span>
-        </button>
-      ))}
-      <div class="grid2" style={{ marginTop: '8px' }}>
-        {COIN_PACKS.map((p) => (
-          <button key={p.id} class="panel pack" disabled={!!busy} onClick={() => buy(p.id, p.priceTHB, `${p.name} ${p.coins + p.bonus} คอยน์`)}>
-            {p.badge && <span class="ribbon">{p.badge}</span>}
-            <Icon name={PACK_ICON[p.art]} size={44} />
-            <div class="subtitle">{p.name}</div>
-            <Coin n={p.coins} size={16} />
-            {p.bonus > 0 && <span class="chip pink small">แถม +{p.bonus}</span>}
-            <span class="price num">฿{p.priceTHB}</span>
+      <div class="sh-coin-grid">
+        {COIN_PACKS.map((p, i) => (
+          <button key={p.id} class={`sh-coinpack tier-${i}`} disabled={!!checkoutBusy.value} onClick={() => (sfx.tap(), void checkout(p.id))}>
+            {p.badge && <span class="sh-ribbon hot">{p.badge}</span>}
+            <Icon name={p.art === 'chest' || p.art === 'temple' ? 'chest' : i === 0 ? 'coins' : 'coinbag'} size={36 + i * 4} />
+            <span class="small">{p.name}</span>
+            <Coin n={p.coins} size={14} />
+            {p.bonus > 0 && <span class="sh-bonus">+{p.bonus}</span>}
+            <span class="sh-baht num">฿{p.priceTHB}</span>
           </button>
+        ))}
+      </div>
+      <div class="sh-list" style={{ marginTop: '10px' }}>
+        {offers.map((o) => (
+          <OfferCard key={o.id} o={o} />
         ))}
       </div>
       <div class="panel card" style={{ marginTop: '10px' }}>
@@ -95,6 +72,12 @@ export function CoinStore() {
       </div>
       {s.purchases.length > 0 && (
         <div class="small muted center">ประวัติการซื้อ {s.purchases.length} รายการ · ล่าสุด {new Date(s.purchases[0].at).toLocaleDateString('th-TH')}</div>
+      )}
+      {tab.value !== 'shop' && (
+        <>
+          <ShopConfirm />
+          <ShopReveal />
+        </>
       )}
     </Sheet>
   )

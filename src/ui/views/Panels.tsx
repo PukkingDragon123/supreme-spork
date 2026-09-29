@@ -21,6 +21,7 @@ import { MarketWindow } from './Market'
 import { PlaceShopWindow } from './PlaceShop'
 import { EventPanel } from './EventHub'
 import { CollectionBook } from './CollectionBook'
+import { InventoryWindow } from './Inventory'
 import { PBtn, Slot, Tabs, Window, Check } from '../components/kit'
 import { PT, TONE_TEXT } from '../pixeltext'
 import { Coin, Icon } from '../components/common'
@@ -33,7 +34,7 @@ export function Panels() {
     case 'craft':
       return <CraftWindow />
     case 'bag':
-      return <BagWindow />
+      return <InventoryWindow onClose={close} />
     case 'mala':
       return <MalaWindow />
     case 'chants':
@@ -227,7 +228,8 @@ function CraftWindow() {
 
 type BagTab = 'mats' | 'items' | 'furniture'
 
-function BagWindow() {
+/** Legacy three-tab bag (replaced by InventoryWindow in v4; kept for reference). */
+export function BagWindow() {
   const [t, setT] = useState<BagTab>('mats')
   const [sel, setSel] = useState<string | null>(null)
   const s = game.value

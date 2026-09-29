@@ -39,8 +39,8 @@ export const area = signal<AreaId>('wat')
 /** Map shown in the world view: an AreaId, a place id or an interior `<place>:<room>`. */
 export const mapId = signal<string>('wat')
 
-export type ShopSection = 'pets' | 'fashion' | 'alms' | 'offering' | 'animal' | 'mats' | 'special' | 'boost' | 'area'
-export const shopSection = signal<ShopSection>('pets')
+export type ShopSection = 'featured' | 'packs' | 'pets' | 'fashion' | 'alms' | 'offering' | 'animal' | 'mats' | 'special' | 'boost' | 'area'
+export const shopSection = signal<ShopSection>('featured')
 
 export type SocialSection = 'friends' | 'groups' | 'feed' | 'charity'
 export const socialSection = signal<SocialSection>('friends')

@@ -198,7 +198,7 @@ export function DressUp({ creating, onDone }: { creating?: boolean; onDone: () =
   const items = (c: Cat): OutfitX[] =>
     (OUTFITS as OutfitX[]).filter((o) => {
       if (!slotsOf(c).includes(o.slot as Slot)) return false
-      if (o.premium && !ownsOutfit(o.id)) return false
+      if ((o.premium || o.exclusive) && !ownsOutfit(o.id)) return false
       if ((o as { shopOnly?: string }).shopOnly && !ownsOutfit(o.id)) return false
       if (creating && !ownsOutfit(o.id)) return false
       if ((c === 'top' || c === 'bottom') && style !== 'all' && (o.category ?? 'modern') !== style) return false
