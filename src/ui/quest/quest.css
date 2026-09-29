@@ -1,0 +1,724 @@
+/* NPC quest UI: dialog sheet (qd-), HUD tracker pill (qt-), quest log (ql-). */
+
+/* ---------------------------------------------------------------- dialog */
+
+.qd-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 56;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 8px calc(var(--safe-bottom) + 8px);
+  background: linear-gradient(to top, rgba(24, 14, 8, 0.72), rgba(24, 14, 8, 0.28) 55%, rgba(24, 14, 8, 0.05));
+  animation: fade-in 160ms ease-out;
+}
+
+.qd-fx {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.qd-fx > * {
+  position: absolute;
+  inset: 0;
+}
+
+.qd-sheet {
+  position: relative;
+  max-height: calc(100% - var(--safe-top) - 90px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 30px 4px 2px;
+  border-style: solid;
+  border-width: 16px;
+  border-image: var(--sk-panel) 8 fill / 16px repeat;
+  image-rendering: pixelated;
+  animation: qd-rise 260ms cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+
+.qd-sheet.win-glow {
+  filter: drop-shadow(0 0 14px rgba(255, 216, 74, 0.55));
+}
+
+@keyframes qd-rise {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.qd-head {
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  top: -74px;
+  height: 92px;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.qd-head > * {
+  pointer-events: auto;
+}
+
+.qd-portrait {
+  position: relative;
+  flex: none;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 40%, #fff7d8, #ffd98a 60%, #e9a53a);
+  box-shadow:
+    0 0 0 3px #5a3418,
+    0 0 0 6px #ffd54f,
+    0 0 0 9px #5a3418,
+    0 6px 0 9px rgba(0, 0, 0, 0.25);
+}
+
+.qd-portrait img {
+  width: 102px;
+  height: 108px;
+  margin-bottom: -22px;
+  transform-origin: 50% 90%;
+  animation: qd-breathe 2.6s ease-in-out infinite;
+}
+
+.qd-portrait.monk img {
+  width: 90px;
+  height: 95px;
+  margin-bottom: -10px;
+}
+
+.qd-portrait.pose-happy img {
+  animation: qd-hop 500ms ease-out 2;
+}
+
+@keyframes qd-breathe {
+  50% {
+    transform: scaleY(1.02);
+  }
+}
+
+@keyframes qd-hop {
+  40% {
+    transform: translateY(-6px);
+  }
+}
+
+.qd-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  margin-bottom: 22px;
+  padding: 0 8px 2px;
+  border-style: solid;
+  border-width: 6px;
+  border-image: var(--sk-plate-wood) 4 fill / 6px repeat;
+  max-width: calc(100% - 150px);
+}
+
+.qd-role {
+  font-size: 11px;
+  line-height: 1.2;
+  color: #ffe9c4;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qd-x {
+  margin: 0 0 22px auto !important;
+}
+
+.qd-bubble {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-height: 70px;
+  padding: 8px 12px 14px;
+  text-align: left;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--ink);
+  border-style: solid;
+  border-width: 6px;
+  border-image: var(--sk-bubble) 4 fill / 6px repeat;
+  background: none;
+  cursor: pointer;
+}
+
+.qd-bubble::before {
+  /* Tail pointing up at the portrait. */
+  content: '';
+  position: absolute;
+  left: 40px;
+  top: -14px;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+  border-bottom-color: #3b2616;
+}
+
+.qd-bubble::after {
+  content: '';
+  position: absolute;
+  left: 42px;
+  top: -9px;
+  border: 6px solid transparent;
+  border-bottom-color: #fffaf0;
+}
+
+.qd-text,
+.qd-ghost {
+  grid-area: 1 / 1;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.qd-ghost {
+  visibility: hidden;
+}
+
+.qd-more {
+  position: absolute;
+  right: 8px;
+  bottom: 2px;
+  font-size: 11px;
+  color: var(--saffron-d);
+  animation: bob 0.9s infinite;
+}
+
+.qd-dots {
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  display: flex;
+  gap: 3px;
+  transform: translateX(-50%);
+}
+
+.qd-dots i {
+  width: 5px;
+  height: 5px;
+  background: #e3cfa8;
+}
+
+.qd-dots i.on {
+  background: var(--saffron);
+}
+
+.qd-hint {
+  text-align: center;
+  font-size: 11px;
+  color: #fff0d0;
+  opacity: 0.8;
+  padding-bottom: 2px;
+}
+
+.qd-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.qd-choice {
+  width: calc(100% - 4px);
+  animation: qd-choice-in 220ms ease-out both;
+}
+
+@keyframes qd-choice-in {
+  from {
+    transform: translateX(-14px);
+    opacity: 0;
+  }
+}
+
+.qd-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 4px 4px;
+  animation: pop-in 200ms ease-out;
+}
+
+.qd-card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.qd-title {
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.qd-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qd-steps li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--ink-soft);
+}
+
+.qd-steps li.now {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.qd-steps li.done {
+  color: var(--leaf-d);
+  text-decoration: line-through;
+  text-decoration-color: rgba(67, 144, 90, 0.5);
+}
+
+.qd-tick {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff3d2;
+  box-shadow: inset 0 0 0 2px #c9a26a;
+}
+
+.qd-tick i {
+  font-style: normal;
+  font-family: var(--num);
+  font-size: 11px;
+}
+
+.qd-steps li.now .qd-tick {
+  background: var(--gold-l);
+  box-shadow: inset 0 0 0 2px var(--saffron);
+}
+
+.qd-steps li.done .qd-tick {
+  background: #dff2cf;
+  box-shadow: inset 0 0 0 2px var(--leaf-d);
+}
+
+.qd-count {
+  font-size: 12px;
+  color: var(--saffron-d);
+}
+
+.qd-reward-label {
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+
+.qd-rewards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.qd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 24px;
+  padding: 1px 6px;
+  font-size: 12px;
+  line-height: 1.1;
+  background: #fff8e6;
+  box-shadow:
+    inset 0 0 0 2px #e3bd82,
+    0 2px 0 rgba(90, 52, 24, 0.2);
+}
+
+.qd-chip.gold {
+  background: #fff1b8;
+  box-shadow:
+    inset 0 0 0 2px #e9a53a,
+    0 2px 0 rgba(90, 52, 24, 0.2);
+}
+
+.qd-chip.pink {
+  background: #ffe1ea;
+  box-shadow:
+    inset 0 0 0 2px #e8709e,
+    0 2px 0 rgba(90, 52, 24, 0.2);
+}
+
+.qd-chip.rare {
+  background: linear-gradient(135deg, #f4e6ff, #e2f6ff);
+  box-shadow:
+    inset 0 0 0 2px #a98be0,
+    0 2px 0 rgba(90, 52, 24, 0.2);
+}
+
+.qd-chip b {
+  font-size: 13px;
+}
+
+.qd-chip-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qd-thumb {
+  width: 22px;
+  height: 22px;
+  image-rendering: pixelated;
+}
+
+.qd-rewards.compact .qd-chip {
+  min-height: 20px;
+  padding: 0 4px;
+}
+
+.qd-menu {
+  display: flex;
+  flex-direction: column;
+}
+
+.qd-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  animation: qd-choice-in 220ms ease-out both;
+}
+
+.qd-menu-item b {
+  display: block;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.qd-sub {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.qd-mark {
+  flex: none;
+  width: 24px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--num);
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffd84a;
+  text-shadow:
+    -2px 0 #2a1a12,
+    2px 0 #2a1a12,
+    0 -2px #2a1a12,
+    0 2px #2a1a12;
+}
+
+.qd-mark.active {
+  color: #d9dce6;
+}
+
+.qd-burst {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  text-align: center;
+  animation: pop-in 280ms cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+
+.qd-burst-sub {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.qd-burst-coins {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: qd-hop 600ms ease-out 2;
+}
+
+.qd-burst .qd-rewards {
+  justify-content: center;
+}
+
+/* ---------------------------------------------------------------- HUD tracker pill */
+
+.qt-pill {
+  position: absolute;
+  z-index: 20;
+  left: 8px;
+  top: calc(var(--safe-top) + 102px);
+  max-width: min(260px, calc(100% - 90px));
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  animation: slide-up 240ms ease-out;
+}
+
+.qt-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 4px;
+  border: 0;
+  text-align: left;
+  font-family: inherit;
+  color: #fff6dc;
+  background: rgba(40, 24, 14, 0.82);
+  box-shadow:
+    inset 0 0 0 2px #7a4a26,
+    0 3px 0 rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+.qt-main.ready {
+  background: linear-gradient(90deg, rgba(122, 74, 18, 0.95), rgba(60, 36, 14, 0.9));
+  box-shadow:
+    inset 0 0 0 2px #ffd54f,
+    0 0 12px rgba(255, 216, 74, 0.6);
+  animation: qt-glow 1.4s ease-in-out infinite;
+}
+
+@keyframes qt-glow {
+  50% {
+    box-shadow:
+      inset 0 0 0 2px #fff3a6,
+      0 0 18px rgba(255, 216, 74, 0.9);
+  }
+}
+
+.qt-main.pulse {
+  animation: qt-pulse 600ms ease-out;
+}
+
+@keyframes qt-pulse {
+  30% {
+    transform: scale(1.06);
+    box-shadow:
+      inset 0 0 0 2px #fff3a6,
+      0 0 16px rgba(255, 216, 74, 0.8);
+  }
+}
+
+.qt-mark {
+  flex: none;
+  width: 18px;
+  font-family: var(--num);
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  color: #ffd84a;
+  text-shadow:
+    -1px 0 #2a1a12,
+    1px 0 #2a1a12,
+    0 -1px #2a1a12,
+    0 1px #2a1a12;
+}
+
+.qt-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.qt-title {
+  font-size: 11px;
+  line-height: 1.2;
+  color: #ffd98a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qt-step {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qt-bar {
+  height: 3px;
+  margin-top: 2px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.qt-bar i {
+  display: block;
+  height: 100%;
+  background: #8ee07a;
+  transition: width 300ms ease-out;
+}
+
+.qt-nav {
+  flex: none;
+  width: 36px;
+  border: 0;
+  margin-left: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(58, 110, 50, 0.92);
+  box-shadow:
+    inset 0 0 0 2px #2c5a2a,
+    0 3px 0 rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+.qt-nav:active,
+.qt-main:active {
+  transform: translateY(1px);
+}
+
+/* ---------------------------------------------------------------- quest log */
+
+.ql-tabs {
+  margin-top: 2px;
+}
+
+.ql-empty {
+  padding: 18px 8px;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.ql-quest {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 2px 4px 4px;
+  text-align: left;
+}
+
+.ql-quest.tracked {
+  border-image-source: var(--sk-card-gold);
+}
+
+.ql-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ql-giver {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.ql-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.ql-actions .btn {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.ql-actions .btn.icon-btn {
+  flex: none;
+}
+
+.ql-actions .ql-go {
+  flex: 1.4;
+}
+
+.ql-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ql-summary .grow {
+  min-width: 0;
+}
+
+.ql-avail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 4px);
+  padding: 2px 4px;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.ql-avail b {
+  display: block;
+  line-height: 1.3;
+}
+
+.ql-avail .ql-place {
+  display: block;
+  line-height: 1.25;
+}
+
+.ql-avail .qd-mark {
+  font-size: 18px;
+  width: 18px;
+}
+
+.ql-avail.locked {
+  opacity: 0.7;
+}
+
+.ql-place {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.ql-bar {
+  height: 6px;
+  background: #ead7b3;
+  box-shadow: inset 0 0 0 1px #c9a26a;
+}
+
+.ql-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #8ee07a, #43905a);
+}

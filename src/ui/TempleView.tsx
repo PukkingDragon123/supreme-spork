@@ -17,6 +17,10 @@ import { Rng } from '../engine/rng'
 import { MATERIAL_INFO } from '../game/materials'
 import { toast } from '../game/events'
 import { presence } from '../services/presence'
+import { questMarkerFor } from '../game/npcQuests'
+import { openQuestDialog } from './quest/questUi'
+import { track } from '../game/actions'
+import { PLACE_BY_ID } from '../game/data/places'
 
 let current: WorldScene | null = null
 let autoOpen: string | null = null
@@ -150,6 +154,13 @@ export function TempleView({ active }: { active: boolean }) {
         }, 260)
         return
       }
+      // Quest givers open their conversation straight away.
+      if (t.kind === 'hotspot' && t.hotspot.id.startsWith('npc:')) {
+        autoOpen = null
+        sfx.open()
+        openQuestDialog(t.hotspot.id)
+        return
+      }
       if (t.kind === 'hotspot' && autoOpen === t.hotspot.id) {
         autoOpen = null
         const acts = hotspotActions(t.hotspot.id)
@@ -177,8 +188,12 @@ export function TempleView({ active }: { active: boolean }) {
     clearInterval(presenceTimer)
     presenceTimer = setInterval(() => current === scene && scene.setRemotePlayers(others()), 60_000)
     current = scene
+    scene.setMarkers(questMarkerFor)
     stage.current!.setScene(scene)
     arrived.value = null
+    // Arriving on a real place's map (or one of its rooms) counts as a visit.
+    const place = PLACE_BY_ID[map.place ?? map.id.split(':')[0]]
+    if (place && !place.home) track('place_visit')
   }, [mapId.value])
 
   const lk = lookKey(game.value.player.look)
