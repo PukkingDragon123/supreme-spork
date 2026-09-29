@@ -15,20 +15,67 @@ const isLeadingVowel = (c: number) => c >= 0x0e40 && c <= 0x0e44
 const isToneMark = (c: number) => (c >= 0x0e48 && c <= 0x0e4b) || c === 0x0e4e
 const isFollowingVowel = (c: number) => (c >= 0x0e30 && c <= 0x0e39) || c === 0x0e45 || c === 0x0e47 || c === 0x0e4d
 
-/** Heuristic: a Thai consonant opens a syllable when a leading vowel (เ แ โ ใ ไ) precedes it or a vowel sign follows it; bare consonants are finals or cluster heads. */
-export function estimateSyllables(word: string): number {
-  let n = 0
+const THAI_O = 0x0e2d
+const THAI_WO = 0x0e27
+const THAI_YO = 0x0e22
+
+/** Is the vowel/tone sequence after position j a following vowel (skipping tone marks)? */
+function vowelAfter(word: string, j: number): boolean {
+  while (j < word.length && isToneMark(word.charCodeAt(j))) j++
+  return j < word.length && isFollowingVowel(word.charCodeAt(j))
+}
+
+/**
+ * Split a Pali/Thai word into syllables. Heuristic: a consonant opens a
+ * syllable when a leading vowel (เ แ โ ใ ไ) precedes it, a vowel sign
+ * follows it, or อ/ว/ย act as its vowel (ผ่อ, กวน); bare consonants are
+ * finals or cluster heads (ส-วาก, ค-รี).
+ */
+export function splitSyllables(word: string): string[] {
+  const onsets: number[] = []
   for (let i = 0; i < word.length; i++) {
-    if (!isConsonant(word.charCodeAt(i))) continue
+    const c = word.charCodeAt(i)
+    if (!isConsonant(c)) continue
     if (i > 0 && isLeadingVowel(word.charCodeAt(i - 1))) {
-      n++
+      onsets.push(i - 1)
+      continue
+    }
+    if (vowelAfter(word, i + 1)) {
+      onsets.push(i)
       continue
     }
     let j = i + 1
     while (j < word.length && isToneMark(word.charCodeAt(j))) j++
-    if (j < word.length && isFollowingVowel(word.charCodeAt(j))) n++
+    const k = word.charCodeAt(j)
+    // A vowel carrier (ผ่อ, กวน), unless the carrier opens its own syllable (ส-วาก).
+    if (j < word.length && (k === THAI_O || k === THAI_WO || k === THAI_YO) && !vowelAfter(word, j + 1)) onsets.push(i)
   }
-  return Math.min(6, Math.max(1, n))
+  if (!onsets.length) return word ? [word] : []
+  onsets[0] = 0
+  const out: string[] = []
+  for (let k = 0; k < onsets.length; k++) {
+    const a = onsets[k]
+    const b = k + 1 < onsets.length ? onsets[k + 1] : word.length
+    if (b > a) out.push(word.slice(a, b))
+  }
+  return out
+}
+
+/** Syllables of a word, clamped to 1..6 (kept for older callers and tests). */
+export function estimateSyllables(word: string): number {
+  return Math.min(6, Math.max(1, splitSyllables(word).length))
+}
+
+/** Syllable count used for timing: long Pali compounds get the time they need. */
+export function syllableUnits(word: string): number {
+  return Math.min(10, Math.max(1, splitSyllables(word).length))
+}
+
+export interface TimelineSyllable {
+  text: string
+  /** Seconds from the chant start. */
+  start: number
+  dur: number
 }
 
 export interface TimelineWord {
@@ -39,6 +86,8 @@ export interface TimelineWord {
   start: number
   dur: number
   bow?: boolean
+  /** Syllables with their own highlight windows (evenly split across the word). */
+  syl: TimelineSyllable[]
 }
 
 export interface TimelineOptions {
@@ -46,6 +95,19 @@ export interface TimelineOptions {
   gapMs?: number
   lineGapMs?: number
   leadInMs?: number
+}
+
+/** Split a word's window evenly between its syllables. */
+export function syllableWindows(text: string, start: number, dur: number): TimelineSyllable[] {
+  const parts = splitSyllables(text)
+  const list = parts.length ? parts : [text]
+  const d = dur / list.length
+  return list.map((p, i) => ({ text: p, start: start + i * d, dur: d }))
+}
+
+/** Words of a line, without bow markers. */
+export function lineWords(line: string): string[] {
+  return line.split(/\s+/).filter((w) => w && w !== BOW_TOKEN)
 }
 
 export function buildTimeline(lines: string[], opts: TimelineOptions = {}): { words: TimelineWord[]; total: number } {
@@ -65,8 +127,8 @@ export function buildTimeline(lines: string[], opts: TimelineOptions = {}): { wo
         continue
       }
       if (words.length) t += li === lastLine ? gapMs : lineGapMs
-      const dur = estimateSyllables(tok) * msPerSyllable
-      words.push({ index: words.length, text: tok, line: li, start: t / 1000, dur: dur / 1000 })
+      const dur = syllableUnits(tok) * msPerSyllable
+      words.push({ index: words.length, text: tok, line: li, start: t / 1000, dur: dur / 1000, syl: syllableWindows(tok, t / 1000, dur / 1000) })
       t += dur
       lastLine = li
     }
@@ -106,6 +168,25 @@ export const TAP_GOOD = 0.3
 export const WEIGHTS = { completeness: 0.4, rhythm: 0.25, flow: 0.2, focus: 0.15 }
 export const STAR_SCORES = [50, 72, 88] as const
 
+/** Timing windows per strictness level (2 = the classic defaults above). */
+export interface JudgeWindows {
+  tapWindow: number
+  tapPerfect: number
+  tapGood: number
+  /** A late tap still counts while inside this fraction of the word. */
+  inside: number
+  perfectOnset: number
+  perfectCoverage: number
+  goodCoverage: number
+}
+
+export const JUDGE_WINDOWS: Record<1 | 2 | 3 | 4, JudgeWindows> = {
+  1: { tapWindow: 0.4, tapPerfect: 0.14, tapGood: 0.34, inside: 1, perfectOnset: 0.36, perfectCoverage: 0.5, goodCoverage: 0.2 },
+  2: { tapWindow: TAP_WINDOW, tapPerfect: TAP_PERFECT, tapGood: TAP_GOOD, inside: 1, perfectOnset: PERFECT_ONSET, perfectCoverage: PERFECT_COVERAGE, goodCoverage: GOOD_COVERAGE },
+  3: { tapWindow: 0.3, tapPerfect: 0.1, tapGood: 0.24, inside: 0.6, perfectOnset: 0.25, perfectCoverage: 0.6, goodCoverage: 0.3 },
+  4: { tapWindow: 0.25, tapPerfect: 0.08, tapGood: 0.19, inside: 0.4, perfectOnset: 0.2, perfectCoverage: 0.65, goodCoverage: 0.35 },
+}
+
 export interface ChantResult {
   score: number
   stars: 0 | 1 | 2 | 3
@@ -121,7 +202,12 @@ export interface ChantResult {
 }
 
 export function starsFor(score: number): 0 | 1 | 2 | 3 {
-  return score >= STAR_SCORES[2] ? 3 : score >= STAR_SCORES[1] ? 2 : score >= STAR_SCORES[0] ? 1 : 0
+  return starsWith(score, STAR_SCORES)
+}
+
+/** Stars for a score against a stage's own thresholds. */
+export function starsWith(score: number, t: readonly [number, number, number]): 0 | 1 | 2 | 3 {
+  return score >= t[2] ? 3 : score >= t[1] ? 2 : score >= t[0] ? 1 : 0
 }
 
 export function gradeFor(score: number): ChantResult['grade'] {
@@ -133,6 +219,12 @@ export interface ChantScorerOptions {
   /** Seconds subtracted from incoming times (defaults to VOICE_LATENCY in voice mode, 0 for taps). */
   latency?: number
   onJudge?: (i: number, j: Judge) => void
+  /** Timing strictness (default 2). */
+  judge?: 1 | 2 | 3 | 4
+  /** Scores for 1★/2★/3★ (default STAR_SCORES). */
+  stars?: readonly [number, number, number]
+  /** Memory-quiz words (tap mode): they stay open longer so there is time to read the choices. */
+  quiz?: number[]
 }
 
 interface WordState {
@@ -144,6 +236,7 @@ interface WordState {
   rhythm: number
   flow: number
   focus: number
+  forced?: 'miss' | 'answer'
 }
 
 const mean = (a: number[]) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0)
@@ -178,6 +271,9 @@ export class ChantScorer {
   readonly mode: ChantMode
   readonly latency: number
   readonly judgements: (Judge | undefined)[]
+  readonly win: JudgeWindows
+  readonly starScores: readonly [number, number, number]
+  private readonly quiz: Set<number>
   onJudge?: (i: number, j: Judge) => void
   combo = 0
   maxCombo = 0
@@ -201,6 +297,9 @@ export class ChantScorer {
     this.mode = opts.mode
     this.latency = opts.latency ?? (opts.mode === 'voice' ? VOICE_LATENCY : 0)
     this.onJudge = opts.onJudge
+    this.win = JUDGE_WINDOWS[opts.judge ?? 2] ?? JUDGE_WINDOWS[2]
+    this.starScores = opts.stars ?? STAR_SCORES
+    this.quiz = new Set(opts.quiz ?? [])
     this.judgements = this.words.map(() => undefined)
     this.state = this.words.map(() => ({ active: 0, onset: null, louds: [], pitches: [], tap: null, rhythm: 0, flow: 0, focus: 0 }))
     for (let i = 1; i < this.words.length; i++) {
@@ -273,11 +372,12 @@ export class ChantScorer {
     const t = time - this.latency
     this.judgeUntil(t)
     let best = -1
+    const W = this.win.tapWindow
     for (let k = this.cursor; k < this.words.length; k++) {
       const w = this.words[k]
-      if (w.start - t > TAP_WINDOW) break
-      // Early by up to TAP_WINDOW, or any time while the word is highlighted.
-      if (t < w.start - TAP_WINDOW || t > w.start + Math.max(w.dur, TAP_WINDOW)) continue
+      if (w.start - t > W) break
+      // Early by up to the tap window, or while (the first part of) the word is highlighted.
+      if (t < w.start - W || t > this.lateLimit(w)) continue
       if (this.state[k].tap !== null) continue
       if (best < 0 || Math.abs(t - w.start) < Math.abs(t - this.words[best].start)) best = k
     }
@@ -289,6 +389,58 @@ export class ChantScorer {
     while (this.cursor < best) this.judgeNext()
     this.state[best].tap = t
     return this.judgeNext()
+  }
+
+  /**
+   * Memory quiz (tap mode): the player picked a word for blank `i`. A wrong
+   * pick is a miss; a right one is judged on timing but never worse than good.
+   */
+  answer(i: number, time: number, correct: boolean): Judge | null {
+    if (this.mode !== 'tap' || this.result || i < this.cursor || i >= this.words.length) return null
+    const t = time - this.latency
+    while (this.cursor < i) this.judgeNext()
+    const s = this.state[i]
+    if (!correct) {
+      s.tap = null
+      s.forced = 'miss'
+    } else {
+      s.tap = t
+      s.forced = 'answer'
+    }
+    return this.judgeNext()
+  }
+
+  /** Seconds between a word's start and the tap that judged it (tap mode), or null. */
+  tapOffset(i: number): number | null {
+    const s = this.state[i]
+    return s && s.tap !== null ? s.tap - this.words[i].start : null
+  }
+
+  /** Words judged so far. */
+  get judgedCount(): number {
+    return this.cursor
+  }
+
+  /** A running estimate of the final score from the words judged so far (0 before any). */
+  liveScore(): number {
+    const n = this.cursor
+    if (!n) return 0
+    let hits = 0
+    let rhythm = 0
+    let flow = 0
+    let focus = 0
+    for (let i = 0; i < n; i++) {
+      const j = this.judgements[i]
+      const s = this.state[i]
+      if (j !== 'miss') hits++
+      rhythm += s.rhythm
+      flow += this.mode === 'voice' ? s.flow : j !== 'miss' ? 1 : 0
+      focus += this.mode === 'voice' ? s.focus : s.rhythm
+    }
+    const comp = hits / n
+    const fl = this.mode === 'voice' ? flow / n : 0.5 * comp + 0.5 * Math.min(1, this.maxCombo / n)
+    const raw = WEIGHTS.completeness * comp + WEIGHTS.rhythm * (rhythm / n) + WEIGHTS.flow * fl + WEIGHTS.focus * Math.min(1, (focus / n) * 1.1)
+    return Math.max(0, Math.min(100, Math.round(raw * 100)))
   }
 
   /** Move the clock forward, judging every word whose window has closed (call each frame in tap mode). */
@@ -330,7 +482,7 @@ export class ChantScorer {
     const score = Math.max(0, Math.min(100, Math.round(raw * 100)))
     this.result = {
       score,
-      stars: starsFor(score),
+      stars: starsWith(score, this.starScores),
       grade: gradeFor(score),
       perfect,
       good,
@@ -345,7 +497,13 @@ export class ChantScorer {
   }
 
   private deadline(w: TimelineWord): number {
-    return this.mode === 'voice' ? w.start + w.dur + JUDGE_LAG : w.start + Math.max(w.dur, TAP_WINDOW)
+    return this.mode === 'voice' ? w.start + w.dur + JUDGE_LAG : this.lateLimit(w)
+  }
+
+  /** Latest tap time that still belongs to word w. */
+  private lateLimit(w: TimelineWord): number {
+    if (this.quiz.has(w.index)) return w.start + Math.max(w.dur, 0.9) + 0.3
+    return w.start + Math.max(w.dur * this.win.inside, this.win.tapWindow)
   }
 
   private judgeUntil(t: number) {
@@ -367,7 +525,7 @@ export class ChantScorer {
     const s = this.state[i]
     const cov = w.dur > 0 ? clamp01(s.active / w.dur) : 0
     const j: Judge =
-      cov >= PERFECT_COVERAGE && s.onset !== null && Math.abs(s.onset) <= PERFECT_ONSET ? 'perfect' : cov >= GOOD_COVERAGE ? 'good' : 'miss'
+      cov >= this.win.perfectCoverage && s.onset !== null && Math.abs(s.onset) <= this.win.perfectOnset ? 'perfect' : cov >= this.win.goodCoverage ? 'good' : 'miss'
     s.flow = clamp01(cov / FLOW_FULL_COVERAGE)
     if (j !== 'miss') {
       s.rhythm = s.onset !== null ? clamp01(1 - Math.max(0, Math.abs(s.onset) - 0.1) / 0.35) : SLUR_RHYTHM
@@ -383,9 +541,10 @@ export class ChantScorer {
     if (s.tap === null) return 'miss'
     const w = this.words[i]
     const e = Math.abs(s.tap - w.start)
+    const W = this.win
     // Perfect near the word's start; tapping anywhere else inside the highlighted word is still good.
-    const inside = s.tap >= w.start - TAP_WINDOW && s.tap <= w.start + Math.max(w.dur, TAP_WINDOW)
-    const j: Judge = e <= TAP_PERFECT ? 'perfect' : e <= TAP_GOOD || inside ? 'good' : 'miss'
+    const inside = s.forced === 'answer' || (s.tap >= w.start - W.tapWindow && s.tap <= this.lateLimit(w))
+    const j: Judge = e <= W.tapPerfect ? 'perfect' : e <= W.tapGood || inside ? 'good' : 'miss'
     if (j !== 'miss') s.rhythm = clamp01(1 - Math.max(0, e - 0.06) / 0.24)
     else s.tap = null
     return j
