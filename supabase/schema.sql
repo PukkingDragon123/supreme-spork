@@ -106,3 +106,33 @@ create trigger on_auth_user_meta_updated
   for each row
   when (old.raw_user_meta_data is distinct from new.raw_user_meta_data)
   execute function public.handle_user_profile();
+
+-- ---------------------------------------------------------------------------
+-- Player market (ตลาดนัดสายบุญ). The client ships a simulated market; a real
+-- one would list lots here and settle trades in a security-definer function
+-- (move items + coins atomically, server side) instead of trusting clients.
+
+create table if not exists public.market_listings (
+  id uuid primary key default gen_random_uuid(),
+  seller uuid not null references auth.users (id) on delete cascade,
+  kind text not null check (kind in ('mat', 'item', 'furniture', 'outfit')),
+  item_id text not null,
+  qty int not null check (qty between 1 and 99),
+  price int not null check (price between 1 and 100000),
+  created_at timestamptz not null default now(),
+  buyer uuid references auth.users (id),
+  sold_at timestamptz
+);
+
+create index if not exists market_open_idx on public.market_listings (kind, created_at desc) where sold_at is null;
+
+alter table public.market_listings enable row level security;
+
+drop policy if exists "market readable" on public.market_listings;
+create policy "market readable" on public.market_listings for select to authenticated using (true);
+
+drop policy if exists "market list own" on public.market_listings;
+create policy "market list own" on public.market_listings for insert to authenticated with check (seller = auth.uid() and buyer is null and sold_at is null);
+
+drop policy if exists "market cancel own" on public.market_listings;
+create policy "market cancel own" on public.market_listings for delete to authenticated using (seller = auth.uid() and sold_at is null);

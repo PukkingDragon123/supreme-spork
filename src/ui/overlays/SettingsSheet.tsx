@@ -41,6 +41,7 @@ export function SettingsSheet() {
           <Toggle id="set-music" label="เสียงบรรยากาศวัด" on={s.settings.music} onChange={(v) => updateSettings({ music: v })} />
           <Toggle id="set-motion" label="ลดการเคลื่อนไหว" on={s.settings.reduceMotion} onChange={(v) => updateSettings({ reduceMotion: v })} />
           <Toggle id="set-haptics" label="สั่นเมื่อแตะ" on={s.settings.haptics} onChange={(v) => updateSettings({ haptics: v })} />
+          <Toggle id="set-others" label="แสดงผู้เล่นคนอื่นในวัด" on={s.settings.showOthers !== false} onChange={(v) => updateSettings({ showOthers: v })} />
         </div>
         <div class="panel col settings-group">
           <div class="subtitle">ช่วงเวลาในวัด</div>

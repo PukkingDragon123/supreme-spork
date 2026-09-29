@@ -1,12 +1,13 @@
 // Windows opened from the hotbar and menu: crafting, bag, prayer beads,
 // chant book, daily reminder and the wardrobe.
 
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useMemo, useState } from 'preact/hooks'
 import { game, mutate, level } from '../../game/state'
 import { FURNITURE, FLOORS, WALLPAPERS, FURNITURE_BY_ID } from '../../game/data/furniture'
-import { craft, craftable, recipeOf, isSurface } from '../../game/crafting'
-import { missingFor, ownsSurface } from '../../game/house'
-import { furnitureThumb, materialSprite, surfaceThumb } from '../../art/furniture'
+import { craft, craftable, recipeOf, isSurface, craftingOpen, requirements, unlocked, CRAFT_LEVEL } from '../../game/crafting'
+import { ownsSurface } from '../../game/house'
+import { furnitureSprite, furnitureThumb, materialSprite, surfaceThumb } from '../../art/furniture'
+import { bake } from '../../engine/pixel'
 import { MATERIAL_IDS, MATERIAL_INFO, type MaterialId } from '../../game/materials'
 import { ITEM_BY_ID } from '../../game/data/items'
 import { CHANTS } from '../../game/data/chants'
@@ -18,6 +19,7 @@ import { toast } from '../../game/events'
 import { haptic, sfx } from '../../engine/audio'
 import { openPanel, panel, prayStage, prayAtHome, openShop, mode } from '../store'
 import { DressUp } from '../DressUp'
+import { MarketWindow } from './Market'
 import { PBtn, Slot, Tabs, Window, Check } from '../components/kit'
 import { PT, TONE_TEXT } from '../pixeltext'
 import { Coin, Icon } from '../components/common'
@@ -37,6 +39,8 @@ export function Panels() {
       return <ChantBook />
     case 'reminder':
       return <ReminderWindow />
+    case 'market':
+      return <MarketWindow />
     case 'dress':
       return (
         <div class="dress-screen">
@@ -72,23 +76,108 @@ function Recipe({ recipe, coins }: { recipe: Partial<Record<MaterialId, number>>
 
 type CraftTab = 'furniture' | 'deco' | 'room'
 
+/** Big still of one furniture piece standing on a patch of floor. */
+function PreviewStage({ id }: { id: string }) {
+  const url = useMemo(() => {
+    const isF = !!FURNITURE_BY_ID[id]
+    const spr = isF ? furnitureSprite(id) : surfaceThumb(id)
+    const W = Math.max(48, spr.w + 16)
+    const H = Math.max(40, spr.h + 12)
+    const c = bake(W, H, (g) => {
+      g.rect(0, 0, W, H, '#f3e6cf')
+      g.rect(0, Math.round(H * 0.62), W, H, '#c98a54')
+      for (let x = 0; x < W; x += 8) g.vline(x, Math.round(H * 0.62), H - 1, '#b7773f')
+      g.rect(0, Math.round(H * 0.62), W, 1, '#8a5a30')
+      g.ellipse(Math.round(W / 2), H - 5, Math.round(spr.w * 0.4), 2, 'rgba(60,30,10,0.25)')
+      g.draw(spr.canvas, Math.round((W - spr.w) / 2), H - 4 - spr.h)
+    })
+    return spriteDataUrl({ canvas: c, w: c.width, h: c.height }, 3)
+  }, [id])
+  return <img class="px craft-preview-img" src={url} alt="" />
+}
+
 function CraftWindow() {
   const [t, setT] = useState<CraftTab>('furniture')
   const lv = level.value.level
+  const s = game.value
   const list =
     t === 'room'
-      ? [...WALLPAPERS, ...FLOORS].map((w) => ({ id: w.id, name: w.name, desc: w.desc ?? 'เปลี่ยนบรรยากาศทั้งห้อง', level: w.level }))
-      : FURNITURE.filter((f) => !f.fixed && (t === 'deco' ? f.kind === 'wall' || f.kind === 'rug' || f.tags?.includes('deco') : f.kind === 'floor' && !f.tags?.includes('deco')))
+      ? [...WALLPAPERS, ...FLOORS].map((w) => ({ id: w.id, name: w.name, desc: w.desc ?? 'เปลี่ยนบรรยากาศทั้งห้อง' }))
+      : FURNITURE.filter((f) => !f.fixed && (t === 'deco' ? f.kind === 'wall' || f.kind === 'rug' || f.tags?.includes('deco') : f.kind === 'floor' && !f.tags?.includes('deco'))).map((f) => ({
+          id: f.id,
+          name: f.name,
+          desc: f.desc,
+        }))
+  const [sel, setSel] = useState<string>(list[0]?.id ?? '')
+  const cur = list.find((x) => x.id === sel) ?? list[0]
+  if (!craftingOpen()) {
+    return (
+      <Window title="โต๊ะช่างไม้" icon="hammer" onClose={close}>
+        <div class="col center craft-locked">
+          <Icon name="lock" size={48} />
+          <PT text={`ปลดล็อกที่เลเวล ${CRAFT_LEVEL}`} size={14} weight={600} {...TONE_TEXT.ink} />
+          <p class="small muted">ตอนนี้เลเวล {lv} · สวดมนต์และทำงานอาสาในวัดเพื่อเก็บบุญ แล้วมาสร้างเฟอร์นิเจอร์แต่งบ้านกันนะ</p>
+          <span class="bar grow" style={{ width: '80%' }}>
+            <span style={{ width: `${Math.min(100, (lv / CRAFT_LEVEL) * 100)}%` }} />
+          </span>
+        </div>
+      </Window>
+    )
+  }
+  const r = cur ? recipeOf(cur.id) : null
+  const reqs = cur ? requirements(cur.id) : []
+  const open = reqs.every((q) => q.met)
+  const ok = cur ? craftable(cur.id) : false
+  const owned = cur ? (isSurface(cur.id) ? (ownsSurface(s.house, cur.id) ? 1 : 0) : (s.house.storage[cur.id] ?? 0) + s.house.placed.filter((p) => p.id === cur.id).length) : 0
   return (
     <Window title="โต๊ะช่างไม้" icon="hammer" onClose={close} wide>
       <div class="mat-bar">
         {MATERIAL_IDS.map((m) => (
           <span class="mat-chip" key={m} title={MATERIAL_INFO[m].name}>
             <img class="px" src={spriteDataUrl(materialSprite(m), 2)} alt={MATERIAL_INFO[m].name} width={24} height={24} />
-            <span class="num">{game.value.materials[m] ?? 0}</span>
+            <span class="num">{s.materials[m] ?? 0}</span>
           </span>
         ))}
       </div>
+      {cur && r && (
+        <div class={`panel craft-preview ${open ? '' : 'locked'}`}>
+          <PreviewStage id={cur.id} />
+          <div class="craft-info">
+            <b class="craft-name">{cur.name}</b>
+            <span class="small muted craft-desc">{cur.desc}</span>
+            {open ? (
+              <Recipe recipe={r.recipe} coins={r.coins} />
+            ) : (
+              <ul class="craft-reqs">
+                {reqs.map((q) => (
+                  <li key={q.text} class={q.met ? 'met' : ''}>
+                    <Icon name={q.met ? 'check' : 'lock'} size={14} /> {q.text}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div class="row">
+              {owned > 0 && <span class="small muted">มีแล้ว {owned}</span>}
+              <span class="grow" />
+              <PBtn
+                tone={ok ? 'green' : 'paper'}
+                size="small"
+                icon="hammer"
+                disabled={!open}
+                onClick={() => {
+                  if (craft(cur.id)) {
+                    sfx.coins()
+                    haptic(20)
+                    toast(`สร้าง${cur.name}แล้ว! ไปจัดห้องกันเลย`, 'hammer')
+                  } else sfx.error()
+                }}
+              >
+                {open ? 'สร้าง' : 'ยังล็อกอยู่'}
+              </PBtn>
+            </div>
+          </div>
+        </div>
+      )}
       <Tabs
         tabs={[
           { id: 'furniture', label: 'ของใช้', icon: 'bed' },
@@ -96,49 +185,31 @@ function CraftWindow() {
           { id: 'room', label: 'ผนัง/พื้น', icon: 'home' },
         ]}
         value={t}
-        onChange={setT}
+        onChange={(x) => {
+          setT(x)
+          setSel('')
+        }}
         compact
       />
-      <div class="ptab-body craft-list">
-        {list.map((f) => {
-          const r = recipeOf(f.id)!
-          const ok = craftable(f.id)
-          const lock = (f.level ?? 1) > lv
-          const owned = isSurface(f.id) ? (ownsSurface(game.value.house, f.id) ? 1 : 0) : (game.value.house.storage[f.id] ?? 0) + game.value.house.placed.filter((p) => p.id === f.id).length
-          const miss = missingFor(game.value.materials, game.value.coins, r, lv).mats
-          return (
-            <div class="panel craft-card" key={f.id}>
-              <span class="craft-thumb"><img class="px" src={spriteDataUrl(FURNITURE_BY_ID[f.id] ? furnitureThumb(f.id) : surfaceThumb(f.id), 2)} alt="" /></span>
-              <div class="grow col" style={{ gap: '2px' }}>
-                <b class="craft-name">{f.name}</b>
-                <span class="small muted craft-desc">{f.desc}</span>
-                <Recipe recipe={r.recipe} coins={r.coins} />
-              </div>
-              <div class="col" style={{ alignItems: 'center', gap: '0' }}>
-                {owned > 0 && <span class="small muted">มี {owned}</span>}
-                <PBtn
-                  tone={ok ? 'green' : 'paper'}
-                  size="small"
-                  disabled={lock}
-                  onClick={() => {
-                    if (craft(f.id)) {
-                      sfx.coins()
-                      haptic(20)
-                      toast(`สร้าง${f.name}แล้ว! ไปจัดห้องกันเลย`, 'hammer')
-                    } else if (Object.keys(miss).length) sfx.error()
-                  }}
-                >
-                  {lock ? `Lv.${f.level}` : 'สร้าง'}
-                </PBtn>
-              </div>
-            </div>
-          )
-        })}
+      <div class="ptab-body">
+        <div class="slot-grid craft-grid">
+          {list.map((f) => {
+            const locked = !unlocked(f.id)
+            const can = craftable(f.id)
+            return (
+              <Slot key={f.id} size={60} active={cur?.id === f.id} locked={locked} onClick={() => setSel(f.id)} title={f.name} badge={can ? <span class="badge num">!</span> : undefined}>
+                <img class="px slot-img" src={spriteDataUrl(FURNITURE_BY_ID[f.id] ? furnitureThumb(f.id) : surfaceThumb(f.id), 2)} alt="" />
+              </Slot>
+            )
+          })}
+        </div>
       </div>
-      <p class="small muted center">วัสดุได้จากการสวดมนต์ เก็บของรอบวัด และมินิเกม · ซื้อชุดวัสดุได้ที่ร้านค้า</p>
       <div class="row" style={{ justifyContent: 'center' }}>
-        <PBtn tone="gold" size="small" icon="shop" onClick={() => (close(), openShop('special'))}>
-          ชุดวัสดุในร้าน
+        <PBtn tone="gold" size="small" icon="shop" onClick={() => (close(), openShop('mats'))}>
+          ซื้อวัสดุ
+        </PBtn>
+        <PBtn tone="wood" size="small" icon="market" onClick={() => openPanel('market')}>
+          ตลาดนัด
         </PBtn>
       </div>
     </Window>

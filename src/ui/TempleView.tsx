@@ -16,11 +16,13 @@ import { dayKey } from '../game/time'
 import { Rng } from '../engine/rng'
 import { MATERIAL_INFO } from '../game/materials'
 import { toast } from '../game/events'
+import { presence } from '../services/presence'
 
 let current: WorldScene | null = null
 let autoOpen: string | null = null
 /** Map we just left through a door (picks the matching entry point). */
 let prevMap: string | null = null
+let presenceTimer: ReturnType<typeof setInterval> | undefined
 
 /** Walk to a hotspot and open its main activity on arrival. */
 export function travelTo(hotspotId: string) {
@@ -69,11 +71,28 @@ function SpeechLayer({ stage }: { stage: { current: Stage | null } }) {
   useEffect(() => {
     let raf = 0
     const pool: HTMLDivElement[] = []
+    const tagPool: HTMLDivElement[] = []
     const tick = () => {
       const sc = current
       const st = stage.current
       const el = layer.current
       if (sc && st && el) {
+        const tags = sc.nameTags()
+        while (tagPool.length < tags.length) {
+          const d = document.createElement('div')
+          d.className = 'nametag'
+          el.appendChild(d)
+          tagPool.push(d)
+        }
+        tagPool.forEach((d, i) => {
+          const tg = tags[i]
+          d.style.display = tg ? 'block' : 'none'
+          if (!tg) return
+          const [x, y] = st.toCss(tg.x, tg.y)
+          const txt = tg.level ? `${tg.name} · Lv.${tg.level}` : tg.name
+          if (d.textContent !== txt) d.textContent = txt
+          d.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) translate(-50%, -100%)`
+        })
         const bs = sc.speechBubbles()
         while (pool.length < bs.length) {
           const d = document.createElement('div')
@@ -153,6 +172,10 @@ export function TempleView({ active }: { active: boolean }) {
       { companion: s.companion, pet: s.pet, spawn: entry, pickups: map.indoor ? [] : todaysPickups(map.id, map.pickupSpots) },
     )
     prevMap = null
+    const others = () => (game.value.settings.showOthers === false ? [] : presence().playersOn(map.id, { code: game.value.player.friendCode, friends: game.value.social.friends }))
+    scene.setRemotePlayers(others())
+    clearInterval(presenceTimer)
+    presenceTimer = setInterval(() => current === scene && scene.setRemotePlayers(others()), 60_000)
     current = scene
     stage.current!.setScene(scene)
     arrived.value = null

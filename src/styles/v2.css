@@ -1457,3 +1457,115 @@ body,
 .map-fade.on {
   opacity: 1;
 }
+
+.nametag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #fff6dc;
+  background: rgba(28, 18, 12, 0.55);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ---------- market ---------- */
+
+.market-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.market-icon {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: #e6cc98;
+  box-shadow: inset 0 2px 0 #c7a468;
+}
+
+.sell-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 4px;
+}
+
+.online-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 2px;
+  background: #4fcf5a;
+  box-shadow: 0 0 0 2px #1f4a26;
+}
+
+/* ---------- build menu ---------- */
+
+.craft-preview {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+  padding: 2px;
+  margin-bottom: 6px;
+}
+
+.craft-preview.locked .craft-preview-img {
+  filter: grayscale(0.7) brightness(0.8);
+}
+
+.craft-preview-img {
+  width: 150px;
+  height: auto;
+  flex-shrink: 0;
+  box-shadow:
+    0 0 0 2px #6b4428,
+    inset 0 0 0 2px #fff;
+}
+
+.craft-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.craft-reqs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+}
+
+.craft-reqs li {
+  color: #9c3226;
+}
+
+.craft-reqs li.met {
+  color: #2f6e36;
+}
+
+.craft-grid {
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  max-height: 230px;
+  overflow-y: auto;
+}
+
+.craft-locked {
+  gap: 8px;
+  padding: 12px 4px;
+  align-items: center;
+}
+
+.deal {
+  align-self: flex-start;
+}

@@ -4,6 +4,8 @@ import { Window, PBtn } from './components/kit'
 import { claimableCount } from './Hotbar'
 import { coinStoreOpen, mode, openPanel, profileOpen, settingsOpen, tab, type Tab } from './store'
 import { signOut } from './account'
+import { soldCount } from '../game/market'
+import { presence } from '../services/presence'
 import { sfx } from '../engine/audio'
 
 export function Menu() {
@@ -40,6 +42,9 @@ export function Menu() {
         <PBtn size="small" tone="paper" icon="bell" onClick={() => openPanel('reminder')}>
           เตือนสวด
         </PBtn>
+        <PBtn size="small" tone="gold" icon="market" onClick={() => openPanel('market')}>
+          ตลาดนัด{soldCount() ? ` (${soldCount()})` : ''}
+        </PBtn>
         <PBtn size="small" tone="gold" icon="coin" onClick={() => (close(), (coinStoreOpen.value = true))}>
           บุญคอยน์
         </PBtn>
@@ -47,7 +52,9 @@ export function Menu() {
           ตั้งค่า
         </PBtn>
       </div>
-      {mode.value === 'world' && <p class="small muted center menu-note">เกมหยุดชั่วคราว · แตะนอกหน้าต่างเพื่อเล่นต่อ</p>}
+      <p class="small muted center menu-note">
+        <span class="online-dot" /> ออนไลน์ {presence().onlineCount().toLocaleString('th-TH')} คน{mode.value === 'world' ? ' · แตะนอกหน้าต่างเพื่อเล่นต่อ' : ''}
+      </p>
     </Window>
   )
 }

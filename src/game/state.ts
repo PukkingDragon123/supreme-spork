@@ -66,6 +66,8 @@ export interface Settings {
   time: 'real' | 'dawn' | 'day' | 'golden' | 'night'
   haptics: boolean
   reduceMotion: boolean
+  /** Show other (online) players walking around the temples. */
+  showOthers?: boolean
 }
 
 export interface AccountLink {
@@ -110,6 +112,8 @@ export interface GameState {
   pet: string | null
   /** Real places on the Thailand map: bought early, visited, and where you are now. */
   places: { bought: string[]; visited: string[]; current: string | null }
+  /** Player market: your stall and what you bought from others. */
+  market: { mine: import('./market').MyListing[]; bought: string[]; earned: number }
   player: { name: string; birthDay: number; friendCode: string; look: AvatarLook }
   merit: number
   coins: number
@@ -178,6 +182,7 @@ export function defaultState(): GameState {
     pets: [],
     pet: null,
     places: { bought: [], visited: [], current: null },
+    market: { mine: [], bought: [], earned: 0 },
     player: { name: 'สายบุญ', birthDay: new Date().getDay(), friendCode: makeFriendCode(), look: { ...DEFAULT_LOOK } },
     merit: 0,
     coins: 100,
@@ -229,6 +234,7 @@ export function migrate(raw: unknown): GameState {
     reminder: { ...base.reminder, ...(s.reminder ?? {}) },
     house: s.house ? normalizeHouse(s.house) : base.house,
     places: { ...base.places, ...(s.places ?? {}) },
+    market: { ...base.market, ...(s.market ?? {}) },
     v: SAVE_VERSION,
   }
   // v1 called the main temple 'home'; it is 'wat' now that players have a house.

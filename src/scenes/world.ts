@@ -126,6 +126,26 @@ export interface MapDef {
   visitors?: number
 }
 
+/** Another player sharing this map (online presence). */
+export interface RemotePlayer {
+  id: string
+  name: string
+  look: AvatarLook
+  pet?: string | null
+  level?: number
+}
+
+interface RemoteEnt {
+  p: RemotePlayer
+  w: Walker
+  timer: number
+  chat: number
+  petX: number
+  petY: number
+}
+
+const REMOTE_CHAT = ['สาธุ~', 'มาทำบุญด้วยกันนะ', 'อนุโมทนาบุญค่ะ', 'วันนี้คนเยอะจัง', 'ใครสวดด่าน 5 ผ่านแล้วบ้าง', 'ไปกินไอติมกันไหม', 'สวัสดีครับ 🙏', 'แมวน่ารักมาก', 'ขอให้ถูกหวยนะ 555', 'ชุดสวยจัง!', 'เพิ่งได้มังกรมา ><', '🙏🙏🙏']
+
 export type ArriveTarget = { kind: 'hotspot'; hotspot: Hotspot } | { kind: 'dog'; id: string }
 
 export interface WorldCallbacks {
@@ -306,6 +326,7 @@ export class WorldScene implements Scene {
   time = 0
   companion: string | null = null
   pet: string | null = null
+  private remotes: RemoteEnt[] = []
   private petPos = { x: 0, y: 0, facing: 'down' as Facing, moving: false, t: 0, idle: 0, happy: 0 }
   private trail: [number, number][] = []
   paused = false
@@ -674,6 +695,51 @@ export class WorldScene implements Scene {
 
   // ---------------------------------------------------------------- update
 
+  /** Replace the other players shown on this map. */
+  setRemotePlayers(list: RemotePlayer[]) {
+    const keep = new Map(this.remotes.map((r) => [r.p.id, r]))
+    this.remotes = list.map((p) => {
+      const old = keep.get(p.id)
+      if (old) return { ...old, p }
+      const [x, y] = this.randomPoint()
+      return { p, w: new Walker(x, y, 30 + Math.random() * 6), timer: Math.random() * 3, chat: 4 + Math.random() * 14, petX: x + 8, petY: y + 3 }
+    })
+  }
+
+  /** Name tags for other players (screen virtual px, above their heads). */
+  nameTags(): { id: string; name: string; level?: number; x: number; y: number }[] {
+    return this.remotes
+      .filter((r) => this.onScreen(r.w.x, r.w.y, 10))
+      .map((r) => ({ id: r.p.id, name: r.p.name, level: r.p.level, x: r.w.x - this.camX, y: r.w.y - 30 - this.camY }))
+  }
+
+  private updateRemotes(dt: number) {
+    for (const r of this.remotes) {
+      r.w.walk(dt)
+      if (!r.w.moving) {
+        r.timer -= dt
+        if (r.timer <= 0) {
+          r.timer = 2 + Math.random() * 6
+          const [x, y] = this.randomPoint()
+          const path = this.grid.find(r.w.x, r.w.y, x, y)
+          if (path) r.w.path = path
+        }
+      }
+      r.chat -= dt
+      if (r.chat <= 0) {
+        r.chat = 10 + Math.random() * 18
+        if (this.onScreen(r.w.x, r.w.y, 0)) this.say(REMOTE_CHAT[Math.floor(Math.random() * REMOTE_CHAT.length)], r.w.x, r.w.y - 30, 2.4)
+      }
+      if (r.p.pet) {
+        const dx = r.w.x + 9 - r.petX
+        const dy = r.w.y + 3 - r.petY
+        const k = Math.min(1, dt * 3)
+        r.petX += dx * k
+        r.petY += dy * k
+      }
+    }
+  }
+
   setPet(id: string | null) {
     this.pet = id
     this.trail = []
@@ -760,6 +826,7 @@ export class WorldScene implements Scene {
     }
     if (arrived && this.target) this.arrive()
     this.updatePet(dt)
+    this.updateRemotes(dt)
     // Walking over a pickup collects it.
     for (const q of this.pickups) {
       if (Math.hypot(q.x - p.x, q.y - p.y) < 5) {
@@ -1136,6 +1203,19 @@ export class WorldScene implements Scene {
     }
     add(this.player.y + 0.1, () => drawWalker(this.player, this.look))
     if (this.pet) add(this.petPos.y, () => this.drawPet(g, t))
+    for (const r of this.remotes) {
+      if (!this.onScreen(r.w.x, r.w.y, 30)) continue
+      add(r.w.y, () => drawWalker(r.w, r.p.look))
+      if (r.p.pet) {
+        const pid = r.p.pet
+        add(r.petY, () => {
+          const moving = Math.hypot(r.w.x + 9 - r.petX, r.w.y + 3 - r.petY) > 1
+          const ps = petSprite(pid, 'side', moving ? 'walk' : 'idle', Math.floor(t * (moving ? 8 : 2)), { flip: r.w.x < r.petX })
+          if (!PET_BY_ID[pid]?.flying) drawShadow(g, r.petX, r.petY, 5, 1.5)
+          g.draw(ps.canvas, Math.round(r.petX - ps.w / 2), Math.round(r.petY - ps.h + 1))
+        })
+      }
+    }
     list.sort((a, b) => a.y - b.y)
     for (const d of list) d.draw()
 
