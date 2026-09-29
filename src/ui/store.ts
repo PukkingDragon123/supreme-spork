@@ -24,6 +24,8 @@ export type ActivityId =
   | 'krathong'
   | 'circle'
   | 'hall'
+  | 'job'
+  | 'cook'
 
 export interface ActivityRequest {
   id: ActivityId
@@ -34,6 +36,8 @@ export const tab = signal<Tab>('temple')
 export const activity = signal<ActivityRequest | null>(null)
 export const arrived = signal<ArriveTarget | null>(null)
 export const area = signal<AreaId>('wat')
+/** Map shown in the world view: an AreaId, a place id or an interior `<place>:<room>`. */
+export const mapId = signal<string>('wat')
 
 export type ShopSection = 'pets' | 'fashion' | 'alms' | 'offering' | 'animal' | 'mats' | 'special' | 'boost' | 'area'
 export const shopSection = signal<ShopSection>('pets')
@@ -50,7 +54,7 @@ export const arrivalTarget = signal<AreaId>('wat')
 export const arrivalPlace = signal<string | null>(null)
 
 /** Windows opened from the hotbar / menu. */
-export type Panel = 'menu' | 'pray' | 'bag' | 'craft' | 'mala' | 'chants' | 'dress' | 'reminder'
+export type Panel = 'menu' | 'pray' | 'bag' | 'craft' | 'mala' | 'chants' | 'dress' | 'reminder' | 'placeShop' | 'market' | 'jobs'
 export const panel = signal<Panel | null>(null)
 /** Running prayer session (stage id). */
 export const prayStage = signal<string | null>(null)
@@ -61,6 +65,13 @@ export const houseEditing = signal(false)
 
 export function openPanel(p: Panel | null) {
   panel.value = p
+}
+
+/** Location shop currently open (see src/game/data/placeShops.ts). */
+export const placeShopId = signal<string | null>(null)
+export function openPlaceShop(id: string) {
+  placeShopId.value = id
+  panel.value = 'placeShop'
 }
 
 /** Travel to a temple area with the arrival cutscene. */

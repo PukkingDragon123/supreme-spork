@@ -15,7 +15,7 @@ import { App } from './ui/App'
 import { installSkins } from './ui/skin'
 import { game, loadState, migrate, persistNow, replaceState } from './game/state'
 import { ensureDaily, isAreaUnlocked } from './game/actions'
-import { area, mode } from './ui/store'
+import { area, mapId, mode } from './ui/store'
 import { initAccount } from './ui/account'
 
 installSkins()
@@ -26,6 +26,7 @@ const skip = import.meta.env.DEV && q0.has('skipintro')
 if (skip) game.value = { ...game.value, onboarded: true, account: game.value.account ?? { kind: 'guest', id: null, email: null } }
 ensureDaily()
 if (isAreaUnlocked(game.value.lastArea)) area.value = game.value.lastArea
+mapId.value = area.value
 mode.value = skip ? (q0.has('house') ? 'house' : 'world') : game.value.seen.intro ? 'title' : 'intro'
 if (import.meta.env.DEV && q0.get('mode')) mode.value = q0.get('mode') as never
 void initAccount()
@@ -49,7 +50,9 @@ if (import.meta.env.DEV) {
   const t = q.get('tab')
   if (t) import('./ui/store').then((m) => (m.tab.value = t as never))
   const ar = q.get('area')
-  if (ar) area.value = ar as never
+  if (ar) (area.value = ar as never), (mapId.value = ar)
+  const mp = q.get('map')
+  if (mp) mapId.value = mp
 }
 
 document.addEventListener('visibilitychange', () => {

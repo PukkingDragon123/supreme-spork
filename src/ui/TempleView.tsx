@@ -1,12 +1,12 @@
 // Hosts the walkable world canvas for the current area.
 
-import { useEffect, useRef } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { Stage } from '../engine/stage'
 import { WorldScene, type ArriveTarget } from '../scenes/world'
-import { mapFor } from '../scenes/maps'
+import { hasMap, mapFor } from '../scenes/maps'
 import { game } from '../game/state'
 import { lookKey } from '../art/avatar'
-import { area, arrived } from './store'
+import { area, arrived, mapId } from './store'
 import { setAmbientMood, sfx } from '../engine/audio'
 import { currentPhase } from '../scenes/sky'
 import { hotspotActions } from './hotspots'
@@ -19,6 +19,8 @@ import { toast } from '../game/events'
 
 let current: WorldScene | null = null
 let autoOpen: string | null = null
+/** Map we just left through a door (picks the matching entry point). */
+let prevMap: string | null = null
 
 /** Walk to a hotspot and open its main activity on arrival. */
 export function travelTo(hotspotId: string) {
@@ -110,9 +112,25 @@ export function TempleView({ active }: { active: boolean }) {
     }
   }, [])
 
+  const [fade, setFade] = useState(false)
+
   useEffect(() => {
     const s = game.value
     const onArrive = (t: ArriveTarget) => {
+      // Doors lead straight into another map (interiors, shops, courtyards).
+      if (t.kind === 'hotspot' && t.hotspot.id.startsWith('door:')) {
+        const to = t.hotspot.id.slice(5)
+        if (!hasMap(to)) return
+        autoOpen = null
+        sfx.whoosh()
+        setFade(true)
+        setTimeout(() => {
+          prevMap = mapId.value
+          mapId.value = to
+          setTimeout(() => setFade(false), 60)
+        }, 260)
+        return
+      }
       if (t.kind === 'hotspot' && autoOpen === t.hotspot.id) {
         autoOpen = null
         const acts = hotspotActions(t.hotspot.id)
@@ -125,17 +143,20 @@ export function TempleView({ active }: { active: boolean }) {
       sfx.open()
       arrived.value = t
     }
-    const map = mapFor(area.value)
+    const map = mapFor(mapId.value)
+    if (map.area && map.area !== area.value) area.value = map.area
+    const entry = prevMap ? map.entries?.[prevMap] : undefined
     const scene = new WorldScene(
       map,
       s.player.look,
       { onArrive, onMove: () => (arrived.value = null), onPickup: collect, onSay: () => undefined },
-      { companion: s.companion, pet: s.pet, pickups: todaysPickups(area.value, map.pickupSpots) },
+      { companion: s.companion, pet: s.pet, spawn: entry, pickups: map.indoor ? [] : todaysPickups(map.id, map.pickupSpots) },
     )
+    prevMap = null
     current = scene
     stage.current!.setScene(scene)
     arrived.value = null
-  }, [area.value])
+  }, [mapId.value])
 
   const lk = lookKey(game.value.player.look)
   useEffect(() => {
@@ -175,6 +196,7 @@ export function TempleView({ active }: { active: boolean }) {
     <>
       <div class="stage-host" ref={host} />
       <SpeechLayer stage={stage} />
+      <div class={`map-fade ${fade ? 'on' : ''}`} />
     </>
   )
 }

@@ -1443,3 +1443,17 @@ body,
 .place-tip {
   margin: 4px 0 6px;
 }
+
+.map-fade {
+  position: absolute;
+  inset: 0;
+  z-index: 11;
+  background: #120a06;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 250ms ease;
+}
+
+.map-fade.on {
+  opacity: 1;
+}

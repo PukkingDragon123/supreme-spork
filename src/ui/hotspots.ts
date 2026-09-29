@@ -1,6 +1,6 @@
 // What each world hotspot lets you do.
 
-import { openActivity, openShop, openSocial, mapOpen, openPanel, goHome } from './store'
+import { openActivity, openShop, openSocial, mapOpen, openPanel, goHome, openPlaceShop } from './store'
 
 export interface HotspotAction {
   label: string
@@ -10,6 +10,17 @@ export interface HotspotAction {
 }
 
 export function hotspotActions(id: string): HotspotAction[] {
+  // Generic hotspot families used by the place maps.
+  if (id.startsWith('job:')) {
+    const job = id.slice(4)
+    return [{ label: 'รับงานอาสา', icon: 'broom', run: () => openActivity('job', { job }) }]
+  }
+  if (id.startsWith('shop:')) {
+    const shop = id.slice(5)
+    return [{ label: 'เข้าร้าน', icon: 'shop', run: () => openPlaceShop(shop) }]
+  }
+  if (id.startsWith('pray')) return [{ label: 'สวดมนต์', icon: 'pray', run: () => openPanel('pray') }]
+  if (id.startsWith('cook')) return [{ label: 'ทำอาหาร', icon: 'bowl', run: () => openActivity('cook') }]
   switch (id) {
     case 'alms':
     case 'boat_alms':

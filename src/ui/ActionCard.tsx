@@ -10,7 +10,7 @@ import { DOG_BY_ID, MAX_HEARTS } from '../game/data/dogs'
 import { dogState, petDog, setCompanion } from '../game/actions'
 import { game } from '../game/state'
 import { mapFor } from '../scenes/maps'
-import { area } from './store'
+import { mapId } from './store'
 import { travelTo, worldScene } from './TempleView'
 import { toast } from '../game/events'
 import { sfx } from '../engine/audio'
@@ -103,7 +103,7 @@ function DogCard({ id }: { id: string }) {
 /** Compass button listing every spot in this area for one-tap travel. */
 export function QuickTravel() {
   const [open, setOpen] = useState(false)
-  const m = mapFor(area.value)
+  const m = mapFor(mapId.value)
   return (
     <>
       <button class="panel quick-btn" onClick={() => (sfx.open(), setOpen(true))} aria-label="รายการกิจกรรมในวัดนี้">

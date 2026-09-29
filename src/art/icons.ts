@@ -696,6 +696,28 @@ const ICONS: Record<string, Draw> = {
     g.rect(13, 7, 1, 6, '#9a6a45')
     g.rect(1, 11, 12, 1, '#9a6a45')
   },
+  broom: (g) => {
+    g.thickLine(10, 1, 5, 9, 2, '#b8844a')
+    g.poly([[2, 8], [7, 8], [9, 13], [0, 13]], '#e8c46a')
+    g.line(2, 10, 1, 13, '#b8943a')
+    g.line(5, 10, 5, 13, '#b8943a')
+    g.line(7, 10, 8, 13, '#b8943a')
+    g.rect(2, 8, 5, 1, P.red)
+  },
+  market: (g) => {
+    g.rect(1, 5, 12, 8, '#e0bb8a')
+    for (let x = 1; x < 13; x++) g.vline(x, 2, 5, Math.floor((x - 1) / 3) % 2 ? P.white : '#4f9e4c')
+    g.rect(3, 8, 3, 3, P.gold)
+    g.rect(8, 8, 3, 3, P.pink)
+    g.rect(1, 12, 12, 1, '#9a6a45')
+  },
+  pan: (g) => {
+    g.ellipse(6, 8, 5.5, 3, '#5a5a66')
+    g.ellipse(6, 7.5, 4.5, 2.2, '#3a3a44')
+    g.thickLine(11, 7, 13, 3, 2, '#9a6a45')
+    g.circle(5, 7, 1.5, '#ffe58a')
+    g.px(5, 7, '#f2a23f')
+  },
 }
 
 export const ICON_NAMES = Object.keys(ICONS)

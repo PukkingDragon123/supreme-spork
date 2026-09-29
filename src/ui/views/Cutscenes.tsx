@@ -6,7 +6,8 @@ import { IntroCutscene } from '../../scenes/cutscenes/intro'
 import { ArrivalCutscene } from '../../scenes/cutscenes/arrival'
 import { game, mutate } from '../../game/state'
 import { setArea } from '../../game/actions'
-import { area, arrivalPlace, arrivalTarget, mode } from '../store'
+import { area, arrivalPlace, arrivalTarget, mapId, mode } from '../store'
+import { hasMap } from '../../scenes/maps'
 import { PLACE_BY_ID } from '../../game/data/places'
 import { PT } from '../pixeltext'
 import { sfx } from '../../engine/audio'
@@ -69,6 +70,7 @@ export function ArrivalView() {
     })
     setArea(target)
     area.value = target
+    mapId.value = place && !place.home && hasMap(place.id) ? place.id : target
     mode.value = 'world'
   }
   const { host, scene } = useStage(

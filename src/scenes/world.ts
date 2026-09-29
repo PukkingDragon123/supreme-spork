@@ -75,7 +75,18 @@ export interface Pickup {
 }
 
 export interface MapDef {
-  id: AreaId
+  /** Map id: an AreaId, a place id (src/game/data/places.ts) or `<place>:<room>` for interiors. */
+  id: string
+  /** Prayer chapter / merit area this map counts as (defaults to 'wat'). */
+  area?: AreaId
+  /** Real place this map belongs to (for place shops, bonuses and names). */
+  place?: string
+  /** Interiors: no sky, no day/night tint; `lights` always glow at `indoorLight`. */
+  indoor?: boolean
+  /** Glow strength of `lights` indoors (default 0.8). */
+  indoorLight?: number
+  /** Where the player appears when arriving from another map (keyed by that map's id). */
+  entries?: Record<string, { x: number; y: number; face?: Facing }>
   w: number
   h: number
   skyH: number
@@ -1010,7 +1021,7 @@ export class WorldScene implements Scene {
     const night = this.isNight()
     g.clear(m.ground)
     g.setCamera(cx, cy)
-    if (cy < m.skyH) drawSky(g, 0, 0, m.w, m.skyH, this.phase, t)
+    if (!m.indoor && cy < m.skyH) drawSky(g, 0, 0, m.w, m.skyH, this.phase, t)
     // Only the visible part of the baked ground.
     const L = this.layer(night)
     const sx = Math.max(0, cx)
@@ -1138,9 +1149,9 @@ export class WorldScene implements Scene {
 
     // Lighting.
     g.setCamera(0, 0)
-    applyTint(g, this.phase)
+    if (!m.indoor) applyTint(g, this.phase)
     g.setCamera(cx, cy)
-    const light = SKY[this.phase].lights
+    const light = m.indoor ? (m.indoorLight ?? 0.8) : SKY[this.phase].lights
     if (light > 0) for (const l of m.lights) if (this.onScreen(l.x, l.y, l.r)) drawGlow(g, l.x, l.y, l.r, light, l.color)
     for (const l of this.life) l.glow?.(g, t, light)
     if (night) {
