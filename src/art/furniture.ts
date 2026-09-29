@@ -11,6 +11,7 @@ import { drawBuddha, GOLD } from './interior'
 import { FURNITURE_BY_ID, type MaterialId } from '../game/data/furniture'
 import { ROOM } from '../game/house'
 import type { Phase } from '../game/time'
+import { DARK_BASEBOARD, ROOM_ART, ROOM_FLOOR, ROOM_FX, ROOM_WALLPAPER } from './roomArt'
 
 // ---------------------------------------------------------------------------
 // Room geometry (world pixels; origin = top-left of the back wall)
@@ -1528,6 +1529,9 @@ ART.window_big = {
   },
 }
 
+// Extra rooms: built-ins, regional furniture and temple models (roomArt.ts).
+Object.assign(ART, ROOM_ART)
+
 // ---------------------------------------------------------------------------
 // Sprite API
 
@@ -1624,7 +1628,7 @@ function centreInThumb(s: Sprite): Sprite {
 /** 24×24 inventory thumbnail. */
 export function furnitureThumb(id: string): Sprite {
   return cached(`furnthumb:${id}`, () => {
-    const lit = id === 'lamp_paper' || id === 'lantern_oil' || id === 'lamp_lanna' ? 1 : 0
+    const lit = id === 'lamp_paper' || id === 'lantern_oil' || id === 'lamp_lanna' || id === 's_lantern' || id === 'b_wfh' ? 1 : 0
     const raw = bakeArt(id, lit)
     const art = artOf(id)
     const big = Math.max(raw.width, raw.height)
@@ -1649,6 +1653,8 @@ export interface FxState {
  * world pixels. `emissive` is the pass drawn after the night tint.
  */
 export function drawFurnitureFx(g: Surface, id: string, x: number, y: number, flip: boolean, t: number, st: FxState, emissive: boolean) {
+  const roomFx = ROOM_FX[id]
+  if (roomFx) return roomFx(g, x, y, flip, t, st, emissive)
   const { W } = footprintPx(id)
   const mx = (v: number) => (flip ? x + W - 1 - v : x + v)
   switch (id) {
@@ -1808,6 +1814,12 @@ function drawTvShow(g: Surface, x: number, y: number, t: number) {
 // Wallpapers
 
 export function drawWallpaper(g: Surface, id: string, x: number, y: number, w: number, h: number) {
+  const room = ROOM_WALLPAPER[id]
+  if (room) {
+    room(g, x, y, w, h)
+    g.hline(x, x + w - 1, y, 'rgba(90,60,40,0.18)')
+    return
+  }
   switch (id) {
     case 'wp_kanok': {
       g.rect(x, y, w, h, '#9c3b3b')
@@ -1884,6 +1896,8 @@ export function drawWallpaper(g: Surface, id: string, x: number, y: number, w: n
 // Floors
 
 export function drawFloor(g: Surface, id: string, x: number, y: number, w: number, h: number) {
+  const room = ROOM_FLOOR[id]
+  if (room) return room(g, x, y, w, h)
   switch (id) {
     case 'fl_parquet': {
       // Basket-weave teak parquet.
@@ -1954,7 +1968,7 @@ export function drawFloor(g: Surface, id: string, x: number, y: number, w: numbe
 }
 
 export function drawBaseboard(g: Surface, id: string, x: number, y: number, w: number) {
-  const dark = id === 'wp_teak' || id === 'wp_kanok'
+  const dark = id === 'wp_teak' || id === 'wp_kanok' || DARK_BASEBOARD.has(id)
   g.rect(x, y, w, 4, dark ? '#6b3b24' : '#fffaf0')
   g.hline(x, x + w - 1, y, dark ? '#955631' : '#ffffff')
   g.hline(x, x + w - 1, y + 3, dark ? '#4a2818' : '#e2d4bd')
