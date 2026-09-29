@@ -92,6 +92,9 @@ function noise(dur: number, vol = 0.2, filter: BiquadFilterType = 'bandpass', fr
   src.stop(t + dur + 0.05)
 }
 
+/** Raw synth voices for activity-specific sound sets (e.g. src/activities/flood/sfx.ts). */
+export const synth = { tone, noise }
+
 /** Temple bell: inharmonic partials with a long decay. */
 function bellTone(freq: number, vol = 0.25, decay = 2.6, dest?: AudioNode) {
   const partials = [

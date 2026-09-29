@@ -11,6 +11,7 @@ import { PT, TONE_TEXT } from './pixeltext'
 import { coinStoreOpen, profileOpen } from './store'
 import { sfx } from '../engine/audio'
 import { DAILY_PRAYER_GOAL, prayersToday } from '../game/prayer'
+import { EventBadge } from './views/EventBadge'
 
 export function PortraitRing({ size = 72 }: { size?: number }) {
   const look = game.value.player.look
@@ -49,6 +50,7 @@ export function Hud() {
           <Icon name="plus" size={14} />
         </span>
       </button>
+      <EventBadge />
     </div>
   )
 }

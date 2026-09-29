@@ -54,7 +54,7 @@ export const arrivalTarget = signal<AreaId>('wat')
 export const arrivalPlace = signal<string | null>(null)
 
 /** Windows opened from the hotbar / menu. */
-export type Panel = 'menu' | 'pray' | 'bag' | 'craft' | 'mala' | 'chants' | 'dress' | 'reminder' | 'placeShop' | 'market' | 'jobs'
+export type Panel = 'menu' | 'pray' | 'bag' | 'craft' | 'mala' | 'chants' | 'dress' | 'reminder' | 'placeShop' | 'market' | 'jobs' | 'event'
 export const panel = signal<Panel | null>(null)
 /** Running prayer session (stage id). */
 export const prayStage = signal<string | null>(null)
