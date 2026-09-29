@@ -28,7 +28,7 @@ export function EventBadge() {
     mutate((d) => {
       if (!d.seen.tips.includes(key)) d.seen.tips.push(key)
     })
-    toast(`ปลดล็อกอีเวนต์ “${def.name}” แล้ว! แตะปุ่มอีเวนต์มุมขวาบนเลย`, 'gift')
+    toast(`ปลดล็อกอีเวนต์ใหม่ “${def.name}” แล้ว! มาเป็นฮีโร่กู้ภัยกัน`, 'gift')
   }, [unlocked])
   return (
     <button
