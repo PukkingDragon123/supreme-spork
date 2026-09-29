@@ -42,7 +42,7 @@ export function ProvinceCard({ p, compact }: { p: Province; compact?: boolean })
   )
 }
 
-export function ProvincePicker({ onClose, onDone, title = 'เลือกจังหวัดบ้านเกิด' }: { onClose: () => void; onDone?: (id: string) => void; title?: string }) {
+export function ProvincePicker({ onClose, onDone, title = 'บ้านเกิดของฉัน' }: { onClose: () => void; onDone?: (id: string) => void; title?: string }) {
   const cur = game.value.homeland.province
   const [sel, setSel] = useState<string | null>(cur)
   const [region, setRegion] = useState<Region>(cur ? PROVINCE_BY_ID[cur].region : 'bangkok')
@@ -148,7 +148,7 @@ export function ProvinceField({ onOpen }: { onOpen: () => void }) {
   const p = id ? PROVINCE_BY_ID[id] : null
   return (
     <div class="field hl-field">
-      <PT text="จังหวัดบ้านเกิด" size={12} {...TONE_TEXT.ink} />
+      <PT text="จังหวัดบ้านเกิด (ได้ห้องฟรี!)" size={12} {...TONE_TEXT.ink} />
       {p ? (
         <button class="hl-field-btn" onClick={() => (sfx.open(), onOpen())} aria-label={`บ้านเกิด ${p.name} แตะเพื่อเปลี่ยน`}>
           <ProvinceCard p={p} compact />
@@ -156,7 +156,7 @@ export function ProvinceField({ onOpen }: { onOpen: () => void }) {
         </button>
       ) : (
         <PBtn tone="wood" size="small" icon="map" onClick={() => (sfx.open(), onOpen())}>
-          เลือกจังหวัด (ได้ห้องฟรี!)
+          เลือกจังหวัด
         </PBtn>
       )}
     </div>
@@ -165,13 +165,15 @@ export function ProvinceField({ onOpen }: { onOpen: () => void }) {
 
 /** Tiny province tag for name plates. */
 export function HomeTag() {
-  const id = game.value.homeland?.province
+  const s = game.value
+  const id = s.homeland?.province
   const p = id ? PROVINCE_BY_ID[id] : null
   if (!p) return null
+  const long = s.player.name.length > 9
   return (
-    <span class="hl-htag" title={`บ้านเกิด ${p.name}`}>
+    <span class="hl-htag" title={`บ้านเกิด ${p.name}`} aria-label={`บ้านเกิด ${p.name}`}>
       <img class="px" src={pinUrl()} alt="" width={7} height={9} />
-      {p.name}
+      {!long && p.name}
     </span>
   )
 }

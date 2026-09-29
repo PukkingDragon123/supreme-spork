@@ -13,7 +13,7 @@ import { FURNITURE_BY_ID } from '../../game/data/furniture'
 import { canClaimRank, homeRegion, placeAccess, rankReward, regionProgress, templeDone, templeKinds, type RankReq } from '../../game/homeland'
 import { claimRank } from '../../game/homelandActions'
 import { spriteDataUrl } from '../../engine/sprite'
-import { tierBadge, homePin } from '../../art/ranks'
+import { tierBadge, homePin, trophyIcon } from '../../art/ranks'
 import { furnitureThumb } from '../../art/furniture'
 import { placeIcon } from '../../scenes/thaimap'
 import { PBtn, Window } from '../components/kit'
@@ -152,7 +152,13 @@ export function RankBoard({ region: start, onClose, onGo }: { region: Region; on
   const home = homeRegion(s)
   const byTier = [...TIERS].reverse().map((t) => ({ t, list: ranksOf(region).filter((e) => e.tier === t.id) }))
   return (
-    <Window title={BOARD_TITLE[region]} icon="star" tone="gold" onClose={onClose} full class="hl-board">
+    <Window onClose={onClose} full class="hl-board">
+      <div class="hl-board-head" role="heading" aria-level={2} aria-label={BOARD_TITLE[region]}>
+        <span class="title-plate gold hl-board-plate">
+          <img class="px" src={spriteDataUrl(trophyIcon(), 2)} alt="" width={22} height={22} />
+          <b class="hl-board-title">{BOARD_TITLE[region]}</b>
+        </span>
+      </div>
       <div class="hl-regions hl-board-regions" role="tablist" aria-label="เลือกภาค">
         {PROVINCE_REGIONS.map((r) => {
           const pr = regionProgress(s, r)

@@ -677,36 +677,56 @@ ROOM_ART.s_mukchair = {
   up: 22,
   draw(g, a) {
     const { b } = a
-    const K = { hi: '#5a4050', top: '#3a2830', mid: '#2e2028', dark: '#20161c', deep: '#140e12' }
-    // Carved back with mother-of-pearl inlay.
-    g.rect(2, 0, 12, 14, K.mid)
-    g.hline(2, 13, 0, K.hi)
-    g.rect(1, 1, 1, 3, K.top)
-    g.rect(14, 1, 1, 3, K.top)
-    g.rect(4, 2, 8, 10, K.top)
-    for (const [x, y] of [
-      [6, 4],
-      [9, 4],
-      [7, 7],
-      [8, 7],
-      [6, 10],
-      [9, 10],
-      [5, 7],
-      [10, 7],
-    ] as [number, number][])
-      g.px(x, y, (x + y) % 3 ? '#f0f4ff' : '#c8e0f0')
-    // Arms.
-    g.rect(0, 12, 3, 8, K.mid)
-    g.rect(13, 12, 3, 8, K.mid)
-    g.hline(0, 2, 12, K.hi)
-    g.hline(13, 15, 12, K.hi)
-    // Seat with a red cushion.
-    box(g, 1, b - 12, 14, 4, 3, K as unknown as Wood)
-    g.rect(2, b - 13, 12, 3, '#c8423f')
-    g.hline(2, 13, b - 13, '#e0645a')
-    leg(g, 2, b - 5, b, K as unknown as Wood)
-    leg(g, 12, b - 5, b, K as unknown as Wood)
-    g.px(8, b - 6, '#f0f4ff')
+    // Rosewood armchair of a tin-mining towkay's house, pearl inlay on the splat.
+    const R: Wood = { hi: '#a8644e', top: '#84463a', mid: '#66322a', dark: '#4a221e', deep: '#301614' }
+    const pearl = ['#f4f8ff', '#d8ecf4', '#f8e8f4']
+    // Back posts and the curved top rail.
+    for (const x of [2, 12]) {
+      g.rect(x, 2, 2, b - 12, R.mid)
+      g.vline(x, 2, b - 11, R.hi)
+    }
+    g.rect(1, 1, 14, 3, R.top)
+    g.hline(3, 12, 0, R.top)
+    g.hline(1, 14, 1, R.hi)
+    g.px(0, 2, R.top)
+    g.px(15, 2, R.top)
+    g.hline(1, 14, 3, R.dark)
+    // Carved splat with a round mother-of-pearl medallion.
+    g.rect(5, 4, 6, b - 17, R.top)
+    g.vline(10, 4, b - 14, R.dark)
+    g.circle(7.5, 9, 2.6, R.deep)
+    g.circle(7.5, 9, 1.9, pearl[0])
+    g.px(7, 8, pearl[2])
+    g.px(8, 10, pearl[1])
+    g.px(7, 13, pearl[0])
+    g.px(8, 15, pearl[1])
+    g.px(7, 17, pearl[2])
+    // Arms with little scroll ends.
+    for (const [x0, x1, tip] of [
+      [0, 3, 0],
+      [12, 15, 15],
+    ] as [number, number, number][]) {
+      g.rect(x0, b - 18, x1 - x0 + 1, 2, R.top)
+      g.hline(x0, x1, b - 18, R.hi)
+      g.rect(tip, b - 17, 1, 5, R.mid)
+      g.px(tip, b - 19, R.hi)
+    }
+    // Seat with a red silk cushion.
+    box(g, 1, b - 13, 14, 4, 3, R)
+    g.rect(2, b - 14, 12, 3, '#c8423f')
+    g.hline(2, 13, b - 14, '#e8746a')
+    g.px(4, b - 13, GOLD.base)
+    g.px(11, b - 13, GOLD.base)
+    for (const [x, c] of [
+      [4, pearl[0]],
+      [8, pearl[1]],
+      [11, pearl[2]],
+    ] as [number, string][])
+      g.px(x, b - 8, c)
+    // Legs and the stretcher.
+    leg(g, 1, b - 6, b, R)
+    leg(g, 13, b - 6, b, R)
+    g.hline(3, 12, b - 3, R.dark)
   },
 }
 

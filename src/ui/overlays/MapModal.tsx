@@ -13,7 +13,7 @@ import { isAreaUnlocked, setArea, spendCoins, unlockArea } from '../../game/acti
 import { totalStars } from '../../game/prayer'
 import { currentPhase } from '../../scenes/sky'
 import { spriteDataUrl } from '../../engine/sprite'
-import { area, goTemple, mapOpen, mode } from '../store'
+import { area, goTemple, mapOpen, mode, travelGuards } from '../store'
 import { CloseX, PBtn, TitlePlate } from '../components/kit'
 import { PT, TONE_TEXT } from '../pixeltext'
 import { Coin, Icon } from '../components/common'
@@ -28,6 +28,14 @@ import '../homeland/homeland.css'
 
 // Count merit at ranked temples while the player is really there (not praying at home).
 installHomelandTracking(() => mode.value === 'world')
+// Every trip to a real place (map, hub pins, links) respects the temple-rank lock.
+travelGuards.push((id) => {
+  const p = PLACE_BY_ID[id]
+  if (!p || p.home || placeAccess(game.value, id).open) return true
+  sfx.error()
+  toast(`ยังไป${p.name}ไม่ได้ ต้องเลื่อนแรงก์ให้ถึงก่อนนะ`, 'lock', 'warn')
+  return false
+})
 
 function placeOpen(p: Place): boolean {
   if (p.home) return isAreaUnlocked(p.id as AreaId)

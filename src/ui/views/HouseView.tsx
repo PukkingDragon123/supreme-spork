@@ -18,8 +18,10 @@ import { toast } from '../../game/events'
 import { goTemple, houseEditing, openActivity, openPanel, prayAtHome, prayStage } from '../store'
 import { PBtn, Slot, Tabs, Window } from '../components/kit'
 import { PT, TONE_TEXT } from '../pixeltext'
+import { Icon } from '../components/common'
 import { sfx } from '../../engine/audio'
 import { enterRoom } from '../../game/homelandActions'
+import { roomStatus } from '../../game/homeland'
 import { ROOM_BY_ID, type RoomId } from '../../game/data/rooms'
 import { DoorWipe, RoomBar, RoomsWindow } from '../homeland/Rooms'
 
@@ -60,6 +62,7 @@ export function HouseView({ active }: { active: boolean }) {
   }
 
   useEffect(() => {
+    if (!roomStatus(game.value, game.value.house.room).owned) enterRoom('bedroom')
     const st = new Stage(host.current!, { targetWidth: 168 })
     stage.current = st
     const scene = new HouseScene(game.value.house, game.value.player.look, {
@@ -174,7 +177,10 @@ export function HouseView({ active }: { active: boolean }) {
       {editing && (
         <div class="house-edit">
           <div class="house-edit-top">
-            <PT text={`ความน่าอยู่ ${roomScore(house)} · ${cosyTier(roomScore(house)).name}`} size={12} color="#fff6dc" shadow="#3b2616" />
+            <span class="row" style={{ gap: '4px', minWidth: 0 }} title={`ความน่าอยู่ของ${ROOM_BY_ID[house.room].name}`}>
+              <Icon name="heart" size={20} />
+              <PT text={`${roomScore(house)} · ${cosyTier(roomScore(house)).name}`} size={12} color="#fff6dc" shadow="#3b2616" />
+            </span>
             <span class="grow" />
             <PBtn tone="green" size="small" icon="check" onClick={() => setEditing(false)}>
               เสร็จ
