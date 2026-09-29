@@ -1,6 +1,7 @@
 // Dev page for the home scene: open /dev-house.html while running vite.
 // Query params: ?phase=night &mode=edit &place=bed_teak &ghost=3,1 &focus=mirror
 //               &cat=1 &full=1 &on=1 &wp=wp_kanok &fl=fl_terrazzo &inset=120
+//               &room=north (any RoomId) &rooms=1 (still of every room in the catalogue)
 import { Stage } from '../engine/stage'
 import { Surface } from '../engine/pixel'
 import { HouseScene, drawRoomStill } from '../scenes/house'
@@ -14,9 +15,13 @@ import {
   setFloor,
   setWallpaper,
   storeFurniture,
+  switchRoom,
+  unlockRoom,
   unlockSurface,
+  viewRoom,
   type HouseState,
 } from '../game/house'
+import { ROOMS, isRoomId } from '../game/data/rooms'
 import { CRAFTABLE, FLOORS, FURNITURE, MATERIALS, WALLPAPERS } from '../game/data/furniture'
 import { furnitureSprite, furnitureThumb, materialSprite, surfaceThumb } from '../art/furniture'
 import type { Phase } from '../game/time'
@@ -26,6 +31,8 @@ const q = new URLSearchParams(location.search)
 let house: HouseState = defaultHouse()
 for (const f of CRAFTABLE) house = addToStorage(house, f.id, 2)
 for (const s of [...WALLPAPERS, ...FLOORS]) house = unlockSurface(house, s.id)
+const room = q.get('room')
+if (isRoomId(room)) house = switchRoom(unlockRoom(house, room), room)
 if (q.get('wp')) house = setWallpaper(house, q.get('wp')!)
 if (q.get('fl')) house = setFloor(house, q.get('fl')!)
 if (q.get('full')) {
@@ -166,4 +173,14 @@ if (q.get('cat')) {
   const still2 = new Surface(86, 97)
   drawRoomStill(still2, 86, 97, house, {})
   show('stills', [{ canvas: still.canvas, w: 120, h: 160 }, { canvas: still2.canvas, w: 86, h: 97 }], 2)
+  if (q.get('rooms'))
+    show(
+      'rooms',
+      ROOMS.map((r) => {
+        const c = new Surface(172, 164)
+        drawRoomStill(c, 172, 164, viewRoom(house, r.id), { phase: (q.get('phase') as Phase) ?? 'day' })
+        return { canvas: c.canvas, w: 172, h: 164 }
+      }),
+      2,
+    )
 }

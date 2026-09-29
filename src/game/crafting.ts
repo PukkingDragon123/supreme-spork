@@ -8,6 +8,7 @@ import { toast } from './events'
 import { levelFromMerit } from './economy'
 import type { GameState } from './state'
 import type { GameEvent } from './data/quests'
+import { ROOM_CRAFT_REQS } from './data/roomFurniture'
 
 /** The workbench (building) opens at this level. */
 export const CRAFT_LEVEL = 5
@@ -45,6 +46,8 @@ export const CRAFT_REQS: Record<string, Req[]> = {
   bed_teak: [{ kind: 'level', n: 14 }, { kind: 'prayers', n: 40 }],
   wp_kanok: [{ kind: 'stars', n: 10 }],
   fl_terrazzo: [{ kind: 'visits', n: 4 }],
+  // Regional-room furniture and surfaces: visit the temple that awards them.
+  ...ROOM_CRAFT_REQS,
 }
 
 function reqMet(r: Req, s: GameState): boolean {

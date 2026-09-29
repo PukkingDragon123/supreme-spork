@@ -12,6 +12,7 @@ import { coinStoreOpen, profileOpen } from './store'
 import { sfx } from '../engine/audio'
 import { DAILY_PRAYER_GOAL, prayersToday } from '../game/prayer'
 import { EventBadge } from './views/EventBadge'
+import { HomeTag } from './homeland/ProvincePicker'
 
 export function PortraitRing({ size = 72 }: { size?: number }) {
   const look = game.value.player.look
@@ -33,7 +34,7 @@ export function Hud() {
         <PortraitRing />
         <span class="hud2-lv num">{lv.level}</span>
         <span class="hud2-bars">
-          <span class="hud2-name"><PT text={s.player.name} size={12} color="#fff6dc" shadow="#1c120c" /></span>
+          <span class="hud2-name"><PT text={s.player.name} size={12} color="#fff6dc" shadow="#1c120c" /><HomeTag /></span>
           <span class="hbar gold" title="บุญสะสมสู่เลเวลถัดไป">
             <span style={{ width: `${Math.round((lv.into / Math.max(1, lv.need)) * 100)}%` }} />
           </span>

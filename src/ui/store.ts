@@ -74,8 +74,12 @@ export function openPlaceShop(id: string) {
   panel.value = 'placeShop'
 }
 
+/** Checks run before travelling to a real place; any false cancels the trip (e.g. the temple-rank lock). */
+export const travelGuards: ((place: string) => boolean)[] = []
+
 /** Travel to a temple area with the arrival cutscene. */
 export function goTemple(a: AreaId = area.value, place: string | null = arrivalPlace.value) {
+  if (place && travelGuards.some((ok) => !ok(place))) return
   arrivalPlace.value = place
   panel.value = null
   activity.value = null

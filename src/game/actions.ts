@@ -16,6 +16,7 @@ import { Rng } from '../engine/rng'
 import { MATERIAL_INFO, type MaterialId } from './materials'
 import { PET_BY_ID } from './data/pets'
 import { PLACE_BY_ID } from './data/places'
+import { homelandMeritBonus } from './homeland'
 
 const today = () => dayKey()
 
@@ -140,7 +141,7 @@ export function addMerit(base: number, o: MeritOptions = {}): number {
     buffMult: buff,
     luckyColor: luckyColorActive(s),
     morningAlms: !!o.morning && isAlmsMorning(hourOf()),
-    areaBonus: (o.area ? AREA_BY_ID[o.area]?.meritBonus ?? 1 : 1) * (s.places.current ? PLACE_BY_ID[s.places.current]?.bonus ?? 1 : 1),
+    areaBonus: (o.area ? AREA_BY_ID[o.area]?.meritBonus ?? 1 : 1) * (s.places.current ? PLACE_BY_ID[s.places.current]?.bonus ?? 1 : 1) * homelandMeritBonus(s),
     repeat: o.key ? repeatFactor(count, o.free ?? 3) : 1,
   })
   const before = levelFromMerit(s.merit).level

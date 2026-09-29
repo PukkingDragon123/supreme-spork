@@ -1,5 +1,6 @@
 // The player's home: walk around, use furniture, pray at the home altar,
-// change clothes at the mirror wardrobe, craft and arrange furniture.
+// change clothes at the mirror wardrobe, craft and arrange furniture, and
+// walk between rooms (ห้องนอน, ห้องพระ, ห้องครัว and the regional rooms).
 
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { Stage } from '../../engine/stage'
@@ -17,7 +18,12 @@ import { toast } from '../../game/events'
 import { goTemple, houseEditing, openActivity, openPanel, prayAtHome, prayStage } from '../store'
 import { PBtn, Slot, Tabs, Window } from '../components/kit'
 import { PT, TONE_TEXT } from '../pixeltext'
+import { Icon } from '../components/common'
 import { sfx } from '../../engine/audio'
+import { enterRoom } from '../../game/homelandActions'
+import { roomStatus } from '../../game/homeland'
+import { ROOM_BY_ID, type RoomId } from '../../game/data/rooms'
+import { DoorWipe, RoomBar, RoomsWindow } from '../homeland/Rooms'
 
 let houseScene: HouseScene | null = null
 export function currentHouseScene() {
@@ -34,9 +40,29 @@ export function HouseView({ active }: { active: boolean }) {
   const [picked, setPicked] = useState<string | null>(null)
   const [tray, setTray] = useState<Tray>('items')
   const [altar, setAltar] = useState(false)
+  const [roomsOpen, setRoomsOpen] = useState(false)
+  const [door, setDoor] = useState<{ phase: 'closing' | 'opening'; label: string } | null>(null)
   const s = game.value
 
+  /** Walk through the door into another room (door wipe, then the new room). */
+  function goRoom(id: RoomId) {
+    if (door || id === game.value.house.room) return
+    const label = ROOM_BY_ID[id].name
+    sfx.open()
+    setDoor({ phase: 'closing', label })
+    setTimeout(() => {
+      if (enterRoom(id)) {
+        houseScene?.setHouse(game.value.house)
+        houseScene?.enterFromDoor()
+      }
+      sfx.plop()
+      setDoor({ phase: 'opening', label })
+      setTimeout(() => setDoor(null), 360)
+    }, 260)
+  }
+
   useEffect(() => {
+    if (!roomStatus(game.value, game.value.house.room).owned) enterRoom('bedroom')
     const st = new Stage(host.current!, { targetWidth: 168 })
     stage.current = st
     const scene = new HouseScene(game.value.house, game.value.player.look, {
@@ -141,6 +167,7 @@ export function HouseView({ active }: { active: boolean }) {
   return (
     <div class="house">
       <div class="stage-host" ref={host} />
+      {!editing && <RoomBar onGo={goRoom} onOpenList={() => setRoomsOpen(true)} />}
       {!editing && (
         <div class="house-tools">
           <PBtn tone="wood" class="icon-btn" icon="edit" iconSize={24} aria-label="จัดห้อง" onClick={() => setEditing(true)} />
@@ -150,7 +177,10 @@ export function HouseView({ active }: { active: boolean }) {
       {editing && (
         <div class="house-edit">
           <div class="house-edit-top">
-            <PT text={`ความน่าอยู่ ${roomScore(house)} · ${cosyTier(roomScore(house)).name}`} size={12} color="#fff6dc" shadow="#3b2616" />
+            <span class="row" style={{ gap: '4px', minWidth: 0 }} title={`ความน่าอยู่ของ${ROOM_BY_ID[house.room].name}`}>
+              <Icon name="heart" size={20} />
+              <PT text={`${roomScore(house)} · ${cosyTier(roomScore(house)).name}`} size={12} color="#fff6dc" shadow="#3b2616" />
+            </span>
             <span class="grow" />
             <PBtn tone="green" size="small" icon="check" onClick={() => setEditing(false)}>
               เสร็จ
@@ -245,9 +275,11 @@ export function HouseView({ active }: { active: boolean }) {
           )}
         </div>
       )}
+      {roomsOpen && <RoomsWindow onClose={() => setRoomsOpen(false)} onGo={goRoom} />}
+      <DoorWipe phase={door?.phase ?? null} label={door?.label ?? ''} />
       {altar && (
         <Window
-          title="หิ้งพระในบ้าน"
+          title={house.room === 'shrine' ? 'โต๊ะหมู่บูชาห้องพระ' : 'หิ้งพระในบ้าน'}
           icon="pray"
           onClose={() => setAltar(false)}
           footer={

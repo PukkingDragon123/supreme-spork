@@ -8,6 +8,12 @@ import { ACHIEVEMENTS } from '../../game/data/quests'
 import { DAY_COLORS } from '../../art/palette'
 import { AvatarImg, Bar, Icon, Merit, Sheet } from '../components/common'
 import { profileOpen } from '../store'
+import { useState } from 'preact/hooks'
+import { PROVINCE_BY_ID, PROVINCE_REGIONS } from '../../game/data/provinces'
+import { REGION_BY_ID } from '../../game/data/places'
+import { regionProgress } from '../../game/homeland'
+import { ProvinceCard, ProvincePicker } from '../homeland/ProvincePicker'
+import { TierBadge } from '../homeland/RankBoard'
 
 const STAT_LABELS: [string, string, string][] = [
   ['alms', 'ตักบาตร', 'bowl'],
@@ -27,6 +33,8 @@ export function ProfileSheet() {
   const s = game.value
   const lv = level.value
   const close = () => (profileOpen.value = false)
+  const [picking, setPicking] = useState(false)
+  const prov = s.homeland.province ? PROVINCE_BY_ID[s.homeland.province] : null
   // Merit calendar for the last 5 weeks.
   const days: { key: string; v: number; d: Date }[] = []
   const today = new Date()
@@ -40,6 +48,7 @@ export function ProfileSheet() {
   const birth = s.player.birthDay
   const birthLabel = birth === 7 ? 'วันพุธ (กลางคืน)' : `วัน${WEEKDAY_TH[birth]}`
   const birthColor = birth === 7 ? '#5a5a6e' : DAY_COLORS[birth].hex
+  if (picking) return <ProvincePicker onClose={() => setPicking(false)} />
   return (
     <Sheet title="สมุดบุญ" onClose={close}>
       <div class="panel profile-card sparkle-bg">
@@ -56,6 +65,39 @@ export function ProfileSheet() {
           <div class="small">
             <span class="swatch" style={{ background: birthColor }} /> เกิด{birthLabel} · เข้าวัดติดกัน {s.login.streak} วัน
           </div>
+        </div>
+      </div>
+
+      <div class="section-title">
+        <Icon name="home" size={20} /> บ้านเกิด
+      </div>
+      <button class="hl-field-btn" onClick={() => setPicking(true)} aria-label={prov ? `บ้านเกิด ${prov.name} แตะเพื่อเปลี่ยน` : 'เลือกจังหวัดบ้านเกิด'}>
+        {prov ? (
+          <ProvinceCard p={prov} />
+        ) : (
+          <div class="hl-fact hl-fact-empty small">
+            <Icon name="map" size={22} /> ยังไม่ได้เลือกจังหวัดบ้านเกิด แตะเพื่อเลือก ได้บุญเพิ่มที่วัดในภาคนั้นและห้องสไตล์ภาคฟรี!
+          </div>
+        )}
+        <Icon name="edit" size={18} />
+      </button>
+      <div class="panel col" style={{ padding: '4px 6px' }}>
+        <div class="small muted" style={{ marginBottom: '2px' }}>
+          แรงก์วัดสูงสุดแต่ละภาค
+        </div>
+        <div class="hl-profile-ranks">
+          {PROVINCE_REGIONS.map((r) => {
+            const pr = regionProgress(s, r)
+            return (
+              <span key={r}>
+                {pr.best ? <TierBadge tier={pr.best} size={22} /> : <TierBadge tier="C" locked size={22} />}
+                {REGION_BY_ID[r].name.replace('ภาค', '')}
+                <span class="num muted">
+                  {pr.done}/{pr.total}
+                </span>
+              </span>
+            )
+          })}
         </div>
       </div>
 

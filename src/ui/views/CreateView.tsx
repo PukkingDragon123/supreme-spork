@@ -9,9 +9,11 @@ import { finishOnboarding } from '../../game/actions'
 import { DAY_COLORS } from '../../art/palette'
 import { goTemple } from '../store'
 import { sfx } from '../../engine/audio'
+import { ProvinceField, ProvincePicker } from '../homeland/ProvincePicker'
 
 export function CreateView() {
   const [naming, setNaming] = useState(false)
+  const [picking, setPicking] = useState(false)
   const s = game.value
   const [name, setName] = useState(s.player.name === 'สายบุญ' ? '' : s.player.name)
   const [day, setDay] = useState(s.player.birthDay)
@@ -27,7 +29,8 @@ export function CreateView() {
         <span class="small create-sub">เลือกรูปร่าง ทรงผม และชุดที่ชอบ แตะตัวละครเพื่อหมุนดูด้านหลัง</span>
       </div>
       <DressUp creating onDone={() => (sfx.open(), setNaming(true))} />
-      {naming && (
+      {picking && <ProvincePicker onClose={() => setPicking(false)} />}
+      {naming && !picking && (
         <Window title="ตั้งชื่อตัวละคร" icon="user" onClose={() => setNaming(false)} footer={<PBtn tone="green" block size="big" icon="temple" onClick={done}>ออกเดินทางไปวัด</PBtn>}>
           <label class="field">
             <PT text="ชื่อเล่น" size={12} {...TONE_TEXT.ink} />
@@ -45,6 +48,7 @@ export function CreateView() {
             </div>
           </div>
           <p class="small muted">ใส่เสื้อสีประจำวันไปวัด รับบุญเพิ่ม 10% ทุกวันนะ</p>
+          <ProvinceField onOpen={() => setPicking(true)} />
         </Window>
       )}
     </div>

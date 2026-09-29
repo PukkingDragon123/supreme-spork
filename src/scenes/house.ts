@@ -1,6 +1,8 @@
-// The player's home (บ้านของฉัน): a cosy Bangkok condo room in 3/4 front
-// view. Tap-to-walk, tap furniture to use it, and an edit mode for placing
-// and moving furniture on the floor and wall grids.
+// The player's home (บ้านของฉัน): cosy rooms in 3/4 front view – the Bangkok
+// bedroom, the shrine room, the kitchen and one regional-style room per ภาค,
+// each with its own architecture and window view. Tap-to-walk, tap furniture
+// to use it, and an edit mode for placing and moving furniture on the floor
+// and wall grids.
 
 import { bake, Surface } from '../engine/pixel'
 import type { PointerInfo, Scene } from '../engine/stage'
@@ -43,9 +45,12 @@ import {
   moveFurniture,
   placeFurniture,
   ROOM,
+  viewRoom,
   type HouseState,
   type PlacedFurniture,
 } from '../game/house'
+import { ROOM_BY_ID, type RoomDef } from '../game/data/rooms'
+import { ALTAR_GLOW, drawRoomFrame, drawRoomTrim, drawRoomView, drawRoomViewEmissive, roomBackdrop, viewRect, type Rect } from '../art/roomArt'
 import type { Phase } from '../game/time'
 import { NavGrid } from './pathfind'
 import { currentPhase } from './sky'
@@ -96,6 +101,19 @@ const INDOOR_TINT: Record<Phase, { c: string; a: number } | null> = {
 }
 
 const WALK_CYCLE: Pose[] = ['walk1', 'pass', 'walk2', 'pass']
+
+/** Built-in windows (drawn by the scene, never as sprites). */
+const WINDOW_IDS = new Set(['window_big', 'window_wide'])
+
+interface WindowInfo {
+  /** Footprint of the window on the wall, world px. */
+  win: Rect
+  /** Glass rect (where the view is). */
+  glass: Rect
+  def: RoomDef
+  /** The original bedroom city window with sheer curtains. */
+  classic: boolean
+}
 
 /** Smooth additive light pool (posterised by the pixel scaling). */
 function softGlow(s: Surface, x: number, y: number, r: number, strength: number, color: string) {
@@ -257,7 +275,18 @@ export class HouseScene implements Scene {
   // ------------------------------------------------------------ public API
 
   setHouse(h: HouseState) {
+    const moved = h.room !== this.house.room
     this.house = h
+    if (moved) {
+      // uids are per room: forget switches, pokes and fans of the old room.
+      this.toggles.clear()
+      this.pokes.clear()
+      this.fanSpin.clear()
+      this.sitting = null
+      this.target = null
+      this.player.path = []
+      this.cancelPlacing()
+    }
     this.rebuild()
     if (this.ghost?.uid && !h.placed.some((p) => p.uid === this.ghost!.uid)) this.cancelPlacing()
     else if (this.ghost) this.revalidateGhost()
@@ -313,6 +342,33 @@ export class HouseScene implements Scene {
     this.player.path = []
     this.sitting = null
     this.target = null
+  }
+
+  /** Walk in through the door (after switching rooms). */
+  enterFromDoor() {
+    const door = this.boxes.find((b) => b.p.id === 'door')
+    const x = door ? door.fx + 16 : ROOM_W - 26
+    this.player.x = x
+    this.player.y = FLOOR_Y + 8
+    this.player.path = []
+    this.player.facing = 'down'
+    this.sitting = null
+    this.target = null
+    this.doorOpen = 1.1
+    this.unstick()
+    this.walkTo(x - 6, FLOOR_Y + 24, 'down')
+    this.particles.sparkles(x, FLOOR_Y - 6, 8, '#fff6a8', 16)
+  }
+
+  /** The room's window (null for rooms without one, like the shrine room). */
+  windowInfo(): WindowInfo | null {
+    const def = ROOM_BY_ID[this.house.room] ?? ROOM_BY_ID.bedroom
+    const p = this.house.placed.find((q) => WINDOW_IDS.has(q.id))
+    const f = p && FURNITURE_BY_ID[p.id]
+    if (!p || !f || !def.view) return null
+    const win = { x: p.x * WALL_TILE, y: p.y * WALL_TILE, w: f.w * WALL_TILE, h: f.h * WALL_TILE }
+    const classic = def.frame === 'alu' && def.view === 'city' && p.id === 'window_big' && p.x * WALL_TILE === WINDOW.x
+    return { win, glass: classic ? { ...GLASS } : viewRect(def.frame, win), def, classic }
   }
 
   /** A little celebration burst (e.g. after crafting or dressing up). */
@@ -671,7 +727,7 @@ export class HouseScene implements Scene {
       const b = order[i]
       if (b.f.kind === 'rug' && !includeRugs) continue
       if (wx < b.sx || wy < b.sy || wx >= b.sx + b.sw || wy >= b.sy + b.sh) continue
-      if (b.p.id === 'window_big' || this.opaqueAt(b, wx, wy)) return b
+      if (WINDOW_IDS.has(b.p.id) || this.opaqueAt(b, wx, wy)) return b
     }
     return null
   }
@@ -897,10 +953,11 @@ export class HouseScene implements Scene {
   }
 
   private shell(): HTMLCanvasElement {
-    const key = `${this.house.wallpaper}|${this.house.floor}`
+    const key = `${this.house.room}|${this.house.wallpaper}|${this.house.floor}`
     if (this.shellCache?.key === key) return this.shellCache.canvas
     const canvas = bake(ROOM_W, ROOM_H, (s) => {
       drawWallpaper(s, this.house.wallpaper, 0, 0, ROOM_W, WALL_H)
+      drawRoomTrim(s, this.house.room, ROOM_W, WALL_H)
       drawBaseboard(s, this.house.wallpaper, 0, WALL_H - 4, ROOM_W)
       drawFloor(s, this.house.floor, 0, FLOOR_Y, ROOM_W, FLOOR_H)
       // Soft contact shadow where the floor meets the wall.
@@ -931,6 +988,8 @@ export class HouseScene implements Scene {
 
   private drawBackdrop(s: Surface, cx: number, cy: number, w: number, h: number) {
     const night = this.night()
+    const bd = roomBackdrop(this.house.room, night)
+    if (bd) return this.drawRoomBackdrop(s, bd, cx, cy, w, h, night)
     s.clear(night ? '#27264a' : '#f4e2cb')
     s.setCamera(cx, cy)
     // Building facade texture outside the cut-away.
@@ -950,6 +1009,36 @@ export class HouseScene implements Scene {
     s.frame(-1, -1, ROOM_W + 2, ROOM_H + 2, P.ink)
   }
 
+  /** Wooden, thatch or plaster outside walls for the regional rooms (river below the raft house). */
+  private drawRoomBackdrop(s: Surface, bd: NonNullable<ReturnType<typeof roomBackdrop>>, cx: number, cy: number, w: number, h: number, night: boolean) {
+    s.clear(bd.base)
+    s.setCamera(cx, cy)
+    const x0 = Math.floor(cx / 8) * 8
+    const y0 = Math.floor(cy / 6) * 6
+    if (bd.pattern === 'planks') {
+      for (let y = y0; y < cy + h; y += 6) s.hline(cx, cx + w, y, bd.line)
+      for (let y = y0; y < cy + h; y += 12) for (let x = x0 + ((y / 6) % 2 ? 12 : 0); x < cx + w; x += 24) s.vline(x, y + 1, y + 5, bd.line)
+    } else if (bd.pattern === 'thatch') {
+      for (let y = y0; y < cy + h; y += 4) for (let x = x0 + ((y / 4) % 2 ? 2 : 0); x < cx + w; x += 4) s.px(x, y, bd.line)
+    } else {
+      for (let y = y0; y < cy + h; y += 12) s.hline(cx, cx + w, y, bd.line)
+    }
+    if (bd.water) {
+      const wy = ROOM_H + FRAME_BOTTOM
+      s.rect(cx, wy, w, cy + h - wy, night ? '#2a3a68' : '#5aa8c8')
+      for (let y = wy + 2; y < cy + h; y += 4) {
+        const off = Math.round((this.time * 6 + y) % 12)
+        for (let x = x0 - 12 + off; x < cx + w; x += 12) s.hline(x, x + 3, y, night ? '#3e5088' : '#8fd0e4')
+      }
+    }
+    s.rect(BOUNDS.x, BOUNDS.y, BOUNDS.w, BOUNDS.h, bd.cut)
+    s.rect(BOUNDS.x, BOUNDS.y, BOUNDS.w, 2, bd.cutL)
+    s.rect(BOUNDS.x, ROOM_H + 2, BOUNDS.w, FRAME_BOTTOM - 2, bd.sill)
+    s.hline(BOUNDS.x, BOUNDS.x + BOUNDS.w - 1, ROOM_H + 1, bd.cutL)
+    s.frame(BOUNDS.x - 1, BOUNDS.y - 1, BOUNDS.w + 2, BOUNDS.h + 2, P.ink)
+    s.frame(-1, -1, ROOM_W + 2, ROOM_H + 2, P.ink)
+  }
+
   /** Draw the whole room with the camera's top-left at world (cx, cy). */
   renderWorld(s: Surface, cx: number, cy: number, w: number, h: number) {
     const t = this.time
@@ -958,11 +1047,18 @@ export class HouseScene implements Scene {
     this.drawBackdrop(s, cx, cy, w, h)
     s.setCamera(cx, cy)
     s.draw(this.shell(), 0, 0)
-    // Window: sky and city, then the frame and curtains.
+    // Window: sky and view, then the frame and curtains / shutters / blinds.
     const breeze = Math.max(0, ...[...this.fanSpin.values()])
-    drawWindowGlass(s, phase, t, t)
-    this.drawSunPatch(s, phase, 'floor')
-    drawWindowFrame(s, t, this.sheerOpen, breeze)
+    const wi = this.windowInfo()
+    if (wi?.classic) {
+      drawWindowGlass(s, phase, t, t)
+      this.drawSunPatch(s, phase, 'floor', wi.glass)
+      drawWindowFrame(s, t, this.sheerOpen, breeze)
+    } else if (wi && wi.def.view) {
+      drawRoomView(s, wi.def.view, phase, t, wi.glass, wi.def.frame === 'arch')
+      this.drawSunPatch(s, phase, 'floor', wi.glass)
+      drawRoomFrame(s, wi.def.frame, t, this.sheerOpen, wi.glass, wi.win)
+    }
 
     const order = this.drawOrder()
     const fx = (b: ItemBox, emissive: boolean) => {
@@ -988,7 +1084,7 @@ export class HouseScene implements Scene {
     // Wall items and rugs sit behind everything standing on the floor.
     let i = 0
     for (; i < order.length && order[i].f.kind !== 'floor'; i++) {
-      if (order[i].p.id === 'window_big') continue
+      if (WINDOW_IDS.has(order[i].p.id)) continue
       if (order[i].p.id === 'door' && this.doorOpen > 0) {
         const b = order[i]
         const sp = furnitureSprite('door', false, 1)
@@ -1012,7 +1108,7 @@ export class HouseScene implements Scene {
     list.sort((a, b) => a.y - b.y)
     for (const d of list) d.draw()
 
-    this.drawSunPatch(s, phase, 'air')
+    if (wi) this.drawSunPatch(s, phase, 'air', wi.glass)
     this.particles.render(s)
     this.drawGlyphs(s)
 
@@ -1029,7 +1125,8 @@ export class HouseScene implements Scene {
     if (night) {
       // The ceiling light is on: a warm pool in the middle of the room.
       softGlow(s, ROOM_W / 2, FLOOR_Y + 10, 110, phase === 'night' ? 0.7 : 0.4, '#ffcf8a')
-      drawWindowEmissive(s, phase, t, t, this.sheerOpen)
+      if (wi?.classic) drawWindowEmissive(s, phase, t, t, this.sheerOpen)
+      else if (wi?.def.view && this.sheerOpen > 0.45) drawRoomViewEmissive(s, wi.def.view, phase, t, wi.glass, wi.def.frame === 'arch')
     }
     for (const b of order) {
       if (this.ghost?.uid === b.p.uid) continue
@@ -1163,7 +1260,7 @@ export class HouseScene implements Scene {
   }
 
   /** Sunlight (or moonlight) through the big window: a patch on the floor and faint shafts in the air. */
-  private drawSunPatch(s: Surface, phase: Phase, layer: 'floor' | 'air') {
+  private drawSunPatch(s: Surface, phase: Phase, layer: 'floor' | 'air', glass: Rect = GLASS) {
     const cfg: Record<Phase, { c: string; a: number; len: number; skew: number }> = {
       dawn: { c: '#ffd0b8', a: 0.2, len: 40, skew: -22 },
       day: { c: '#fff4c8', a: 0.22, len: 34, skew: 14 },
@@ -1172,8 +1269,8 @@ export class HouseScene implements Scene {
       night: { c: '#9fb4ff', a: 0.1, len: 34, skew: 10 },
     }
     const k = cfg[phase]
-    const x0 = GLASS.x
-    const x1 = GLASS.x + GLASS.w
+    const x0 = glass.x
+    const x1 = glass.x + glass.w
     const y0 = FLOOR_Y
     const covered = 1 - this.sheerOpen * 0.5
     s.ctx.save()
@@ -1192,7 +1289,7 @@ export class HouseScene implements Scene {
       s.ctx.globalCompositeOperation = 'source-over'
       s.ctx.globalAlpha = 0.07
       s.ctx.fillStyle = '#6e4a35'
-      const mid = WINDOW.x + WINDOW.w / 2
+      const mid = glass.x + glass.w / 2
       for (let j = 0; j < k.len; j += 1) {
         const f = j / k.len
         s.ctx.fillRect(Math.round(mid + k.skew * f - 1 - s.ox), y0 + j - s.oy, 2, 1)
@@ -1240,6 +1337,13 @@ export class HouseScene implements Scene {
       softGlow(s, b.fx + 8, b.fy + 12, 7, strength * 0.8, '#ffd27a')
       softGlow(s, b.fx + 26, b.fy + 12, 7, strength * 0.8, '#ffd27a')
       if (night) softGlow(s, b.fx + 16, b.fy + 12, 14, 0.5, '#ffe08a')
+    } else if (id === 'altar_grand') {
+      for (const [gx, gy, gr] of ALTAR_GLOW) softGlow(s, b.fx + gx, b.fy + gy, gr, strength * (gr > 10 ? 0.6 : 0.85), '#ffd27a')
+    } else if (id === 's_lantern' && on) {
+      softGlow(s, b.fx + 8, b.fy + 13, 14, night ? 1 : 0.35, '#ff8a5a')
+      if (night) softGlow(s, b.fx + 8, b.fy + 20, 26, 0.5, '#ffb070')
+    } else if (id === 'b_wfh' && on) {
+      softGlow(s, b.fx + 13, b.fy - 16, 14, night ? 0.9 : 0.25, '#bfe3ff')
     } else if (id === 'altar_table') {
       softGlow(s, b.fx + 10, b.fy - 9, 7, strength * 0.8, '#ffd27a')
       softGlow(s, b.fx + 23, b.fy - 9, 7, strength * 0.8, '#ffd27a')
@@ -1273,15 +1377,17 @@ export class HouseScene implements Scene {
   }
 
   private drawMarkers(s: Surface) {
-    const icons: Record<string, string> = { door: 'temple', wardrobe_mirror: 'shirt', altar_shelf: 'wai', workbench: 'gear' }
+    const icons: Record<string, string> = { door: 'temple', wardrobe_mirror: 'shirt', altar_shelf: 'wai', workbench: 'gear', altar_grand: 'wai', kitchen_counter: 'pan' }
     for (const b of this.boxes) {
       const icon = icons[b.p.id]
       if (!icon) continue
-      const mx = b.sx + b.sw / 2
+      const mx = b.p.id === 'altar_grand' ? b.sx + 10 : b.sx + b.sw / 2
       let my = b.sy - 1
       if (b.p.id === 'wardrobe_mirror') my = b.sy + 2
       if (b.p.id === 'altar_shelf') my = b.sy - 1
       if (b.p.id === 'door') my = b.sy + 1
+      // Beside the big altar's arch rather than over the Buddha image.
+      if (b.p.id === 'altar_grand') my = b.sy + 44
       // Don't cover the player's face.
       if (Math.abs(mx - this.player.x) < 11 && my > this.player.y - 38 && my < this.player.y + 2) continue
       const bob = Math.round(Math.sin(this.time * 2.4 + mx * 0.1) * 1.2)
@@ -1316,7 +1422,7 @@ export class HouseScene implements Scene {
     s.ctx.restore()
     // Built-ins get a small lock.
     for (const b of this.boxes) {
-      if (!b.f.fixed || b.p.id === 'window_big') continue
+      if (!b.f.fixed || WINDOW_IDS.has(b.p.id)) continue
       const lx = Math.round(b.sx + 2)
       const ly = Math.round(b.p.id === 'wardrobe_mirror' ? b.sy + 4 : b.sy + 2)
       s.rect(lx, ly + 2, 5, 4, '#fffaf0')
@@ -1405,6 +1511,9 @@ export function drawRoomStill(
   house: HouseState,
   opts: { night?: boolean; focus?: HouseFocus; phase?: Phase } = {},
 ) {
+  const focus = opts.focus ?? 'room'
+  // The mirror lives in the bedroom, whichever room the player is in.
+  if (focus === 'mirror') house = viewRoom(house, 'bedroom')
   if (!stillScene) stillScene = new HouseScene(house, DEFAULT_LOOK, {})
   const sc = stillScene
   sc.setHouse(house)
@@ -1412,7 +1521,6 @@ export function drawRoomStill(
   sc.showMarkers = false
   sc.phaseOverride = opts.phase ?? (opts.night ? 'night' : 'day')
   sc.update(0, 1.3)
-  const focus = opts.focus ?? 'room'
   const region = focus === 'mirror' ? MIRROR_FOCUS : BOUNDS
   const fit = Math.min(w / region.w, h / region.h)
   const ctx = g.ctx

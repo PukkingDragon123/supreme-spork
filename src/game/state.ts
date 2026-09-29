@@ -10,6 +10,7 @@ import { STARTER_OUTFITS } from './data/outfits'
 import { levelFromMerit } from './economy'
 import { emptyMaterials, type Materials } from './materials'
 import { defaultHouse, normalizeHouse, type HouseState } from './house'
+import { defaultHomeland, normalizeHomeland, type HomelandState } from './homelandState'
 import { weekKey } from './time'
 import { defaultLiveEvents, normalizeLiveEvents, type LiveEventsState } from './events/save'
 
@@ -108,6 +109,8 @@ export interface GameState {
   mala: { total: number; today: number; day: string }
   reminder: { on: boolean; hour: number; minute: number }
   house: HouseState
+  /** Home province (บ้านเกิด) and temple-rank progress (see game/homeland.ts). */
+  homeland: HomelandState
   /** Owned pet companions and the one walking with you. */
   pets: string[]
   pet: string | null
@@ -182,6 +185,7 @@ export function defaultState(): GameState {
     mala: { total: 0, today: 0, day: '' },
     reminder: { on: false, hour: 19, minute: 0 },
     house: defaultHouse(),
+    homeland: defaultHomeland(),
     pets: [],
     pet: null,
     places: { bought: [], visited: [], current: null },
@@ -237,6 +241,7 @@ export function migrate(raw: unknown): GameState {
     mala: { ...base.mala, ...(s.mala ?? {}) },
     reminder: { ...base.reminder, ...(s.reminder ?? {}) },
     house: s.house ? normalizeHouse(s.house) : base.house,
+    homeland: normalizeHomeland(s.homeland),
     places: { ...base.places, ...(s.places ?? {}) },
     market: { ...base.market, ...(s.market ?? {}) },
     liveEvents: normalizeLiveEvents(s.liveEvents),
