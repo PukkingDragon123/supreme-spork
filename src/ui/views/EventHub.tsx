@@ -116,7 +116,7 @@ function Banner({ id, locked }: { id: string; locked: boolean }) {
           <PT text={`ซีซัน ${season.index + 1}`} size={12} weight={600} color="#5a3410" scale={1} />
         </span>
       </div>
-      <div class="ev-banner-time">
+      <div class="ev-banner-time" hidden={locked}>
         <Icon name="calendar" size={14} />
         <PT text={`เหลือ ${fmtCountdown(season.msLeft)}`} size={13} weight={600} color="#fff6dc" shadow="#16324a" scale={1} />
       </div>
