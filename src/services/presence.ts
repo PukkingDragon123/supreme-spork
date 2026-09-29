@@ -32,14 +32,16 @@ export class LocalPresence implements PresenceBackend {
     const r = new Rng(`presence:${mapId}:${slot}`)
     const busy = hour >= 17 && hour <= 21 ? 2 : hour >= 6 && hour <= 9 ? 1 : 0
     const indoor = mapId.includes(':')
-    const n = Math.max(0, r.int(1, 3) + busy - (indoor ? 1 : 0))
+    // Hub markets and the temple fair are the social hot spots: a real crowd.
+    const hub = !indoor && (mapId.startsWith('hub_') || mapId.startsWith('fair_'))
+    const n = hub ? r.int(8, 11) + busy * 2 : Math.max(0, r.int(1, 3) + busy - (indoor ? 1 : 0))
     const out: RemotePlayer[] = []
     // An online friend sometimes happens to be here too.
     const friends = [...you.friends, ...starterFriendCodes(you.code)]
     for (const code of friends) {
       const p = simulatedProfile(code)
       if (p.online && new Rng(`${code}:${mapId}:${slot}`).chance(0.18)) out.push(this.toRemote(code, true))
-      if (out.length >= 2) break
+      if (out.length >= (hub ? 3 : 2)) break
     }
     for (let i = 0; i < n; i++) out.push(this.toRemote(codeFor(`${mapId}:${slot}:${i}`)))
     return out.filter((p) => p.id !== you.code)
