@@ -16,7 +16,7 @@ import { coinStoreOpen } from '../../ui/store'
 import { PBtn, Window } from '../../ui/components/kit'
 import { Coin, Icon } from '../../ui/components/common'
 import { BONUS_AT, BONUS_TICKETS, buyDeal, dealsFor, HAPPY_FROM, HAPPY_TO, isHappyHour, nextQuote, passesOf, playsOf } from './deals'
-import { prizeIconUrl } from './prizes'
+import { prizeArt } from './prizes'
 import { TicketIcon } from './shell'
 import { fairSfx } from './sound'
 import type { BoothInfo } from './vendors'
@@ -146,7 +146,10 @@ function Prizes({ b }: { b: BoothInfo }) {
         })}
         {prizes.map((p) => (
           <div class="fairx-mini" key={p.id}>
-            <img class="px" src={prizeIconUrl(p.art)} alt="" width={40} height={40} />
+            {(() => {
+              const art = prizeArt(p)
+              return <img class="px" src={art.url} alt="" width={art.plush ? 39 : 40} height={art.plush ? 39 : 40} />
+            })()}
             <div class="fairx-mini-name">{p.name}</div>
             <span class="chip gold small">
               <TicketIcon size={10} /> {p.tickets}

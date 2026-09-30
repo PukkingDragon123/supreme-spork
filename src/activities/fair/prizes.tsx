@@ -10,6 +10,8 @@ import { PT, TONE_TEXT } from '../../ui/pixeltext'
 import { spriteDataUrl } from '../../engine/sprite'
 import { sfx } from '../../engine/audio'
 import { prizeIcon } from './art'
+import { collectibleUrl } from '../../art/collectibles'
+import { hasPlushArt } from '../../art/plush'
 import { TicketIcon } from './shell'
 import { fairSfx } from './sound'
 
@@ -26,6 +28,13 @@ export function prizeIconUrl(motif: string) {
   return u
 }
 
+/** Prize-wall art: plushies show their stitched plush sprite (26×26), the rest the booth icon. */
+export function prizeArt(p: FairPrize): { url: string; plush: boolean } {
+  const col = p.kind === 'collectible' ? HUB_COLLECTIBLE_BY_ID[p.ref] : null
+  if (col && col.kind === 'plush' && hasPlushArt(col.art.motif)) return { url: collectibleUrl(col, 4), plush: true }
+  return { url: prizeIconUrl(p.art), plush: false }
+}
+
 function PrizeCard({ p }: { p: FairPrize }) {
   const s = game.value
   const avail = prizeAvailable(p, s)
@@ -34,7 +43,11 @@ function PrizeCard({ p }: { p: FairPrize }) {
   const col = p.kind === 'collectible' ? HUB_COLLECTIBLE_BY_ID[p.ref] : null
   return (
     <div class={`panel fairx-prize ${avail ? '' : 'owned'}`}>
-      <img class="px fairx-prize-img" src={prizeIconUrl(p.art)} alt="" width={60} height={60} />
+      {(() => {
+        const art = prizeArt(p)
+        const px = art.plush ? 52 : 60
+        return <img class={`px fairx-prize-img ${art.plush ? 'plush' : ''}`} src={art.url} alt="" width={px} height={px} style={{ width: `${px}px`, height: `${px}px` }} />
+      })()}
       <div class="fairx-name">{p.name}</div>
       {col && <span class={`chip small fairx-rar ${RARITY_TONE[col.rarity] ?? ''}`}>{RARITY_TH[col.rarity]}</span>}
       <div class="fairx-desc">{p.desc}</div>

@@ -9,6 +9,7 @@ import { cached, outlineCanvas, spriteDataUrl, type Sprite } from '../engine/spr
 import { COLLECTIBLE_BY_ID } from '../game/data/collectibles'
 import type { CollectibleDef, CollectibleKind } from '../game/data/collectibleTypes'
 import { P } from './palette'
+import { hasPlushArt, plushSprite } from './plush'
 
 export const COLLECTIBLE_SIZE = 26
 
@@ -1505,7 +1506,8 @@ const FALLBACK: CollectibleDef = { id: '?', name: '?', desc: '', rarity: 'common
 export function collectibleSprite(c: CollectibleDef | string): Sprite {
   const d = defOf(c) ?? FALLBACK
   return cached(`coll:${d.id}:${d.art.motif}:${d.art.palette.join()}`, () => {
-    const s = outlineCanvas(build(d), INK)
+    // Plushies get their own soft, stitched chibi art (art/plush.ts).
+    const s = d.kind === 'plush' && hasPlushArt(d.art.motif) ? plushSprite(d) : outlineCanvas(build(d), INK)
     if (d.rarity !== 'legendary') return s
     // A soft golden halo behind legendary items (not outlined).
     const c = bake(s.w, s.h, (g) => {

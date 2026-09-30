@@ -7,6 +7,7 @@ import { cached, outlineCanvas, spriteDataUrl, type Sprite } from '../engine/spr
 import type { AvatarLook } from './avatar'
 import { dollSprite } from './doll'
 import { iconSprite } from './icons'
+import { foodKitSprite, hasFoodKitIcon } from './foodIcons'
 import { OUTFIT_BY_ID } from '../game/data/outfits'
 import { P } from './palette'
 
@@ -223,8 +224,9 @@ function draw(g: Surface, fam: Family, m: Color, a: Color, d: Color) {
   }
 }
 
-/** Outlined snack sprite (20×20); unknown snacks fall back to their icon. */
+/** Snack sprite: the food-kit icon (16×16); older snacks without one use their 20×20 shelf art or icon. */
 export function snackSprite(id: string, icon = 'dessert'): Sprite {
+  if (hasFoodKitIcon(id)) return foodKitSprite(id)
   const art = SNACK_ART[id]
   if (!art) return iconSprite(icon)
   return cached(`snack:${id}`, () => outlineCanvas(bake(18, 18, (g) => draw(g, art[0], art[1], art[2], art[3])), INK))

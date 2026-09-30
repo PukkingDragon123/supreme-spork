@@ -9,6 +9,7 @@ import { bake, type Color, type Surface } from '../engine/pixel'
 import { cached, outlineCanvas, spriteDataUrl, type Sprite } from '../engine/sprite'
 import { P } from './palette'
 import type { Bit, Condiment } from '../game/data/recipes'
+import { foodKitSprite, hasFoodKitIcon } from './foodIcons'
 
 const INK = P.ink
 
@@ -676,6 +677,7 @@ export function hasFoodIcon(id: string): boolean {
 
 /** 16×16 item icon for a cooking ingredient or dish (same style as art/icons.ts). */
 export function foodIcon(itemId: string): Sprite {
+  if (hasFoodKitIcon(itemId)) return foodKitSprite(itemId)
   return outlined(`food:${itemId}`, 14, 14, (g) => {
     const ing = ING[itemId]
     if (ing) return ing(g)

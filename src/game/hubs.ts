@@ -449,11 +449,18 @@ export const FAIR_PRIZES: FairPrize[] = [
   prizeFromCollectible('fair_ghost_keychain', 14),
   prizeFromCollectible('fair_balloon_hippo', 18),
   { id: 'prize_lookchin', name: 'ลูกชิ้นปิ้ง (ชุดแต่งตัว)', desc: 'ถือไม้ลูกชิ้นเดินงานวัดให้ครบสูตร', tickets: 20, kind: 'outfit', ref: 'hand_lookchin', art: 'lookchin' },
+  prizeFromCollectible('fair_plush_friedegg', 22),
+  prizeFromCollectible('fair_plush_elephant', 26),
+  prizeFromCollectible('fair_plush_rooster', 28),
   prizeFromCollectible('fair_teddy_pink', 30),
   prizeFromCollectible('fair_uncle_duck', 34),
+  prizeFromCollectible('fair_plush_mookata', 36),
   prizeFromCollectible('fair_likay_doll', 40),
+  prizeFromCollectible('fair_plush_labubun', 45),
   { id: 'prize_likay_hat', name: 'ปันจุเหร็จลิเก (ชุดแต่งตัว)', desc: 'ขนนกฟูเพชรวิบวับแบบพระเอกลิเก', tickets: 55, kind: 'outfit', ref: 'head_likay', art: 'likayhat' },
+  prizeFromCollectible('fair_plush_naga', 60),
   prizeFromCollectible('fair_ferris_globe', 70),
+  prizeFromCollectible('fair_plush_bigcat', 90),
   prizeFromCollectible('fair_mega_hippo', 150),
 ]
 
