@@ -31,6 +31,8 @@ export function ChatSheet() {
   const log = chatLog.value
   const here = netSummary.value.here
   const ok = canTalk()
+  const chatOk = canTalk('chat')
+  const emoteOk = canTalk('emote')
   const logRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = logRef.current
@@ -55,7 +57,7 @@ export function ChatSheet() {
       </div>
       <div class="ol-emotes" role="group" aria-label="อีโมต">
         {EMOTES.map((e) => (
-          <button key={e} class="ol-emote-btn" disabled={!ok} onClick={() => sendEmote(e)} aria-label={EMOTE_INFO[e].label}>
+          <button key={e} class="ol-emote-btn" disabled={!emoteOk} onClick={() => sendEmote(e)} aria-label={EMOTE_INFO[e].label}>
             <NIcon name={EMOTE_INFO[e].icon} size={20} />
             <span>{EMOTE_INFO[e].label}</span>
           </button>
@@ -79,7 +81,7 @@ export function ChatSheet() {
       )}
       <div class="ol-phrases">
         {QUICK_PHRASES.map((p) => (
-          <button key={p} class="chip ol-phrase" disabled={!ok} onClick={() => send(p)}>
+          <button key={p} class="chip ol-phrase" disabled={!chatOk} onClick={() => send(p)}>
             {p}
           </button>
         ))}
@@ -97,18 +99,18 @@ export function ChatSheet() {
           maxLength={NET_LIMITS.chat}
           placeholder="พิมพ์ข้อความสั้น ๆ…"
           aria-label="ข้อความ"
-          disabled={!ok}
+          disabled={!chatOk}
           onInput={(e) => setText((e.target as HTMLInputElement).value)}
           enterKeyHint="send"
         />
         <span class="ol-count num">
           {text.length}/{NET_LIMITS.chat}
         </span>
-        <button class="btn green small ol-send" type="submit" disabled={!ok || !text.trim()} aria-label="ส่ง">
+        <button class="btn green small ol-send" type="submit" disabled={!chatOk || !text.trim()} aria-label="ส่ง">
           <NIcon name="chat" size={18} />
         </button>
       </form>
-      <p class="ol-note">กรองคำไม่สุภาพให้อัตโนมัติ · เห็นเฉพาะผู้เล่นจริงบนแผนที่นี้</p>
+      <p class="ol-note">{ok && !chatOk ? 'ห้องนี้ให้คุณดูได้อย่างเดียว ส่งแชทไม่ได้' : 'กรองคำไม่สุภาพให้อัตโนมัติ · เห็นเฉพาะผู้เล่นจริงบนแผนที่นี้'}</p>
     </div>
   )
 }

@@ -101,6 +101,18 @@ describe('RoomNet (artifact room transport)', () => {
     expect(chats).toEqual([{ text: 'hi' }])
   })
 
+  it('players stuck in the lobby still show up for players in map rooms', async () => {
+    const { hub, na } = await pair()
+    hub.noRooms = true
+    const c = hub.connect({ name: 'Lobby C' })
+    const nc = new RoomNet(c.room, c.user)
+    nc.setMe({ name: 'ซี', level: 1, map: 'wat', x: 70, y: 80 })
+    await tick(250)
+    expect(nc.roomMode()).toBe('lobby')
+    expect(na.players('wat').map((p) => p.name).sort()).toEqual(['ซี', 'ต้นกล้า'])
+    expect(na.players('wat').find((p) => p.name === 'ซี')).toMatchObject({ x: 70, y: 80 })
+  })
+
   it('sanitizes hostile presence and ignores agent peers', async () => {
     const { hub, na } = await pair()
     const evil = hub.connect({ name: 'Evil' })

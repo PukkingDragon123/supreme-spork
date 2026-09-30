@@ -104,6 +104,14 @@ async function openCard(page) {
   await page.locator('.ol-card').waitFor({ timeout: 3000 })
 }
 
+await step('B starts an activity, A sees what B is doing', async () => {
+  await A.waitForTimeout(1200)
+  await B.evaluate(() => window.__boondee.openActivity('koi'))
+  await A.waitForFunction(() => [...document.querySelectorAll('.nametag.real')].some((d) => d.textContent.includes('กำลังให้อาหารปลา')), null, { timeout: 4000 })
+  await shot(A, 'online-a-sees-b-doing', 100)
+  await B.evaluate(() => window.__boondee.closeActivity())
+})
+
 await step('A opens B card and says สาธุ', async () => {
   await A.waitForTimeout(1500)
   await openCard(A)

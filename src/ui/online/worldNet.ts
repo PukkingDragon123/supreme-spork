@@ -47,6 +47,8 @@ function toRemote(p: NetPlayer): RemotePlayer {
  */
 export function attachNet(scene: WorldScene, simulated: () => RemotePlayer[], hidden: () => boolean): () => void {
   const mapId = scene.map.id
+  // Fresh buffers per map: nobody slides in from where they stood on the last one.
+  interp.clear()
   let sim = simulated()
   let lastKey = ''
   const refresh = (force = false) => {

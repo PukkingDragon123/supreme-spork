@@ -53,6 +53,7 @@ export class RealtimeNet implements NetApi {
   private lastPos = { at: 0, key: '' }
   private posTimer: ReturnType<typeof setTimeout> | null = null
   private keepalive: ReturnType<typeof setInterval> | null = null
+  private tokenTimer: ReturnType<typeof setInterval> | null = null
   private changeQueued = false
   private readonly prefix: string
 
@@ -71,12 +72,15 @@ export class RealtimeNet implements NetApi {
     this.lobby = this.channel(`${this.prefix}-lobby`, false)
     this.lobby.join()
     this.keepalive = setInterval(() => this.sendPos(true), KEEPALIVE_MS)
+    // Signed-in players join with their own token (picked up on the next (re)join).
+    this.tokenTimer = setInterval(() => void this.refreshToken(), 5 * 60_000)
     void this.refreshToken().finally(() => this.sock.connect())
   }
 
   /** Stop everything (tests). */
   close() {
     if (this.keepalive) clearInterval(this.keepalive)
+    if (this.tokenTimer) clearInterval(this.tokenTimer)
     this.sock.disconnect()
   }
 

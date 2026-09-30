@@ -14,7 +14,8 @@ import { AREA_BY_ID, type AreaId } from '../../game/data/areas'
 import { PLACE_BY_ID } from '../../game/data/places'
 import { placeAccess } from '../../game/homeland'
 import { sfx, haptic } from '../../engine/audio'
-import { net, type NetMessage, type NetPlayer } from '../../services/net'
+import { lookKey } from '../../art/avatar'
+import { net, type NetMessage, type NetPlayer, type NetTopic } from '../../services/net'
 import { rollOnlineDay } from '../../services/netState'
 import {
   NET_LIMITS,
@@ -83,7 +84,7 @@ function nameOf(id: string): string {
 
 /** Short Thai name of a map for lists ("วัดศรีบุญดี", "ตลาดนัดจตุจักร · ข้างใน"). */
 export function mapLabel(id: string): string {
-  if (!id) return 'อยู่ที่บ้าน'
+  if (!id) return 'ไม่ได้อยู่ในแผนที่'
   const [base, room] = id.split(':')
   const name = PLACE_BY_ID[base]?.name ?? AREA_BY_ID[base as AreaId]?.name ?? base
   return room ? `${name} · ข้างใน` : name
@@ -115,14 +116,27 @@ function allow(key: string, n: number, ms: number): boolean {
 // ---------------------------------------------------------------------------
 // Chat and emotes
 
-export function canTalk(): boolean {
-  return net.online() && !game.value.online.hidden
+/** Thai names of the online topics (for "this room doesn't allow …" notes). */
+export const TOPIC_LABEL: Record<NetTopic, string> = {
+  chat: 'แชท',
+  emote: 'อีโมต',
+  sathu: 'สาธุ',
+  fair: 'เกมงานวัด',
+  dance: 'เต้น',
+  gift: 'ของขวัญ',
+  trade: 'แลกของ',
+  ping: 'ทักทาย',
+}
+
+/** Connected, visible, and (when given) allowed to send on this topic. */
+export function canTalk(topic?: NetTopic): boolean {
+  return net.online() && !game.value.online.hidden && !(topic && net.denied?.().includes(topic))
 }
 
 /** Send a chat line (cleaned and filtered). Returns false when nothing was sent. */
 export function sendChat(raw: string): boolean {
   const text = cleanChat(raw)
-  if (!text || !canTalk()) return false
+  if (!text || !canTalk('chat')) return false
   if (!allow('chat-out', 3, 5000)) {
     toast('พิมพ์ช้าลงหน่อยนะ ใจเย็น ๆ', 'info', 'info')
     return false
@@ -139,7 +153,7 @@ export function sendChat(raw: string): boolean {
 }
 
 export function sendEmote(e: Emote): boolean {
-  if (!canTalk() || !cooled('emote', 900)) return false
+  if (!canTalk('emote') || !cooled('emote', 900)) return false
   net.send('emote', { e })
   showEmote('me', e)
   pushChat({ from: 'me', name: game.value.player.name, text: EMOTE_INFO[e].label, at: now(), emote: e })
@@ -158,6 +172,8 @@ function showEmote(key: string, e: Emote) {
   else if (e === 'sathu' || e === 'wai') sc.particles.sparkles(x, y - 24, 6, '#fff3a6', 8)
   else if (e === 'dance') sc.particles.sparkles(x, y - 14, 5, '#ffd1dc', 10)
   if (key === 'me') {
+    // Emotes face the camera.
+    if (!sc.player.moving) sc.player.facing = 'down'
     if (e === 'heart') sfx.sparkle()
     else if (e === 'sathu' || e === 'wai') sfx.chime()
     else sfx.tap()
@@ -193,7 +209,7 @@ export function sathuReady(peer: string): boolean {
 }
 
 export function sendSathu(peer: string): boolean {
-  if (!canTalk()) return false
+  if (!canTalk('sathu')) return false
   if (!cooled(`sathu:${peer}`, 30_000)) {
     toast('เพิ่งสาธุให้คนนี้ไป รอสักครู่นะ', 'wai', 'info')
     return false
@@ -213,7 +229,7 @@ function onSathu(m: NetMessage<unknown>) {
   const d = parseSathu(m.data)
   if (!d || !allow(`sathu:${m.from}`, 3, 10_000)) return
   if (!muted.value.has(m.from) && playersHere().some((x) => x.id === m.from)) showEmote(m.from, 'sathu')
-  if (d.to !== net.selfId?.()) return
+  if (d.to !== net.selfId?.() || muted.value.has(m.from)) return
   const earn = todays().sathuIn < NET_LIMITS.sathuInDaily && allow(`sathu-merit:${m.from}`, 1, 30_000)
   if (!earn) return
   withDay((dd) => (dd.online.sathuIn += 1))
@@ -227,7 +243,7 @@ function onSathu(m: NetMessage<unknown>) {
 // ทักทาย (a poke across maps)
 
 export function sendWave(peer: string): boolean {
-  if (!canTalk()) return false
+  if (!canTalk('ping')) return false
   if (!cooled(`wave:${peer}`, 15_000)) {
     toast('เพิ่งทักไป รอเขาตอบก่อนนะ', 'info', 'info')
     return false
@@ -270,7 +286,7 @@ export function giftProblem(id: string, n: number): string | null {
 }
 
 export function sendGift(peer: string, id: string, n: number): boolean {
-  if (!canTalk()) return false
+  if (!canTalk('gift')) return false
   const bad = giftProblem(id, n)
   if (bad) {
     toast(bad, 'gift', 'warn')
@@ -413,7 +429,7 @@ export function tradeDo(input: TradeInput) {
 }
 
 export function startTrade(peer: string) {
-  if (!canTalk()) return
+  if (!canTalk('trade')) return
   if (tradeActive(trade.value)) {
     tradeOpen.value = true
     return
@@ -554,27 +570,53 @@ function publish() {
     lastKey = key
     net.setMe(patch)
   }
-  const doing = prayStage.value ? 'กำลังสวดมนต์' : activity.value ? DOING[activity.value.id] ?? null : null
+  const doing = prayStage.value
+    ? 'กำลังสวดมนต์'
+    : mode.value === 'house'
+      ? 'พักอยู่ที่บ้าน'
+      : mode.value === 'arrival'
+        ? 'กำลังเดินทาง'
+        : activity.value
+          ? DOING[activity.value.id] ?? null
+          : null
   if (doing !== lastDoing) {
     lastDoing = doing
     net.setMe({ doing })
   }
 }
 
+let lastSummary = ''
+
 function summarize() {
   const sc = mode.value === 'world' ? worldScene() : null
   const all = net.everyone()
   const here = sc ? net.players(sc.map.id).length : 0
-  const prev = netSummary.value
-  const next = {
-    kind: net.kind(),
-    status: net.status?.() ?? 'offline',
-    count: all.length,
-    here,
-    denied: net.denied?.() ?? [],
-    rev: prev.rev + 1,
+  const kind = net.kind()
+  const status = net.status?.() ?? 'offline'
+  const denied = net.denied?.() ?? []
+  // Re-render lists only when who / where / what changed (not on every step someone takes).
+  const key = `${kind}|${status}|${here}|${denied.join(',')}|${all.map((p) => `${p.id}:${p.name}:${p.level}:${p.map}:${p.doing ?? ''}:${p.accountName ?? ''}:${p.pet ?? ''}:${lookKey(p.look)}`).join(';')}`
+  if (key !== lastSummary) {
+    lastSummary = key
+    netSummary.value = { kind, status, count: all.length, here, denied, rev: netSummary.value.rev + 1 }
   }
-  netSummary.value = next
+  // The host refused a topic for this viewer (e.g. view-only access): say so once, undo what can't finish.
+  const fresh = denied.filter((t) => !deniedSeen.has(t))
+  if (fresh.length) {
+    for (const t of fresh) deniedSeen.add(t)
+    toast(`ห้องนี้ให้คุณดูได้อย่างเดียวสำหรับ${fresh.map((t) => TOPIC_LABEL[t]).join(' ')} เจ้าของเกมเปิดสิทธิ์ให้ได้`, 'lock', 'warn')
+    // What we showed optimistically never reached anyone: take it back.
+    if (fresh.includes('chat')) {
+      bubbles.delete('me')
+      chatLog.value = chatLog.value.filter((l) => l.from !== 'me' || !!l.emote)
+    }
+    if (fresh.includes('emote')) {
+      emotes.delete('me')
+      chatLog.value = chatLog.value.filter((l) => l.from !== 'me' || !l.emote)
+    }
+    if (fresh.includes('gift')) for (const gid of [...pendingGifts.keys()]) refundGift(gid, 'ส่งของขวัญในห้องนี้ไม่ได้')
+    if (fresh.includes('trade') && tradeActive(trade.value)) tradeDo({ kind: 'gone', peer: trade.value.peer ?? '' })
+  }
   // A trade partner who vanished for good ends the trade.
   const t = trade.value
   if (tradeActive(t) && t.peer && !findPlayer(t.peer)) {
@@ -587,6 +629,7 @@ function summarize() {
 }
 
 let goneSince: number | null = null
+const deniedSeen = new Set<NetTopic>()
 let installed = false
 
 /** Wire online play into the game (idempotent). */

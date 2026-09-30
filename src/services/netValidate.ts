@@ -246,6 +246,7 @@ export function applyMePatch(me: MeState, patch: Partial<Omit<NetPlayer, 'id'>> 
 export function lobbyPresence(me: MeState): Record<string, string | number> {
   const out: Record<string, string | number> = { v: 1, n: me.name || 'ผู้เล่น', lv: me.level, m: me.map }
   if (me.friendCode) out.fc = me.friendCode
+  if (me.doing) out.d = me.doing
   return out
 }
 
@@ -274,6 +275,7 @@ export interface PeerInfo {
   level: number
   map: string
   friendCode: string | null
+  doing: string | null
   /** Present only in map-room presence. */
   full?: {
     look: AvatarLook
@@ -293,7 +295,8 @@ export function parsePresence(raw: unknown): PeerInfo | null {
   const name = cleanName(raw.n)
   const map = raw.m === '' ? '' : cleanMapId(raw.m)
   if (!name || map === null) return null
-  const info: PeerInfo = { name, level: cleanLevel(raw.lv), map, friendCode: cleanFriendCode(raw.fc) }
+  const doing = raw.d ? filterProfanity(cleanText(raw.d, NET_LIMITS.doing)) || null : null
+  const info: PeerInfo = { name, level: cleanLevel(raw.lv), map, friendCode: cleanFriendCode(raw.fc), doing }
   const x = cleanCoord(raw.x)
   const y = cleanCoord(raw.y)
   if (x !== null && y !== null && map) {
@@ -304,7 +307,7 @@ export function parsePresence(raw: unknown): PeerInfo | null {
       y,
       face: cleanFace(raw.f),
       moving: raw.mv === 1 || raw.mv === true,
-      doing: raw.d ? filterProfanity(cleanText(raw.d, NET_LIMITS.doing)) || null : null,
+      doing,
       province: cleanProvince(raw.pr),
     }
   }
@@ -325,7 +328,7 @@ export function toNetPlayer(id: string, info: PeerInfo, extra: { guest?: boolean
     y: f?.y ?? 0,
     face: f?.face ?? 'down',
     moving: f?.moving ?? false,
-    doing: f?.doing ?? null,
+    doing: info.doing,
     friendCode: info.friendCode,
     province: f?.province ?? null,
     guest: !!extra.guest,

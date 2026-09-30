@@ -3,7 +3,6 @@
 // สาธุ / add friend / gift / trade.
 
 import { useMemo } from 'preact/hooks'
-import { game } from '../../game/state'
 import { spriteDataUrl } from '../../engine/sprite'
 import { dollSprite, DOLL_H, DOLL_W } from '../../art/doll'
 import { lookKey } from '../../art/avatar'
@@ -11,7 +10,7 @@ import { PET_BY_ID } from '../../game/data/pets'
 import { PROVINCE_BY_ID } from '../../game/data/provinces'
 import { net } from '../../services/net'
 import { PBtn, Window } from '../components/kit'
-import { addOnlineFriend, findPlayer, isOnlineFriend, mapLabel, sathuReady, sendSathu, startTrade, toggleMute } from './onlineHub'
+import { addOnlineFriend, canTalk, findPlayer, isOnlineFriend, mapLabel, sathuReady, sendSathu, startTrade, toggleMute } from './onlineHub'
 import { cardPeer, giftFor, muted, netSummary } from './onlineStore'
 import { NIcon } from './netIcons'
 import { sfx } from '../../engine/audio'
@@ -29,7 +28,6 @@ export function PlayerCard({ id }: { id: string }) {
   const prov = p.province ? PROVINCE_BY_ID[p.province] : null
   const isMuted = muted.value.has(p.id)
   const room = net.kind() === 'room'
-  const hidden = game.value.online.hidden
   return (
     <Window title="ผู้เล่นออนไลน์" icon="friends" onClose={close} class="ol-win ol-card-win">
       <div class="ol-card">
@@ -61,7 +59,7 @@ export function PlayerCard({ id }: { id: string }) {
         </div>
       </div>
       <div class="ol-card-acts">
-        <PBtn size="small" tone="gold" icon="wai" disabled={hidden || !sathuReady(p.id)} onClick={() => sendSathu(p.id)}>
+        <PBtn size="small" tone="gold" icon="wai" disabled={!canTalk('sathu') || !sathuReady(p.id)} onClick={() => sendSathu(p.id)}>
           สาธุ
         </PBtn>
         <PBtn size="small" tone="green" icon="friends" disabled={!p.friendCode || friend} onClick={() => addOnlineFriend(p)}>
@@ -70,24 +68,26 @@ export function PlayerCard({ id }: { id: string }) {
         <PBtn
           size="small" tone="pink"
           icon="gift"
-          disabled={hidden}
+          aria-label="ส่งของขวัญ"
+          disabled={!canTalk('gift')}
           onClick={() => {
             giftFor.value = p.id
             cardPeer.value = null
           }}
         >
-          ส่งของขวัญ
+          ของขวัญ
         </PBtn>
         <PBtn
           size="small" tone="blue"
           icon="market"
-          disabled={hidden}
+          aria-label="ชวนแลกของ"
+          disabled={!canTalk('trade')}
           onClick={() => {
             cardPeer.value = null
             startTrade(p.id)
           }}
         >
-          ชวนแลกของ
+          แลกของ
         </PBtn>
       </div>
       <div class="ol-card-foot">

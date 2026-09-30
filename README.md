@@ -157,9 +157,28 @@ npx cap open android   # หรือ ios
 
 `src/services/auth.ts` มี `LocalAuthProvider` (บัญชีในเครื่อง) และ `SupabaseAuthProvider` (GoTrue REST) ส่วน `src/services/cloudsave.ts` เซฟเกมลงตาราง `saves` ทุกบัญชีมีช่องเซฟของตัวเอง และบัญชีใหม่จะรับความคืบหน้าจากการเล่นแบบไม่สมัครต่อให้ วิธีเปิดใช้: สร้างโปรเจกต์ Supabase รัน `supabase/schema.sql` แล้วใส่ค่า `VITE_SUPABASE_URL` กับ `VITE_SUPABASE_ANON_KEY` ใน `.env`
 
+### เล่นออนไลน์กับผู้เล่นจริง
+
+`src/services/net.ts` คือสัญญากลาง `net` (ค่าเริ่มต้นออฟไลน์) ระบบอื่นเรียก `net.send / on / players / setMe` ได้เสมอ และตัวรับฟังที่ลงทะเบียนไว้ก่อนจะย้ายไปอยู่กับทรานสปอร์ตจริงให้อัตโนมัติ ตอนเปิดเกม `src/services/netInit.ts` เลือกทรานสปอร์ตตามลำดับนี้
+
+1. **ห้องของหน้าเกมที่แชร์ (artifact room)** `src/services/netRoom.ts` ใช้ความสามารถ `room` ของหน้าที่เผยแพร่ ห้องหลัก (lobby) เก็บ presence เล็ก ๆ (ชื่อเล่น เลเวล แผนที่ รหัสเพื่อน) ไว้ทำรายชื่อ "ออนไลน์ตอนนี้" และแต่ละแผนที่มีห้องย่อยของตัวเอง (`map-wat`, `map-hub_chatuchak`, `map-wat.ubosot`) เก็บตำแหน่ง ชุด สัตว์เลี้ยง และสิ่งที่กำลังทำ ถ้าเข้าห้องย่อยไม่ได้จะถอยมาใช้ห้องหลักแทน เข้าได้เฉพาะคนที่เจ้าของแชร์ให้ (คนในองค์กรและแขกที่ได้รับเชิญ) ชื่อบัญชีมาจาก `user.profiles()` ส่วนชื่อในเกมเป็นชื่อที่ผู้เล่นตั้งเองและติดป้ายไว้แบบนั้น ตอนเผยแพร่ต้องเปิดหัวข้อให้ผู้เล่นส่งได้:
+   ```js
+   capabilities: {
+     room: { topics: { chat: 'interact', emote: 'interact', sathu: 'interact', fair: 'interact', dance: 'interact', gift: 'interact', trade: 'interact', ping: 'interact' } },
+     user: { scopes: ['profile'] },
+   }
+   ```
+   ผู้ชมที่ไม่มีสิทธิ์ส่ง (`not_permitted`) ยังเห็นและเดินให้คนอื่นเห็นได้ ส่วนแชทหรือแลกของจะขึ้นว่า "ดูได้อย่างเดียว"
+2. **Supabase Realtime (เว็บที่โฮสต์เอง)** `src/services/realtime.ts` เป็นไคลเอนต์ Phoenix channels ขนาดเล็กบน websocket (ไม่ใช้ SDK) และ `src/services/realtimeNet.ts` ใช้ presence + broadcast ต่อช่อง: `boondee-lobby` และ `boondee-map-<แผนที่>` ตำแหน่งส่งเป็น broadcast `pos` ราว 8 ครั้งต่อวินาทีตอนเดิน (หยุดนิ่งส่ง keepalive ทุก 10 วินาที) วิธีเปิดใช้: สร้างโปรเจกต์ Supabase (Realtime เปิดอยู่แล้ว) ใส่ `VITE_SUPABASE_URL` และ `VITE_SUPABASE_ANON_KEY` ใน `.env` แล้ว build ตามปกติ ไม่ต้องสร้างตารางเพิ่ม ข้อควรรู้: ช่องสาธารณะเข้าร่วมได้ทุกคนที่มี anon key และเซิร์ฟเวอร์ไม่ยืนยันตัวผู้ส่ง (ชื่อทุกชื่อเป็นชื่อเล่น) ถ้าต้องการจำกัดสิทธิ์ให้เปิด Realtime Authorization (private channels + RLS บน `realtime.messages`) และส่ง token ของผู้ใช้ที่ล็อกอิน (โค้ดส่ง `access_token` ของบัญชี Supabase ให้อยู่แล้วเมื่อล็อกอิน) แผนฟรีจำกัดจำนวนข้อความต่อวินาทีและจำนวนการเชื่อมต่อพร้อมกัน ถ้าคนเยอะให้ลด `POS_HZ` หรืออัปเกรดแผน
+3. **ออฟไลน์** ใช้ฝูงคนจำลองจาก `src/services/presence.ts` ตามเดิม
+
+สิ่งที่ผู้เล่นทำได้ (`src/ui/online/`): เห็นคนจริงเดินแบบลื่นไหล (`netInterp.ts`) พร้อมชุด สัตว์เลี้ยง และป้ายชื่อสีเขียว คนจำลองจะลดลงเมื่อมีคนจริง แชทด่วนด้วยวลีภาษาไทยหรือพิมพ์เอง 60 ตัวอักษร (กรองคำหยาบ) ขึ้นเป็นบับเบิลเหนือหัว อีโมต (ไหว้ หัวใจ สาธุ ขำ เต้น) แตะคนจริงเพื่อเปิดการ์ด: สาธุ (ได้บุญทั้งสองฝ่าย) เพิ่มเพื่อน ส่งของขวัญ (หักของไว้ระหว่างส่ง คืนให้ถ้าไม่สำเร็จ จำกัดต่อวันและมูลค่า) และแลกของแบบสด 1 ต่อ 1 (`netTrade.ts`: เสนอ → ต่อรอง → พร้อมทั้งคู่ → ยืนยันทั้งคู่ → สลับ แต่ละฝั่งหักเฉพาะของตัวเองตอนยืนยัน และรับเฉพาะของที่อีกฝั่งยืนยันไว้) หน้าต่าง "ออนไลน์ตอนนี้" บอกว่าใครอยู่แผนที่ไหน มีปุ่มไปหาและทักทาย และบอกชัดว่าคนที่เหลือเป็นแบบจำลอง ข้อมูลทุกอย่างที่รับมาถือว่าไม่น่าเชื่อถือ ตรวจรูปแบบ จำกัดความยาวและตัวเลข และตรวจชุดกับรายการชุดในเกมทุกครั้ง (`netValidate.ts`) แสดงผลเป็นข้อความธรรมดาเท่านั้น
+
+ทดสอบสองแท็บบนเครื่อง: รัน dev server แล้วเปิด `/?skipintro&nologin&roomshim&slot=a&as=มะปราง` กับ `/?skipintro&nologin&roomshim&slot=b&as=ต้นกล้า` (`netShim.ts` จำลองห้องด้วย BroadcastChannel มีเฉพาะตอน dev, `roomshim=deny` ทดสอบหัวข้อที่ถูกปิด, `roomshim=lobby` ทดสอบกรณีเข้าห้องย่อยไม่ได้) หรือรัน `node scripts/online-two-tab.mjs http://localhost:5173/ <โฟลเดอร์ภาพ>` ที่เดิน แชท สาธุ แลกของ และส่งของขวัญระหว่างสองแท็บให้อัตโนมัติ
+
 ### ความเป็นส่วนตัว
 
-ข้อมูลเกมเก็บในเครื่อง (localStorage) เว้นแต่จะเปิด Supabase เสียงจากไมโครโฟนประมวลผลในเครื่องแบบเรียลไทม์ ไม่บันทึกและไม่ส่งออกไปที่ใด คำอธิษฐานไม่ถูกส่งไปที่ใด เมื่อต่อเซิร์ฟเวอร์ ควรทำนโยบายความเป็นส่วนตัวตาม PDPA และให้ผู้ใช้เลือกได้ว่าจะเก็บคำอธิษฐานไว้ในเครื่องเท่านั้นหรือไม่
+ข้อมูลเกมเก็บในเครื่อง (localStorage) เว้นแต่จะเปิด Supabase เมื่อเล่นออนไลน์ คนอื่นในห้องเห็นเฉพาะชื่อเล่น เลเวล ชุด ตำแหน่งในแผนที่ รหัสเพื่อน และจังหวัดบ้านเกิด (ปิดได้) ผู้เล่นซ่อนตัวได้ในหน้าต่าง "ออนไลน์ตอนนี้" เสียงจากไมโครโฟนประมวลผลในเครื่องแบบเรียลไทม์ ไม่บันทึกและไม่ส่งออกไปที่ใด คำอธิษฐานไม่ถูกส่งไปที่ใด เมื่อต่อเซิร์ฟเวอร์ ควรทำนโยบายความเป็นส่วนตัวตาม PDPA และให้ผู้ใช้เลือกได้ว่าจะเก็บคำอธิษฐานไว้ในเครื่องเท่านั้นหรือไม่
 
 ## ข้อควรพิจารณาด้านวัฒนธรรมและเนื้อหา
 
@@ -175,3 +194,5 @@ Boondee (บุญดี) is a cozy pixel-art merit-making app for Thai users. W
 Version 2 makes chanting the core loop: 26 chant stages across four temples, sung into the real microphone and scored on onset timing, flow, rests and pitch steadiness (with a tap-along fallback), rewarding stars, merit, coins and crafting materials. It adds real accounts (local PBKDF2 or Supabase with cloud save), an intro cinematic and temple-arrival cutscenes, a dress-up scene in a Thai-style bedroom with body type, faces, school uniforms and Thai/street wear, a player home with furniture crafting and drag-and-drop decorating, a game-style pixel UI with pixel-rendered Thai text, goal cards for every mini-game, and utilities (chant book, 108-bead mala, daily reminder with calendar export).
 
 Built with Vite, TypeScript and Preact. All art and sound are generated in code. Payments, ads and the social backend run on sandbox implementations behind interfaces (`src/services/*`) so real providers (RevenueCat, AdMob, Firebase/Supabase) can be plugged in. Ships as an installable offline PWA; wrap with Capacitor for the app stores.
+
+Online play is real, not simulated, when a transport is available: inside the shared artifact the page uses the host's `room` capability (a small lobby presence for the "who's online" list plus one named room per map), and a self-hosted build with `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` uses Supabase Realtime over a tiny Phoenix-channel client. Players see each other walk (interpolated), chat with filtered Thai quick phrases, emote, give สาธุ (merit both ways), send capped gifts and run a live 1-to-1 trade handshake. Everything received is validated; the simulated crowd stays labelled as simulated and thins out when real players are around.

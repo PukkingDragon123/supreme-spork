@@ -87,6 +87,8 @@ export class RoomNet implements NetApi {
   private flushTimer: ReturnType<typeof setTimeout> | null = null
   private lastFlush = 0
   private lobbyPlayers = new Map<string, NetPlayer>()
+  /** Lobby peers publishing full presence there (they fell back to lobby mode). */
+  private lobbyFull = new Set<string>()
   private mapPlayers: NetPlayer[] = []
   private changeQueued = false
 
@@ -127,8 +129,13 @@ export class RoomNet implements NetApi {
 
   players(map: string): NetPlayer[] {
     if (!map) return []
-    if (this.mode === 'rooms' && this.mapRoom && map === this.me.map) return this.mapPlayers
-    return [...this.lobbyPlayers.values()].filter((p) => p.map === map)
+    const inLobby = [...this.lobbyPlayers.values()].filter((p) => p.map === map)
+    if (this.mode === 'rooms' && this.mapRoom && map === this.me.map) {
+      // Players who could not join the map room still show up from the lobby.
+      const extra = inLobby.filter((p) => this.lobbyFull.has(p.id) && !this.mapPlayers.some((q) => q.id === p.id))
+      return extra.length ? [...this.mapPlayers, ...extra] : this.mapPlayers
+    }
+    return inLobby
   }
 
   everyone(): NetPlayer[] {
@@ -139,6 +146,11 @@ export class RoomNet implements NetApi {
 
   player(id: string): NetPlayer | null {
     return this.mapPlayers.find((p) => p.id === id) ?? this.lobbyPlayers.get(id) ?? null
+  }
+
+  /** 'rooms' (one room per map) or 'lobby' (this viewer may not join named rooms). */
+  roomMode() {
+    return this.mode
   }
 
   onChange(fn: () => void) {
@@ -214,6 +226,7 @@ export class RoomNet implements NetApi {
   /** Rebuild player lists from the rooms' peers (both are frozen snapshots). */
   private rebuild() {
     const lobbyMap = new Map<string, NetPlayer>()
+    this.lobbyFull.clear()
     const unknown: string[] = []
     for (const p of this.lobby.peers()) {
       if (p.sameTab) this.self = p.peer
@@ -221,6 +234,7 @@ export class RoomNet implements NetApi {
       const info = parsePresence(p.presence)
       if (!info) continue
       if (p.by && !this.names.has(p.by) && !this.asked.has(p.by)) unknown.push(p.by)
+      if (info.full) this.lobbyFull.add(p.peer)
       lobbyMap.set(p.peer, toNetPlayer(p.peer, info, { guest: p.guest, accountName: this.accountName(p.by) }))
     }
     this.lobbyPlayers = lobbyMap

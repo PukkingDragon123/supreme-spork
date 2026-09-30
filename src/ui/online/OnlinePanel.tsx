@@ -12,7 +12,7 @@ import { mode } from '../store'
 import { worldScene } from '../TempleView'
 import { Check, PBtn, Window } from '../components/kit'
 import { Portrait } from '../components/common'
-import { goToPlayerMap, mapLabel, sendWave } from './onlineHub'
+import { TOPIC_LABEL, goToPlayerMap, mapLabel, sendWave } from './onlineHub'
 import { cardPeer, netSummary, onlinePanelOpen } from './onlineStore'
 import { NIcon } from './netIcons'
 import { pillText } from './OnlinePill'
@@ -24,7 +24,9 @@ function transportNote(kind: string, status: string): string {
       ? 'หน้านี้เชื่อมห้องออนไลน์ไม่ได้ เล่นต่อแบบคนเดียวได้ตามปกติ'
       : 'เห็นเฉพาะคนที่เปิดเกมนี้อยู่ตอนนี้ และเข้ามาได้เฉพาะคนที่เจ้าของเกมแชร์ให้ (คนในทีมและแขกที่ได้รับเชิญ)'
   if (kind === 'realtime') return 'ผู้เล่นจริงที่เปิดเกมนี้อยู่ตอนนี้ ชื่อที่เห็นเป็นชื่อเล่นที่แต่ละคนตั้งเอง'
-  return netBoot.value === 'probing' ? 'กำลังหาห้องออนไลน์…' : 'ตอนนี้เล่นแบบออฟไลน์ ยังไม่มีผู้เล่นจริงให้เจอ'
+  return netBoot.value === 'probing'
+    ? 'กำลังหาห้องออนไลน์…'
+    : 'ตอนนี้เล่นแบบออฟไลน์ ยังไม่มีผู้เล่นจริงให้เจอ · เปิดเกมจากลิงก์ที่แชร์ไว้พร้อมเพื่อน แล้วจะเห็นกันในวัด'
 }
 
 function Row({ p, here }: { p: NetPlayer; here: boolean }) {
@@ -54,8 +56,8 @@ function Row({ p, here }: { p: NetPlayer; here: boolean }) {
           </b>
           {p.accountName && <span class="ol-meta">บัญชี: {p.accountName}</span>}
           <span class="ol-meta">
-            {here ? 'อยู่ที่นี่' : mapLabel(p.map)}
-            {p.doing ? ` · ${p.doing}` : ''}
+            {here ? 'อยู่ที่นี่' : p.map ? mapLabel(p.map) : p.doing ?? mapLabel(p.map)}
+            {p.doing && p.map ? ` · ${p.doing}` : ''}
             {p.guest ? ' · แขกรับเชิญ' : ''}
           </span>
         </span>
@@ -101,7 +103,9 @@ export function OnlinePanel() {
           <span class="small">{transportNote(n.kind, n.status)}</span>
         </div>
       </div>
-      {n.denied.length > 0 && <p class="small ol-warn">บางอย่างถูกปิดในห้องนี้ ({n.denied.join(', ')}) เจ้าของเกมเปิดให้ได้</p>}
+      {n.denied.length > 0 && (
+        <p class="small ol-warn">คุณดูได้อย่างเดียวสำหรับ{n.denied.map((t) => TOPIC_LABEL[t as keyof typeof TOPIC_LABEL] ?? t).join(' ')} (เจ้าของเกมเปิดสิทธิ์ให้ได้)</p>
+      )}
 
       <h3 class="ol-h">
         <NIcon name="online" size={16} /> ผู้เล่นจริง ({everyone.length})

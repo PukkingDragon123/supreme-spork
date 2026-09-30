@@ -36,7 +36,7 @@ export function OnlinePill() {
         <i class="ol-dot" aria-hidden="true" />
         <span class="ol-pill-body">
           <span class="ol-pill-text">{p.text}</span>
-          {p.sub && <span class="ol-pill-sub">{p.sub}</span>}
+          {p.sub && mode.value === 'world' && <span class="ol-pill-sub">{p.sub}</span>}
         </span>
       </button>
       {live && (
