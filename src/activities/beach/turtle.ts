@@ -341,14 +341,25 @@ export class TurtleScene extends BeachScene {
     // Facing: draw a little turtle rotated by heading (4 directions + diagonals via offsets).
     const dx = Math.cos(h.a)
     const dy = Math.sin(h.a)
-    g.px(x - 2, y - 1 - f, '#2e4a32')
-    g.px(x + 2, y - 1 + f, '#2e4a32')
-    g.px(x - 2, y + 1 + f, '#2e4a32')
-    g.px(x + 2, y + 1 - f, '#2e4a32')
-    g.ellipse(x, y, 2.2, 1.8, h.shell)
-    g.px(x - 1, y - 1, mix(h.shell, '#ffffff', 0.35))
-    g.px(Math.round(x + dx * 3), Math.round(y + dy * 3), '#5a7a5a')
-    g.px(Math.round(x + dx * 3.6), Math.round(y + dy * 3.6), '#5a7a5a')
+    // Flippers paddling (perpendicular to the heading), a round shell, a head with eyes.
+    const px = -dy
+    const py = dx
+    const fl = '#2e4a32'
+    for (const side of [-1, 1]) {
+      const sw = side * (f ? 1 : -1)
+      g.line(x + px * side * 3 + dx * 1.5, y + py * side * 3 + dy * 1.5, x + px * side * 5 + dx * (2.5 + sw), y + py * side * 5 + dy * (2.5 + sw), fl)
+      g.px(Math.round(x + px * side * 3 - dx * 2), Math.round(y + py * side * 3 - dy * 2), fl)
+    }
+    g.ellipse(x, y, 3.4, 3, mix(h.shell, INK, 0.3))
+    g.ellipse(x - 0.3, y - 0.3, 2.9, 2.5, h.shell)
+    g.px(x, y, mix(h.shell, '#ffffff', 0.2))
+    g.px(x - 1, y - 1, mix(h.shell, '#ffffff', 0.45))
+    g.px(x + 1, y + 1, mix(h.shell, INK, 0.15))
+    const hx = Math.round(x + dx * 4.5)
+    const hy = Math.round(y + dy * 4.5)
+    g.circle(hx, hy, 1.6, '#6a8a6a')
+    g.px(Math.round(hx + px), Math.round(hy + py), INK)
+    g.px(Math.round(hx - px), Math.round(hy - py), INK)
     if (h.boost > 0) twinkle(g, x, y - 5, 0.3)
   }
 
