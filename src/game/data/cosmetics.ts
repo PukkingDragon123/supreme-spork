@@ -411,7 +411,23 @@ const POP: OutfitItem[] = [
   },
 ]
 
-export const V4_OUTFITS: OutfitItem[] = [...PACK, ...PASS_FREE, ...PASS_PREMIUM, ...POP]
+// ---------------------------------------------------------------------------
+// Tutorial reward from บอทน้อย (art: art/botnoi.ts registers 'botantenna').
+
+const BOTNOI: OutfitItem[] = [
+  {
+    id: 'head_botnoi_antenna',
+    slot: 'head',
+    name: 'ที่คาดผมเสาอากาศบอทน้อย',
+    desc: 'รางวัลเรียนจบจากบอทน้อย เสาอากาศดอกบัวตูมเรืองแสง รับสัญญาณบุญได้ชัดทุกทิศ',
+    price: 120,
+    acc: 'botantenna',
+    category: 'fun',
+    exclusive: 'event',
+  },
+]
+
+export const V4_OUTFITS: OutfitItem[] = [...PACK, ...PASS_FREE, ...PASS_PREMIUM, ...POP, ...BOTNOI]
 
 /** Ids by where they come from (handy for other systems and tests). */
 export const PASS_FREE_OUTFIT_IDS = PASS_FREE.map((o) => o.id)

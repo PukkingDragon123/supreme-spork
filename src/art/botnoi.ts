@@ -10,6 +10,8 @@
 import { createCanvas } from '../engine/pixel'
 import { cached, spriteDataUrl, type Sprite } from '../engine/sprite'
 import { P } from './palette'
+import { registerDollHeadAcc } from './doll'
+import { registerAvatarAcc } from './avatar'
 
 export type BotExpr = 'normal' | 'happy' | 'blink' | 'surprised' | 'think' | 'love' | 'sleepy' | 'wink' | 'dizzy' | 'sorry' | 'scan'
 export type BotArm = 'down' | 'wave' | 'point' | 'cheer'
@@ -660,3 +662,35 @@ export function botnoiHeadIcon(expr: BotExpr = 'happy'): Sprite {
 }
 
 export const BOTNOI_COLORS = C
+
+// ---------------------------------------------------------------------------
+// Cosmetic: ที่คาดผมเสาอากาศบอทน้อย (antenna headband), the tutorial reward.
+// Registered into the doll (UI) and world avatar accessory tables.
+
+const HB = { o: C.saf, O: C.safHi, m: C.metal, p: C.bud, P: C.budGlow, b: C.budS }
+
+registerDollHeadAcc('botantenna', {
+  front: {
+    x: 0,
+    y: 0,
+    rows: [
+      '.........pPp........pPp.........',
+      '.........bpb........bpb.........',
+      '..........m..........m..........',
+      '..........OOOOOOOOOOOO..........',
+      '.......OOo............oOO.......',
+      '.....Oo..................oO.....',
+      '....O......................o....',
+      '....o......................o....',
+    ],
+  },
+  pal: HB,
+  line: C.safS,
+})
+
+registerAvatarAcc('botantenna', {
+  front: { y: -2, rows: ['..pp........pp..', '...m........m...', '...m........m...', '...OOOOOOOOOO...', '..O..........o..', '.o............o.'] },
+  back: { y: -2, rows: ['..pp........pp..', '...m........m...', '...m........m...', '...oooooooooo...', '..o..........o..', '.o............o.'] },
+  side: { y: -2, rows: ['......pp........', '.......m........', '.......m........', '...OOOOOOOOo....', '..O.......o.....', '.o..............'] },
+  pal: HB,
+})

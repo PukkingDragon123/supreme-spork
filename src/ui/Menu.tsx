@@ -9,6 +9,9 @@ import { presence } from '../services/presence'
 import { game } from '../game/state'
 import { sfx } from '../engine/audio'
 import { netSummary } from './online/onlineStore'
+import { openBotMenu } from './botnoi/botStore'
+import { startTutorial } from '../game/botnoi'
+import { closeAll } from './botnoi/tutorialSteps'
 
 export function Menu() {
   const close = () => openPanel(null)
@@ -55,6 +58,12 @@ export function Menu() {
         </PBtn>
         <PBtn size="small" tone="paper" icon="gear" onClick={() => (close(), (settingsOpen.value = true))}>
           ตั้งค่า
+        </PBtn>
+        <PBtn size="small" tone="blue" icon="sparkle" onClick={() => (close(), openBotMenu('home'))}>
+          บอทน้อย
+        </PBtn>
+        <PBtn size="small" tone="green" icon="book" onClick={() => (closeAll(), startTutorial(true))}>
+          เล่นบทเรียนอีกครั้ง
         </PBtn>
       </div>
       <p class="small muted center menu-note">

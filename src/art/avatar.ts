@@ -994,7 +994,7 @@ const BOW_BACK = {
 // ---------------------------------------------------------------------------
 // Accessories.
 
-interface AccArt {
+export interface AccArt {
   front?: { y: number; rows: string[] }
   back?: { y: number; rows: string[] }
   side?: { y: number; rows: string[] }
@@ -3253,6 +3253,11 @@ export function avatarSprite(look: AvatarLook, view: View, pose: Pose, opts: Ava
     ctx.drawImage(s.canvas, 0, 0)
     return { canvas: f, w: s.w, h: s.h }
   })
+}
+
+/** Accessory art painted by other modules (e.g. Bot Noi's antenna headband, art/botnoi.ts). */
+export function registerAvatarAcc(key: string, art: AccArt) {
+  ACC[key] = art
 }
 
 export function lookKey(l: AvatarLook): string {

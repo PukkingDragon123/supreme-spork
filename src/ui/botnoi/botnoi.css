@@ -1,0 +1,571 @@
+/* บอทน้อย: tutorial coach marks, tips, sheet and cards. Prefix: bn- */
+
+.bn-root {
+  position: absolute;
+  inset: 0;
+  z-index: 92;
+  pointer-events: none;
+}
+.bn-root.tips {
+  z-index: 79;
+}
+
+/* ---------- dim with a hole + pulsing ring ---------- */
+
+.bn-dim {
+  position: absolute;
+  left: 0;
+  top: 0;
+  animation: bn-in 260ms ease-out;
+}
+.bn-hole {
+  position: absolute;
+  border-radius: 12px;
+}
+.bn-hole.round {
+  border-radius: 50%;
+}
+.bn-catch {
+  position: absolute;
+  inset: 0;
+  border: none;
+  border-radius: inherit;
+  background: none;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.bn-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 3px solid #ffe27a;
+  box-shadow:
+    0 0 0 2px #3a2838,
+    0 0 16px rgba(255, 226, 122, 0.9),
+    inset 0 0 12px rgba(255, 226, 122, 0.5);
+  animation: bn-pulse 1.1s ease-in-out infinite;
+}
+.bn-ring.r2 {
+  border-color: #7ff3dd;
+  box-shadow: none;
+  animation: bn-wave 1.6s ease-out infinite;
+}
+@keyframes bn-pulse {
+  50% {
+    transform: scale(1.06);
+    border-color: #fff3a6;
+  }
+}
+@keyframes bn-wave {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+@keyframes bn-in {
+  from {
+    opacity: 0;
+  }
+}
+.bn-block {
+  position: absolute;
+  pointer-events: auto;
+}
+
+/* ---------- arrow + pointing robot ---------- */
+
+.bn-arrow {
+  position: absolute;
+  width: 26px;
+  height: 30px;
+  filter: drop-shadow(0 2px 0 #3a2838) drop-shadow(0 -2px 0 #3a2838) drop-shadow(2px 0 0 #3a2838) drop-shadow(-2px 0 0 #3a2838);
+  animation: bn-bounce-d 0.7s ease-in-out infinite;
+}
+.bn-arrow i {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #ffe27a 0 60%, #ffc84a 60%);
+  clip-path: polygon(32% 0, 68% 0, 68% 48%, 100% 48%, 50% 100%, 0 48%, 32% 48%);
+}
+.bn-arrow.up {
+  transform: rotate(180deg);
+  animation-name: bn-bounce-u;
+}
+@keyframes bn-bounce-d {
+  50% {
+    translate: 0 6px;
+  }
+}
+@keyframes bn-bounce-u {
+  50% {
+    translate: 0 -6px;
+  }
+}
+.bn-pointer {
+  position: absolute;
+  animation: bn-bob 1.4s ease-in-out infinite;
+}
+@keyframes bn-bob {
+  50% {
+    translate: 0 -4px;
+  }
+}
+.bn-face,
+.bn-mini {
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* ---------- speech bubble ---------- */
+
+.bn-bubble {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  pointer-events: auto;
+  animation: bn-pop 280ms cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+.bn-bubble.top {
+  top: calc(var(--safe-top, 0px) + 10px);
+}
+.bn-bubble.bottom {
+  bottom: 104px;
+}
+.bn-bubble.lost {
+  bottom: 104px;
+  top: auto;
+}
+.bn-bubble.wig {
+  animation: bn-wig 360ms ease-in-out;
+}
+@keyframes bn-pop {
+  from {
+    transform: translateY(14px) scale(0.92);
+    opacity: 0;
+  }
+}
+@keyframes bn-wig {
+  25% {
+    transform: translateX(-6px) rotate(-1deg);
+  }
+  75% {
+    transform: translateX(6px) rotate(1deg);
+  }
+}
+.bn-bubble-face {
+  flex: none;
+  margin-bottom: -6px;
+  filter: drop-shadow(0 3px 0 rgba(24, 14, 34, 0.35));
+  animation: bn-bob 1.6s ease-in-out infinite;
+}
+.bn-bubble-body {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 6px 6px;
+  border-style: solid;
+  border-width: 16px;
+  border-image: var(--sk-panel) 8 fill / 16px repeat;
+  image-rendering: pixelated;
+}
+.bn-bubble-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -6px 0 0;
+}
+.bn-step {
+  padding: 0 6px;
+  border-radius: 8px;
+  background: #3a2838;
+  color: #ffe27a;
+  font-size: 11px;
+  line-height: 16px;
+}
+.bn-skip {
+  border: none;
+  background: none;
+  padding: 2px 0;
+  font-family: inherit;
+  font-size: 12px;
+  color: #8a6a55;
+  text-decoration: underline;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.bn-text {
+  display: grid;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: #3b2616;
+  cursor: pointer;
+}
+.bn-text.big {
+  font-size: 15px;
+  text-align: center;
+  padding: 8px 10px;
+  border-style: solid;
+  border-width: 6px;
+  border-image: var(--sk-bubble) 4 fill / 6px repeat;
+}
+.bn-text.small {
+  font-size: 13px;
+  line-height: 1.4;
+}
+.bn-typed,
+.bn-ghost {
+  grid-area: 1 / 1;
+}
+.bn-ghost {
+  visibility: hidden;
+}
+.bn-more {
+  grid-area: 1 / 1;
+  justify-self: end;
+  align-self: end;
+  font-size: 10px;
+  color: #c0873a;
+  animation: bn-bounce-d 0.6s infinite;
+}
+.bn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.bn-actions:empty {
+  display: none;
+}
+.bn-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #3b2616;
+}
+.bn-confirm .row {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+/* ---------- activity mini hint ---------- */
+
+.bn-mini-hint {
+  position: absolute;
+  top: calc(var(--safe-top, 0px) + 70px);
+  left: 50%;
+  translate: -50% 0;
+  width: min(340px, calc(100% - 24px));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 4px;
+  border-radius: 14px;
+  background: rgba(35, 48, 82, 0.92);
+  border: 2px solid #7ff3dd;
+  color: #e4fff9;
+  font-size: 13px;
+  line-height: 1.35;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+  animation: bn-pop 280ms ease-out;
+}
+.bn-mini-hint img {
+  width: 37px;
+  height: 48px;
+  flex: none;
+}
+
+/* ---------- greeting / finale cards ---------- */
+
+.bn-card-back {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(24, 14, 34, 0.62);
+  pointer-events: auto;
+  animation: bn-in 240ms ease-out;
+}
+.bn-card {
+  position: relative;
+  width: min(350px, calc(100% - 28px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 34px 8px 8px;
+  margin-top: 90px;
+  border-style: solid;
+  border-width: 16px;
+  border-image: var(--sk-panel) 8 fill / 16px repeat;
+  image-rendering: pixelated;
+  animation: bn-pop 320ms cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+.bn-card.win-glow {
+  filter: drop-shadow(0 0 16px rgba(255, 216, 74, 0.65));
+}
+.bn-card-face {
+  position: absolute;
+  top: -118px;
+  left: 50%;
+  translate: -50% 0;
+  filter: drop-shadow(0 4px 0 rgba(24, 14, 34, 0.35));
+  animation: bn-bob 1.6s ease-in-out infinite;
+}
+.bn-card-title {
+  margin-top: 2px;
+}
+.bn-dots {
+  display: flex;
+  gap: 5px;
+}
+.bn-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: #d8c3a0;
+}
+.bn-dots i.on {
+  background: #e8a020;
+}
+.bn-card-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+.bn-card-actions .btn {
+  min-width: 70%;
+}
+.bn-hint {
+  font-size: 12px;
+  color: #8a6a55;
+  text-align: center;
+}
+.bn-reward {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.bn-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  border: 2px solid #3a2838;
+  background: #fff6de;
+  font-size: 13px;
+  color: #3b2616;
+}
+.bn-chip.gold {
+  background: #ffe27a;
+}
+.bn-chip.pink {
+  background: #ffd6e6;
+}
+.bn-chip.rare {
+  background: linear-gradient(135deg, #e4fff9, #ffd6e6);
+}
+.bn-reward.big .bn-chip {
+  font-size: 15px;
+  padding: 4px 12px;
+}
+
+/* ---------- Bot Noi's sheet ---------- */
+
+.bn-sheet-back {
+  position: absolute;
+  inset: 0;
+  z-index: 81;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(24, 14, 34, 0.45);
+  pointer-events: auto;
+  animation: bn-in 200ms ease-out;
+}
+.bn-fx {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.bn-sheet {
+  position: relative;
+  width: min(420px, 100%);
+  max-height: calc(100% - var(--safe-top, 0px) - 40px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 6px 10px;
+  margin-bottom: calc(var(--safe-bottom, 0px) + 6px);
+  border-style: solid;
+  border-width: 16px;
+  border-image: var(--sk-panel) 8 fill / 16px repeat;
+  image-rendering: pixelated;
+  animation: bn-pop 260ms cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+.bn-sheet.win-glow {
+  filter: drop-shadow(0 0 14px rgba(255, 216, 74, 0.55));
+}
+.bn-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bn-sheet-face {
+  flex: none;
+  margin: -34px 0 -6px -4px;
+  animation: bn-bob 1.6s ease-in-out infinite;
+}
+.bn-role {
+  font-size: 12px;
+  color: #8a6a55;
+}
+.bn-sheet > .bn-text {
+  padding: 8px 12px 12px;
+  min-height: 56px;
+  border-style: solid;
+  border-width: 6px;
+  border-image: var(--sk-bubble) 4 fill / 6px repeat;
+}
+.bn-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bn-choices .btn {
+  width: 100%;
+}
+.bn-quests {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bn-quest {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bn-quest.ready {
+  box-shadow: 0 0 0 2px #ffd84a inset;
+}
+.bn-quest-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+.bn-quest-acts {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.bn-burst {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  animation: bn-pop 300ms ease-out;
+}
+
+/* ---------- feature tips ---------- */
+
+.bn-tip-ring {
+  position: absolute;
+  border-radius: 12px;
+  border: 3px solid #7ff3dd;
+  box-shadow:
+    0 0 0 2px #233052,
+    0 0 18px rgba(127, 243, 221, 0.8);
+  animation: bn-pulse 1.1s ease-in-out infinite;
+}
+.bn-tip {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 2px;
+  border-style: solid;
+  border-width: 16px;
+  border-image: var(--sk-panel) 8 fill / 16px repeat;
+  image-rendering: pixelated;
+  pointer-events: auto;
+  animation: bn-pop 280ms cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+.bn-tip.bottom {
+  bottom: 104px;
+}
+.bn-tip.top {
+  top: calc(var(--safe-top, 0px) + 10px);
+}
+.bn-tip.high {
+  top: auto;
+  bottom: 12px;
+}
+.bn-tip-face {
+  flex: none;
+  margin: -24px 0 -14px -10px;
+}
+.bn-tip .bn-text {
+  flex: 1;
+  min-width: 0;
+}
+.bn-tip-name {
+  grid-area: 1 / 1;
+  margin-bottom: 2px;
+}
+.bn-tip .bn-text {
+  grid-template-rows: auto 1fr;
+}
+.bn-tip .bn-typed,
+.bn-tip .bn-ghost {
+  grid-area: 2 / 1;
+}
+.bn-tip-ok {
+  flex: none;
+}
+
+/* ---------- quest tracker pill: Bot Noi's face ---------- */
+
+.qt-mark.bot {
+  width: 30px;
+  display: grid;
+  place-items: center;
+}
+.qt-mark.bot img {
+  image-rendering: pixelated;
+}
+
+.reduce-motion .bn-ring,
+.reduce-motion .bn-arrow,
+.reduce-motion .bn-pointer,
+.reduce-motion .bn-bubble-face,
+.reduce-motion .bn-card-face,
+.reduce-motion .bn-sheet-face {
+  animation: none;
+}

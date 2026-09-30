@@ -24,6 +24,7 @@ import { PLACE_BY_ID } from '../game/data/places'
 import { attachNet } from './online/worldNet'
 import { OnlineLayer } from './online/OnlineLayer'
 import { cardPeer, emotePose } from './online/onlineStore'
+import { attachBotnoi } from './botnoi/botWorld'
 
 let current: WorldScene | null = null
 let autoOpen: string | null = null
@@ -209,6 +210,7 @@ export function TempleView({ active }: { active: boolean }) {
     detachNet = attachNet(scene, others, () => game.value.settings.showOthers === false)
     scene.playerPose = () => emotePose('me', Date.now())
     current = scene
+    attachBotnoi(scene)
     scene.setMarkers(questMarkerFor)
     stage.current!.setScene(scene)
     arrived.value = null
