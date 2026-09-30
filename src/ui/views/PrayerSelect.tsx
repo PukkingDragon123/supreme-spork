@@ -1,25 +1,38 @@
-// Stage map for the prayer loop: temples as tabs, a winding path of stages
-// that climbs from the first stage (lock → pass → 3 stars; gold boss
-// stages), and a card for the chosen stage with its meaning picture.
+// Stage select for the prayer loop, painted as a storybook journey through the
+// life of the Buddha (พุทธประวัติ): the road of stages winds up a tall
+// Thai-mural map from the birth at Lumbini to the Parinibbāna and the relic
+// stupa. Stages open by passing the one before; temples (the old tabs) open
+// by stars and show up as gates on the road. The player's doll stands at the
+// next stage and walks along the road after a pass. Tap a painted scene for
+// its story.
 
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { game } from '../../game/state'
-import { CHAPTERS, stagesOf, chantById, stageLines, stageStarScores, type PrayerStage } from '../../game/data/prayers'
-import { chapterStars, chapterUnlocked, nextStage, stagePassed, stageUnlocked, totalStars, DAILY_PRAYER_GOAL, prayersToday, prevStage } from '../../game/prayer'
+import { CHAPTERS, STAGE_BY_ID, chantById, stageLines, stageStarScores, type PrayerStage } from '../../game/data/prayers'
+import { chapterUnlocked, DAILY_PRAYER_GOAL, prayersToday, prevStage, stagePassed, stageUnlocked, totalStars } from '../../game/prayer'
 import type { AreaId } from '../../game/data/areas'
 import { MATERIAL_INFO, type MaterialId } from '../../game/materials'
 import { materialSprite } from '../../art/furniture'
 import { spriteDataUrl } from '../../engine/sprite'
+import { Surface } from '../../engine/pixel'
 import { lineWords } from '../../game/chantScore'
 import { openPanel, prayStage } from '../store'
-import { PBtn, Stars, Tabs, Window } from '../components/kit'
-import { PT, TONE_TEXT } from '../pixeltext'
+import { CloseX, PBtn, Stars } from '../components/kit'
+import { PT, TONE_TEXT, renderPixelText } from '../pixeltext'
 import { Coin, Icon, Merit } from '../components/common'
 import { MeaningArt } from '../components/MeaningCard'
 import { StageChips } from '../components/StageChips'
 import { chantBookFocus } from '../chantPrefs'
 import { sfx } from '../../engine/audio'
+import { currentPhase } from '../../scenes/sky'
+import { dollSprite, DOLL_H, DOLL_W, type DollPose } from '../../art/doll'
+import '../../art/buddhaJourneyPoses'
+import { drawJourneyFx, journeyArt, journeyNight, type JourneyArt } from '../../art/buddhaJourney'
+import { avatarStage, bandAt, chapterOfStage, gatePoint, JOURNEY, JOURNEY_BY_ID, JOURNEY_STAGES, MAP_SCALE, templeGates, thaiNum, walkFrom, walkPoint, type JourneyChapterId, type JourneyLayout, type NodeSpot } from '../../art/buddhaJourneyStory'
+import { bossSprite, cartouche, lacquerTile, muralFrame, nodeSprite, parchTile, stupaSprite, type NodeLook } from '../../art/buddhaJourneyUi'
+import { drawTrail, drawArrivalBurst } from '../../art/buddhaJourneyFx'
 import '../../styles/chant.css'
+import '../../styles/buddhaJourney.css'
 
 export function MatChip({ id, n }: { id: MaterialId; n: number }) {
   return (
@@ -30,100 +43,453 @@ export function MatChip({ id, n }: { id: MaterialId; n: number }) {
   )
 }
 
-const ROW = 78
-const MAP_W = 300
-const XS = [150, 232, 150, 68]
+const S = MAP_SCALE
+const AVATAR_KEY = 'boondee.bj.avatar'
 
-function StageMap({ list, sel, onSel }: { list: PrayerStage[]; sel: PrayerStage; onSel: (st: PrayerStage) => void }) {
+function readAvatar(): string | null {
+  try {
+    return localStorage.getItem(AVATAR_KEY)
+  } catch {
+    return null
+  }
+}
+function writeAvatar(id: string) {
+  try {
+    localStorage.setItem(AVATAR_KEY, id)
+  } catch {
+    /* private mode: the avatar simply won't walk next time */
+  }
+}
+
+const isNight = () => ['dusk', 'night'].includes(currentPhase())
+
+function nodeLook(st: PrayerStage): NodeLook {
+  const n = game.value.prayer.stars[st.id] ?? 0
+  if (!stageUnlocked(st)) return 'locked'
+  if (n >= 3) return 'perfect'
+  if (n >= 1) return 'passed'
+  return 'open'
+}
+
+function templeOf(ch: JourneyChapterId): AreaId {
+  return STAGE_BY_ID[JOURNEY_BY_ID[ch].stages[0]].chapter
+}
+
+// ---------------------------------------------------------------------------
+// The painted map
+
+interface MapApi {
+  scrollToStage: (id: string, smooth?: boolean) => void
+  art: JourneyArt | null
+}
+
+function JourneyMap({
+  sel,
+  onSel,
+  onStory,
+  onView,
+  api,
+}: {
+  sel: PrayerStage
+  onSel: (st: PrayerStage) => void
+  onStory: (ch: JourneyChapterId, scene: number) => void
+  onView: (ch: JourneyChapterId) => void
+  api: { current: MapApi | null }
+}) {
   const s = game.value
-  const box = useRef<HTMLDivElement>(null)
-  const H = list.length * ROW + 30
-  // Stage 1 sits at the bottom; the path climbs.
-  const pos = (i: number) => ({ x: XS[i % XS.length], y: H - 40 - i * ROW })
+  const scroller = useRef<HTMLDivElement>(null)
+  const bg = useRef<HTMLCanvasElement>(null)
+  const fxc = useRef<HTMLCanvasElement>(null)
+  const avEl = useRef<HTMLCanvasElement>(null)
+  const [w, setW] = useState(0)
+  const [art, setArt] = useState<JourneyArt | null>(null)
+  const [night] = useState(isNight)
+  const [offView, setOffView] = useState<0 | 1 | -1>(0)
+  const still = s.settings.reduceMotion
+  const view = { unlocked: (id: string) => stageUnlocked(STAGE_BY_ID[id]), passed: (id: string) => stagePassed(STAGE_BY_ID[id]) }
+  const here = avatarStage(view)
+  // Where the avatar stood last time: walk from there if it's a step or two back.
+  const walk = useMemo(() => walkFrom(readAvatar(), here), [])
+  const avatar = useRef({ a: null as NodeSpot | null, b: null as NodeSpot | null, k: 1, t0: 0, dur: 1, walking: false, arrivedAt: 0 })
+
+  // Measure the width → art pixels.
+  useLayoutEffect(() => {
+    const el = scroller.current
+    if (!el) return
+    const measure = () => setW(Math.max(176, Math.min(240, Math.ceil(el.clientWidth / S))))
+    measure()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
+    ro?.observe(el)
+    return () => ro?.disconnect()
+  }, [])
+
+  // Bake (after first paint so the panel opens at once).
   useEffect(() => {
-    const el = box.current?.querySelector('.ch-node.sel') as HTMLElement | null
-    if (el && box.current) box.current.scrollTop = Math.max(0, el.offsetTop - box.current.clientHeight / 2 + 30)
-  }, [list[0]?.chapter])
-  let d = ''
-  list.forEach((_, i) => {
-    const { x, y } = pos(i)
-    if (i === 0) d += `M ${x} ${y}`
-    else {
-      const p = pos(i - 1)
-      d += ` C ${p.x} ${p.y - ROW / 2}, ${x} ${y + ROW / 2}, ${x} ${y}`
+    if (!w) return
+    let dead = false
+    const id = requestAnimationFrame(() =>
+      setTimeout(() => {
+        if (dead) return
+        const a = journeyArt(w)
+        if (import.meta.env.DEV) console.debug(`[bj] baked ${w}×${a.layout.h} in ${a.ms.toFixed(0)} ms`)
+        setArt(a)
+      }, 0),
+    )
+    return () => {
+      dead = true
+      cancelAnimationFrame(id)
     }
-  })
-  const passedUpTo = list.reduce((n, st, i) => (stagePassed(st, s) ? i + 1 : n), 0)
-  let dDone = ''
-  list.slice(0, Math.min(list.length, passedUpTo + 1)).forEach((_, i) => {
-    const { x, y } = pos(i)
-    if (i === 0) dDone += `M ${x} ${y}`
-    else {
-      const p = pos(i - 1)
-      dDone += ` C ${p.x} ${p.y - ROW / 2}, ${x} ${y + ROW / 2}, ${x} ${y}`
+  }, [w])
+
+  const L: JourneyLayout | null = art?.layout ?? null
+  const nodeOf = (id: string): NodeSpot | undefined => L?.nodes.find((n) => n.stageId === id)
+
+  // Progress trail on the painted road, up to the node the avatar stands at.
+  const trailTo = (L && nodeOf(walk ?? here)?.s) ?? 0
+  useEffect(() => {
+    const c = bg.current
+    if (!art || !c) return
+    const g = new Surface(art.layout.w, art.layout.h, c)
+    g.ctx.drawImage(night ? journeyNight(art) : art.day, 0, 0)
+    drawTrail(g, art.layout.road, 0, trailTo)
+  }, [art, night, trailTo])
+
+  // Scroll to the avatar on open, then maybe walk.
+  useEffect(() => {
+    const el = scroller.current
+    if (!art || !el || !L) return
+    const to = nodeOf(here)!
+    const from = walk ? nodeOf(walk) : undefined
+    const av = avatar.current
+    av.a = from ?? to
+    av.b = to
+    av.k = from ? 0 : 1
+    const midY = from ? (from.y + to.y) / 2 : to.y
+    el.scrollTop = Math.max(0, midY * S - el.clientHeight * 0.58)
+    placeAvatar()
+    writeAvatar(here)
+    if (from) {
+      const t = setTimeout(() => {
+        av.t0 = performance.now()
+        av.dur = still ? 1 : Math.max(1000, Math.min(2800, ((to.s - from.s) / 50) * 1000))
+        av.walking = true
+        sfx.whoosh()
+      }, 650)
+      return () => clearTimeout(t)
     }
-  })
+  }, [art])
+
+  const drawAvatar = (pose: DollPose, v: 'front' | 'back') => {
+    const c = avEl.current
+    if (!c) return
+    const spr = dollSprite(game.value.player.look, pose, { view: v })
+    const ctx = c.getContext('2d')!
+    ctx.clearRect(0, 0, c.width, c.height)
+    ctx.drawImage(spr.canvas, 0, 0)
+  }
+
+  const avatarFeet = () => {
+    const av = avatar.current
+    if (!L || !av.a || !av.b) return { x: 0, y: 0, dy: 0 }
+    return walkPoint(L.road, av.a, av.b, L.cx, av.k)
+  }
+
+  const placeAvatar = (bob = 0) => {
+    const c = avEl.current
+    if (!c || !L) return
+    const p = avatarFeet()
+    c.style.transform = `translate(${Math.round(p.x * S - DOLL_W / 2)}px, ${Math.round(p.y * S - DOLL_H + 2 - bob)}px)`
+  }
+
+  // The fx loop: animated sprites on the visible band, and the walking avatar.
+  useEffect(() => {
+    const c = fxc.current
+    const el = scroller.current
+    if (!art || !c || !el) return
+    const g = new Surface(art.layout.w, art.layout.h, c)
+    const av = avatar.current
+    let raf = 0
+    let last: [number, number] | null = null
+    let lastPose = ''
+    const t0 = performance.now()
+    const frame = () => {
+      const now = performance.now()
+      const t = (now - t0) / 1000
+      const top = el.scrollTop / S
+      const y0 = Math.floor(top - 24)
+      const y1 = Math.ceil(top + el.clientHeight / S + 24)
+      if (last) g.ctx.clearRect(0, last[0], art.layout.w, last[1] - last[0])
+      g.ctx.clearRect(0, y0, art.layout.w, y1 - y0)
+      last = [y0, y1]
+      drawJourneyFx(g, art, still ? 2 : t, y0, y1, { night, scrollY: top, still })
+      // Walking.
+      let pose: DollPose = 'stand'
+      let v: 'front' | 'back' = 'front'
+      let bob = 0
+      if (av.walking && av.a && av.b) {
+        const k = Math.min(1, (now - av.t0) / av.dur)
+        av.k = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2
+        const d = avatarFeet()
+        v = d.dy > 0.15 ? 'front' : 'back'
+        const step = Math.floor((now - av.t0) / 150)
+        pose = step % 2 ? 'act_bj_walk1' : 'act_bj_walk2'
+        bob = Math.abs(Math.sin(((now - av.t0) / 150) * Math.PI)) * 3
+        // Keep the walker in view.
+        const py = d.y * S - el.scrollTop
+        if (py < el.clientHeight * 0.3) el.scrollTop -= Math.min(6, el.clientHeight * 0.3 - py)
+        if (k >= 1) {
+          av.walking = false
+          av.arrivedAt = now
+          sfx.chime()
+        }
+      } else if (av.arrivedAt && now - av.arrivedAt < 1600 && av.b) {
+        pose = 'wai'
+        drawArrivalBurst(g, av.b, (now - av.arrivedAt) / 1600)
+      }
+      if (av.a && av.b && av.a !== av.b && av.k > 0) drawTrail(g, art.layout.road, av.a.s, av.a.s + (av.b.s - av.a.s) * av.k)
+      const key = `${pose}:${v}`
+      if (key !== lastPose) {
+        drawAvatar(pose, v)
+        lastPose = key
+      }
+      placeAvatar(bob)
+      if (!still || av.walking) raf = requestAnimationFrame(loop)
+    }
+    const loop = () => {
+      if (document.visibilityState === 'visible') frame()
+      else raf = requestAnimationFrame(loop)
+    }
+    frame()
+    return () => cancelAnimationFrame(raf)
+  }, [art])
+
+  // Which chapter is in view (for the header), and is the avatar off screen?
+  const onScroll = () => {
+    const el = scroller.current
+    if (!el || !L) return
+    const mid = (el.scrollTop + el.clientHeight * 0.5) / S
+    onView(bandAt(L, mid).id)
+    const ay = avatarFeet().y * S
+    setOffView(ay < el.scrollTop + 20 ? -1 : ay > el.scrollTop + el.clientHeight - 20 ? 1 : 0)
+    if (still && fxc.current) {
+      // Reduced motion: repaint the (static) fx for the new view.
+      const g = new Surface(L.w, L.h, fxc.current)
+      const top = el.scrollTop / S
+      g.ctx.clearRect(0, 0, L.w, L.h)
+      drawJourneyFx(g, art!, 2, top - 24, top + el.clientHeight / S + 24, { night, scrollY: top, still })
+    }
+  }
+  useEffect(onScroll, [art])
+
+  api.current = {
+    art,
+    scrollToStage: (id, smooth = true) => {
+      const el = scroller.current
+      const n = nodeOf(id)
+      if (!el || !n) return
+      el.scrollTo({ top: Math.max(0, n.y * S - el.clientHeight * 0.55), behavior: smooth && !still ? 'smooth' : 'auto' })
+    },
+  }
+
+  const stars = totalStars(s)
+  const gates = templeGates()
   return (
-    <div class="ch-map" ref={box}>
-      <div class="ch-map-inner" style={{ height: `${H}px` }}>
-        <svg class="ch-path" width={MAP_W} height={H} viewBox={`0 0 ${MAP_W} ${H}`} aria-hidden="true">
-          <path d={d} class="road" />
-          <path d={d} class="dots" />
-          {passedUpTo > 0 && <path d={dDone} class="done" />}
-        </svg>
-        {list.map((st, i) => {
-          const { x, y } = pos(i)
-          const n = s.prayer.stars[st.id] ?? 0
-          const open = stageUnlocked(st, s)
-          const passed = n >= 1
-          const current = open && !passed
-          const cls = ['ch-node', st.big ? 'boss' : '', open ? 'open' : 'locked', passed ? 'passed' : '', current ? 'current' : '', n >= 3 ? 'perfect' : '', sel.id === st.id ? 'sel' : ''].join(' ')
-          return (
-            <button
-              key={st.id}
-              class={cls}
-              style={{ left: `calc(50% + ${x - MAP_W / 2}px)`, top: `${y}px` }}
-              onClick={() => (sfx.tap(), onSel(st))}
-              aria-label={`ด่าน ${st.n}${st.big ? ' บอส' : ''} ${open ? (passed ? `ผ่านแล้ว ${n} ดาว` : 'เล่นได้') : 'ล็อก'}`}
-              aria-pressed={sel.id === st.id}
-            >
-              {current && !st.big && <span class="ch-flag">ถัดไป</span>}
-              <span class="ch-node-disc">
-                {open ? <PT text={st.n} size={15} weight={600} {...(passed && n < 3 ? TONE_TEXT.title : TONE_TEXT.gold)} /> : <Icon name="lock" size={20} />}
-              </span>
-              {st.hint === 'memory' && open && (
-                <span class="ch-node-badge" title="ท่องจำ">
-                  <Icon name="meditate" size={14} />
-                </span>
-              )}
-              {st.hint === 'fade' && open && (
-                <span class="ch-node-badge" title="จางหาย">
-                  <Icon name="sparkle" size={14} />
-                </span>
-              )}
-              {passed && <Stars n={n} size={13} class="ch-node-stars" />}
-              {st.big && <span class="ch-node-boss">บอส</span>}
-            </button>
-          )
-        })}
+    <div class={`bj-mapwrap ${night ? 'night' : ''}`}>
+      <div class="bj-map" ref={scroller} onScroll={onScroll}>
+        {!L ? (
+          <div class="bj-loading">
+            <Icon name="lotus" size={36} />
+            <PT text="กำลังวาดเส้นทาง…" size={13} {...TONE_TEXT.dark} />
+          </div>
+        ) : (
+          <div class="bj-inner" style={{ width: `${L.w * S}px`, height: `${L.h * S}px`, marginLeft: `${Math.min(0, Math.floor(((scroller.current?.clientWidth ?? L.w * S) - L.w * S) / 2))}px` }}>
+            <canvas ref={bg} class="bj-canvas" width={L.w} height={L.h} aria-hidden="true" />
+            <canvas ref={fxc} class="bj-canvas bj-fx" width={L.w} height={L.h} aria-hidden="true" />
+            {/* Locked temples: a soft veil over their part of the road. */}
+            {gates.map((gt, i) => {
+              if (chapterUnlocked(gt.temple, s)) return null
+              const a = nodeOf(gt.stageId)!
+              const next = gates[i + 1] ? nodeOf(gates[i + 1].stageId)! : null
+              const top = next ? next.y + 26 : 0
+              return <div key={`v${gt.temple}`} class="bj-veil" style={{ top: `${top * S}px`, height: `${(a.y + 34 - top) * S}px` }} />
+            })}
+            {JOURNEY.map((c, i) => {
+              const b = L.bands[i]
+              const entry = c.route[0] as [number, number]
+              const side = entry[0] < 0 ? 1 : -1
+              const label = `${thaiNum(c.n)} ${c.title}`
+              // Keep the cartouche on the map, away from where the road crosses.
+              const half = (renderPixelText(label, { size: 9, weight: 600, shadow: '#3b1a0e' }).w * 2 + 48) / 2
+              const want = (L.cx + entry[0] + side * 22) * S + side * half
+              const left = Math.max(half + 2, Math.min(L.w * S - half - 2, want))
+              return (
+                <div key={c.id} class={`bj-banner ${c.night ? 'night' : ''}`} style={{ left: `${left}px`, top: `${b.bottom * S}px`, ['--bj-cart' as string]: `url(${cartouche(!!c.night)})` }}>
+                  <PT text={label} size={9} weight={600} color="#fff1c4" shadow="#3b1a0e" />
+                </div>
+              )
+            })}
+            {JOURNEY.map((c, ci) =>
+              c.scenes.map((sc, si) => {
+                const b = L.bands[ci]
+                const [a0, u0, a1, u1] = sc.box
+                return (
+                  <button
+                    key={`${c.id}-${sc.id}`}
+                    class="bj-scene"
+                    style={{ left: `${(L.cx + a0) * S}px`, top: `${(b.bottom - u1) * S}px`, width: `${(a1 - a0) * S}px`, height: `${(u1 - u0) * S}px` }}
+                    aria-label={`เรื่องเล่า: ${sc.title}`}
+                    onClick={() => (sfx.open(), onStory(c.id, si))}
+                  >
+                    <span class="bj-scene-tag">
+                      <Icon name="scroll" size={14} />
+                    </span>
+                  </button>
+                )
+              }),
+            )}
+            {gates.map((gt) => {
+              const p = gatePoint(L, gt.stageId)
+              const ch = CHAPTERS.find((c) => c.id === gt.temple)!
+              const open = chapterUnlocked(gt.temple, s)
+              // The name board hangs beside the gate, away from the nodes around it.
+              const n = nodeOf(gt.stageId)!
+              const prevN = L.nodes[n.i - 1]
+              const side = (prevN ? (n.x + prevN.x) / 2 : n.x) > p.x ? -1 : 1
+              return (
+                <div
+                  key={`g${gt.temple}`}
+                  class={`bj-gate ${open ? '' : 'locked'} ${side < 0 ? 'left' : 'right'}`}
+                  style={{ left: `${(p.x + side * 17) * S}px`, top: `${(p.y - 12) * S}px` }}
+                >
+                  {!open && <Icon name="lock" size={14} />}
+                  <PT text={open ? ch.name : `${ch.name} · ${Math.min(stars, ch.stars)}/${ch.stars}★`} size={8} weight={600} {...(open ? TONE_TEXT.gold : TONE_TEXT.dark)} />
+                </div>
+              )
+            })}
+            {L.nodes.map((n) => {
+              const st = STAGE_BY_ID[n.stageId]
+              const got = s.prayer.stars[st.id] ?? 0
+              const look = nodeLook(st)
+              const open = look !== 'locked'
+              const final = n.i === L.nodes.length - 1
+              const cls = ['bj-node', st.big ? 'boss' : '', final ? 'final' : '', look, n.stageId === here && open && !got ? 'next' : '', sel.id === st.id ? 'sel' : ''].join(' ')
+              return (
+                <button
+                  key={n.stageId}
+                  class={cls}
+                  style={{ left: `${n.x * S}px`, top: `${n.y * S}px` }}
+                  onClick={() => (sfx.tap(), onSel(st))}
+                  aria-label={`ด่าน ${st.n}${st.big ? ' บอส' : ''} ${open ? (got ? `ผ่านแล้ว ${got} ดาว` : 'เล่นได้') : 'ล็อก'}`}
+                  aria-pressed={sel.id === st.id}
+                >
+                  <img class="px bj-node-img" src={final ? stupaSprite(look) : st.big ? bossSprite(look) : nodeSprite(look)} alt="" draggable={false} />
+                  <span class="bj-node-num">{open ? <PT text={String(st.n)} size={st.big ? 14 : 13} weight={600} {...(look === 'passed' ? TONE_TEXT.paper : TONE_TEXT.gold)} /> : <Icon name="lock" size={16} />}</span>
+                  {got > 0 && <Stars n={got} size={11} class="bj-node-stars" />}
+                  {st.hint === 'memory' && open && (
+                    <span class="bj-node-badge" title="ท่องจำ">
+                      <Icon name="meditate" size={12} />
+                    </span>
+                  )}
+                  {st.hint === 'fade' && open && (
+                    <span class="bj-node-badge" title="จางหาย">
+                      <Icon name="sparkle" size={12} />
+                    </span>
+                  )}
+                  {n.stageId === here && open && !got && <span class="bj-flag">ถัดไป</span>}
+                </button>
+              )
+            })}
+            <canvas ref={avEl} class="bj-avatar" width={DOLL_W} height={DOLL_H} aria-hidden="true" />
+          </div>
+        )}
+      </div>
+      {offView !== 0 && L && (
+        <button class={`bj-goto ${offView < 0 ? 'up' : 'down'}`} onClick={() => (sfx.tap(), api.current?.scrollToStage(here))}>
+          <Icon name="map" size={16} />
+          <PT text="ด่านถัดไป" size={11} weight={600} {...TONE_TEXT.gold} />
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Story card
+
+function StoryCard({ ch, i, art: mapArt, onClose, onGo }: { ch: JourneyChapterId; i: number; art: JourneyArt | null; onClose: () => void; onGo: (ch: JourneyChapterId, i: number) => void }) {
+  const c = JOURNEY_BY_ID[ch]
+  const sc = c.scenes[i]
+  const all = JOURNEY.flatMap((x) => x.scenes.map((_, k) => [x.id, k] as const))
+  const at = all.findIndex(([a, k]) => a === ch && k === i)
+  const ref = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const art = mapArt ?? journeyArt(195)
+    const L = art.layout
+    const b = L.bands[JOURNEY.indexOf(c)]
+    const [a0, u0, a1, u1] = sc.box
+    const pad = 4
+    const x = L.cx + a0 - pad
+    const y = b.bottom - u1 - pad
+    const ww = a1 - a0 + pad * 2
+    const hh = u1 - u0 + pad * 2
+    el.width = ww
+    el.height = hh
+    const ctx = el.getContext('2d')!
+    ctx.imageSmoothingEnabled = false
+    ctx.drawImage(isNight() ? journeyNight(art) : art.day, x, y, ww, hh, 0, 0, ww, hh)
+  }, [ch, i])
+  const go = (d: number) => {
+    const [a, k] = all[(at + d + all.length) % all.length]
+    sfx.tap()
+    onGo(a, k)
+  }
+  return (
+    <div class="bj-story-back" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div class="bj-story bj-frame" role="dialog" aria-label={sc.title} style={{ ['--bj-frame' as string]: `url(${muralFrame()})` }}>
+        <div class="bj-story-head">
+          <PT text={`บทที่ ${thaiNum(c.n)} · ${c.title}`} size={12} weight={600} color="#fff1c4" shadow="#3b1a0e" />
+          <span class="small bj-story-place">{c.place}</span>
+        </div>
+        <div class="bj-story-pic">
+          <canvas ref={ref} class="pixel-canvas" />
+        </div>
+        <div class="bj-story-title">
+          <PT text={sc.title} size={15} weight={600} {...TONE_TEXT.ink} />
+        </div>
+        <p class="bj-story-text">{sc.caption}</p>
+        <div class="row bj-story-nav">
+          <PBtn tone="wood" size="small" icon="retry" onClick={() => go(-1)} aria-label="เรื่องก่อนหน้า">
+            ก่อนหน้า
+          </PBtn>
+          <span class="grow center small muted">
+            {at + 1}/{all.length}
+          </span>
+          <PBtn tone="wood" size="small" onClick={() => go(1)} aria-label="เรื่องถัดไป">
+            ถัดไป
+          </PBtn>
+        </div>
+        <PBtn tone="gold" block icon="wai" onClick={onClose}>
+          สาธุ
+        </PBtn>
       </div>
     </div>
   )
 }
 
+// ---------------------------------------------------------------------------
+// The screen
+
 export function PrayerSelect() {
   const s = game.value
-  const first = nextStage(s)
-  const [ch, setCh] = useState<AreaId>(first.chapter)
-  const [sel, setSel] = useState<PrayerStage>(first)
+  const here = avatarStage({ unlocked: (id) => stageUnlocked(STAGE_BY_ID[id]), passed: (id) => stagePassed(STAGE_BY_ID[id]) })
+  const [sel, setSel] = useState<PrayerStage>(() => STAGE_BY_ID[here])
+  const [story, setStory] = useState<{ ch: JourneyChapterId; i: number } | null>(null)
+  const [viewCh, setViewCh] = useState<JourneyChapterId>(() => chapterOfStage(here)?.id ?? 'birth')
+  const api = useRef<MapApi | null>(null)
   const stars = totalStars(s)
   const close = () => openPanel(null)
-
-  const pickChapter = (c: AreaId) => {
-    setCh(c)
-    const list = stagesOf(c)
-    setSel(list.find((x) => stageUnlocked(x) && !stagePassed(x)) ?? [...list].reverse().find((x) => stageUnlocked(x)) ?? list[0])
-  }
 
   const start = (st: PrayerStage) => {
     sfx.bigBell()
@@ -131,87 +497,117 @@ export function PrayerSelect() {
     prayStage.value = st.id
   }
 
-  const chapter = CHAPTERS.find((c) => c.id === ch)!
-  const open = chapterUnlocked(ch)
-  const cs = chapterStars(ch)
   const chant = chantById(sel.chant)
   const got = s.prayer.stars[sel.id] ?? 0
   const selOpen = stageUnlocked(sel)
+  const templeOpen = chapterUnlocked(sel.chapter)
+  const temple = CHAPTERS.find((c) => c.id === sel.chapter)!
   const words = stageLines(sel).flatMap(lineWords).length
   const prev = prevStage(sel)
   const best = s.prayer.best[sel.id] ?? 0
+  const selCh = chapterOfStage(sel.id)
+  const viewChapter = JOURNEY_BY_ID[viewCh]
+  const viewTemple = templeOf(viewCh)
+  const vars = { ['--bj-frame' as string]: `url(${muralFrame()})`, ['--bj-lacq' as string]: `url(${lacquerTile()})`, ['--bj-parch' as string]: `url(${parchTile()})` }
 
   return (
-    <Window title="สวดมนต์" icon="pray" onClose={close} wide class="ch-select">
-      <div class="pray-sum row">
-        <Stars n={1} max={1} size={18} />
-        <PT text={`${stars} ดาว`} size={12} weight={600} {...TONE_TEXT.ink} />
-        <span class="grow" />
-        <PT text={`วันนี้ ${Math.min(prayersToday(s), DAILY_PRAYER_GOAL)}/${DAILY_PRAYER_GOAL}`} size={12} {...TONE_TEXT.ink} />
-        {s.prayer.streak > 1 && <span class="chip gold small">🔥 {s.prayer.streak} วัน</span>}
-      </div>
-      <Tabs
-        tabs={CHAPTERS.map((c) => ({ id: c.id, label: chapterUnlocked(c.id) || c.id === ch ? c.short : '', icon: chapterUnlocked(c.id) ? undefined : 'lock' }))}
-        value={ch}
-        onChange={pickChapter}
-      />
-      <div class="ptab-body ch-map-body">
-        <div class="row pray-chapter">
-          <PT text={chapter.name} size={13} weight={600} {...TONE_TEXT.ink} />
+    <div class="bj-screen" role="dialog" aria-label="สวดมนต์ เส้นทางพุทธประวัติ" style={vars}>
+      <header class="bj-head">
+        <div class="bj-head-row">
+          <Icon name="pray" size={20} />
+          <div class="col bj-head-title">
+            <PT text="เส้นทางพุทธประวัติ" size={10} weight={600} color="#ffe58a" shadow="#3b1a0e" />
+            <span class="bj-head-sub">สวดมนต์ผ่านด่าน เดินตามรอยพระพุทธเจ้า</span>
+          </div>
           <span class="grow" />
-          <Stars n={1} max={1} size={14} />
-          <span class="num small">
-            {cs.got}/{cs.max}
-          </span>
+          <CloseX onClick={close} />
         </div>
-        {!open ? (
-          <div class="pray-locked center">
-            <Icon name="lock" size={40} />
-            <PT text={`สะสมให้ครบ ${chapter.stars} ดาวเพื่อเปิด`} size={13} {...TONE_TEXT.ink} />
-            <div class="small muted">ตอนนี้มี {stars} ดาว · เก็บ 3 ดาวในด่านก่อน ๆ เพื่อได้ดาวเพิ่ม</div>
-            <span class="bar" style={{ width: '80%' }}>
-              <span style={{ width: `${Math.min(100, (stars / Math.max(1, chapter.stars)) * 100)}%` }} />
+        <div class="bj-temples" role="tablist" aria-label="วัด">
+          {CHAPTERS.map((c) => {
+            const open = chapterUnlocked(c.id)
+            const first = JOURNEY_STAGES.find((id) => STAGE_BY_ID[id].chapter === c.id)!
+            return (
+              <button
+                key={c.id}
+                role="tab"
+                aria-selected={viewTemple === c.id}
+                class={`bj-temple ${viewTemple === c.id ? 'on' : ''} ${open ? '' : 'locked'}`}
+                onClick={() => (sfx.tap(), api.current?.scrollToStage(first))}
+                aria-label={open ? c.name : `${c.name} ล็อก ต้องมี ${c.stars} ดาว`}
+              >
+                {!open && <Icon name="lock" size={12} />}
+                <span>{open ? c.short : `${c.stars}★`}</span>
+              </button>
+            )
+          })}
+          <span class="bj-pill" title="ดาวทั้งหมด">
+            <Icon name="star" size={14} />
+            <b class="num">{stars}</b>
+          </span>
+          <span class="bj-pill" title="สวดมนต์วันนี้">
+            <Icon name="pray" size={14} />
+            <b class="num">
+              {Math.min(prayersToday(s), DAILY_PRAYER_GOAL)}/{DAILY_PRAYER_GOAL}
+            </b>
+          </span>
+          {s.prayer.streak > 1 && <span class="bj-pill streak">🔥{s.prayer.streak}</span>}
+        </div>
+      </header>
+      <div class="bj-body">
+        <JourneyMap sel={sel} onSel={setSel} onStory={(ch, i) => setStory({ ch, i })} onView={setViewCh} api={api} />
+        <button class={`bj-chapter ${viewChapter.night ? 'night' : ''}`} onClick={() => (sfx.open(), setStory({ ch: viewCh, i: 0 }))} aria-label={`บทที่ ${viewChapter.n} ${viewChapter.title} อ่านเรื่อง`}>
+          <span class="bj-chapter-n">{thaiNum(viewChapter.n)}</span>
+          <span class="col bj-chapter-t">
+            <PT text={viewChapter.title} size={9} weight={600} color="#fff1c4" shadow="#3b1a0e" />
+          </span>
+          <Icon name="scroll" size={16} />
+        </button>
+      </div>
+      <section class={`bj-card bj-frame ${sel.big ? 'boss' : ''}`}>
+        <div class="row bj-card-top">
+          <div class="bj-thumb">
+            <MeaningArt art={chant.art} scale={1} />
+          </div>
+          <div class="grow col bj-card-info">
+            <span class="bj-card-kicker">
+              {selCh && `${thaiNum(selCh.n)} ${selCh.place} · `}ด่าน {sel.n}
+              {sel.big && <span class="bj-boss-tag">บอส</span>}
+            </span>
+            <b class="bj-card-name">{chant.name}</b>
+            <span class="small muted ch-ellipsis">
+              {chant.short}… · {words} คำ
             </span>
           </div>
-        ) : (
-          <StageMap list={stagesOf(ch)} sel={sel} onSel={setSel} />
-        )}
-      </div>
-      {open && (
-        <div class={`panel stage-card ch-stage-card ${sel.big ? 'boss' : ''}`}>
-          <div class="row" style={{ alignItems: 'flex-start', gap: '8px' }}>
-            <div class="ch-thumb">
-              <MeaningArt art={chant.art} scale={1} />
-            </div>
-            <div class="grow col" style={{ gap: '2px', minWidth: 0 }}>
-              <b class="ch-stage-name">
-                {sel.big && <span class="ch-boss-tag">บอส</span>}
-                {chant.name}
-              </b>
-              <span class="small muted ch-ellipsis">
-                {chant.short}… · {words} คำ
-              </span>
-              <StageChips st={sel} />
-            </div>
-          </div>
-          <div class="row wrap stage-rewards">
-            <Stars n={got} size={16} />
-            {best > 0 && <span class="small muted">สูงสุด {best}</span>}
-            <span class="grow" />
-            <Merit n={`+${sel.merit}`} size={16} />
-            <Coin n={`+${sel.coins}`} size={16} />
-            {Object.entries(sel.mats).map(([k, v]) => (
-              <MatChip key={k} id={k as MaterialId} n={got ? 1 : (v ?? 0)} />
-            ))}
-          </div>
-          <PBtn tone={sel.big ? 'gold' : 'green'} size="big" block icon="pray" disabled={!selOpen} onClick={() => start(sel)}>
-            {selOpen ? (got ? (got >= 3 ? 'สวดอีกครั้ง' : 'เก็บดาวให้ครบ') : 'เริ่มสวดมนต์') : `ผ่านด่าน ${prev?.n ?? 1} ก่อนนะ (${stageStarScores(prev ?? sel)[0]} คะแนน)`}
+          <Stars n={got} size={14} class="bj-card-stars" />
+        </div>
+        <StageChips st={sel} />
+        <div class="row wrap bj-card-rewards">
+          {best > 0 && <span class="small muted">สูงสุด {best}</span>}
+          <span class="grow" />
+          <Merit n={`+${sel.merit}`} size={15} />
+          <Coin n={`+${sel.coins}`} size={15} />
+          {Object.entries(sel.mats).map(([k, v]) => (
+            <MatChip key={k} id={k as MaterialId} n={got ? 1 : (v ?? 0)} />
+          ))}
+        </div>
+        <div class="row bj-card-actions">
+          <PBtn tone={sel.big ? 'gold' : 'green'} block icon="pray" disabled={!selOpen} onClick={() => start(sel)}>
+            {selOpen
+              ? got
+                ? got >= 3
+                  ? 'สวดอีกครั้ง'
+                  : 'เก็บดาวให้ครบ'
+                : 'เริ่มสวดมนต์'
+              : !templeOpen
+                ? `สะสมให้ครบ ${temple.stars} ดาว (มี ${stars})`
+                : `ผ่านด่าน ${prev?.n ?? 1} ก่อนนะ (${stageStarScores(prev ?? sel)[0]} คะแนน)`}
           </PBtn>
-          <button class="ch-link small" onClick={() => (sfx.tap(), (chantBookFocus.value = chant.parts ? chant.parts[0] : chant.id), openPanel('chants'))}>
-            <Icon name="book" size={14} /> อ่านบท · ฟังเสียงนำ · นำเข้าเสียงสวด
+          <button class="bj-book" onClick={() => (sfx.tap(), (chantBookFocus.value = chant.parts ? chant.parts[0] : chant.id), openPanel('chants'))} aria-label="อ่านบท ฟังเสียงนำ">
+            <Icon name="book" size={22} />
           </button>
         </div>
-      )}
-    </Window>
+      </section>
+      {story && <StoryCard ch={story.ch} i={story.i} art={api.current?.art ?? null} onClose={() => (sfx.close(), setStory(null))} onGo={(ch, i) => setStory({ ch, i })} />}
+    </div>
   )
 }
