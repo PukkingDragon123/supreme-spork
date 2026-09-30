@@ -10,6 +10,9 @@ import { Particles } from '../engine/particles'
 import { rand } from '../engine/rng'
 import type { AvatarLook } from '../art/avatar'
 import { hdMonkSprite, hdMonkBowl } from '../art/minigames/monk'
+import { Critters, Crowd, drawFlowerPot, drawStall, drawTree } from '../art/minigames/scenery'
+import { AUNTIE_RICE, WORSHIPPERS } from '../art/minigames/hosts'
+import type { TExpr } from '../art/poses/temple'
 import { drawPlayer, godRays, handAt, impactBurst, Juice, lightPool, motes, softGlow, vignette, type Placed } from '../art/minigames/temple'
 import { starsFrom } from '../art/minigames/rules'
 import { tsfx } from '../art/minigames/sfx'
@@ -70,6 +73,10 @@ class AlmsScene implements Scene {
   scoop: number | null = null
   blessing = false
   blessT = 0
+  critters = new Critters()
+  crowd = new Crowd()
+  face: TExpr | undefined
+  faceT = 0
   private bg: HTMLCanvasElement | null = null
   onReady?: (i: number) => void
   onAllServed?: () => void
@@ -84,7 +91,17 @@ class AlmsScene implements Scene {
     this.w = w
     this.h = h
     this.bg = null
-    if (!this.monks.length) this.spawn()
+    if (!this.monks.length) {
+      this.spawn()
+      const gy = this.groundY
+      if (!this.boat) {
+        this.critters.cat(Math.round(w * 0.86), Math.round(h * 0.4), '#f5a55a', 'loaf').bird(Math.round(w * 0.55), gy + 16, 'pigeon').bird(Math.round(w * 0.8), gy + 20, 'pigeon')
+        this.crowd.add({ look: WORSHIPPERS[4], x: Math.round(w * 0.64), y: gy - 11, idle: 'stand', reactPose: 'happy' })
+      } else {
+        this.critters.bird(Math.round(w * 0.15), gy - 3, 'sparrow')
+        this.crowd.add({ look: WORSHIPPERS[2], x: 12, y: gy - 1, idle: 'stand', reactPose: 'happy' })
+      }
+    }
     else this.monks.filter((m) => m.state === 'walk' || m.state === 'wait').forEach((m, i) => (m.target = this.standX + i * 22))
   }
 
@@ -149,6 +166,8 @@ class AlmsScene implements Scene {
         for (const x of [6, px - 8]) g.rect(x, gy + 8, 3, h - gy, '#6e4a35')
       } else {
         treeLine(g, Math.round(h * 0.3), w, P.leafD, P.leaf)
+        drawTree(g, Math.round(w * 0.12), Math.round(h * 0.42), 1.1, P.leaf, 2)
+        drawTree(g, Math.round(w * 0.95), Math.round(h * 0.41), 0.9, '#5ea653', 5)
         // gate roof peeking over the wall
         const gx = Math.round(w * 0.7)
         const wy = Math.round(h * 0.4)
@@ -186,13 +205,12 @@ class AlmsScene implements Scene {
         g.rect(px - 26, gy - 4, 46, 6, '#e0bb8a')
         for (let x = px - 25; x < px + 20; x += 3) g.vline(x, gy - 3, gy + 1, '#c9a06a')
         g.hline(px - 25, px + 19, gy - 4, P.red)
-        const tx = Math.max(12, px - 36)
-        g.rect(tx - 8, gy - 16, 18, 3, '#9a6a45')
-        g.rect(tx - 7, gy - 13, 2, 11, '#6e4a35')
-        g.rect(tx + 7, gy - 13, 2, 11, '#6e4a35')
-        g.rect(tx - 5, gy - 25, 12, 9, P.stone)
-        g.rect(tx - 5, gy - 25, 12, 2, P.stoneL)
-        g.ellipse(tx + 1, gy - 26, 5, 1.6, '#fffaf0')
+        // flower pots along the wall and the shade of an old tree
+        for (const [fx, c] of [
+          [w * 0.46, P.pink],
+          [w * 0.94, P.yellow],
+        ] as const)
+          drawFlowerPot(g, Math.round(fx), gy - 10, c)
       }
     })
     return this.bg
@@ -267,6 +285,9 @@ class AlmsScene implements Scene {
           for (let i = 0; i < 5; i++) this.particles.add({ kind: 'dot', x: bx + rand(-4, 4), y: by - 2, vx: rand(-20, 20), vy: rand(-40, -15), g: 140, max: 0.5, color: '#fffaf0' })
         }
         this.juice.shake(0.18)
+        this.crowd.cheer('happy', 1)
+        this.critters.startle(this.standX, this.groundY, 60)
+        this.feel('happy', 0.9)
         this.juice.hitstop(0.05)
         sfx.plop()
         gv.onLand()
@@ -277,7 +298,17 @@ class AlmsScene implements Scene {
       motes(this.particles, dt, this.w, this.groundY - 30, 8, '#fff3a6')
       if (Math.random() < dt * 3) this.particles.sparkles(rand(this.w * 0.35, this.w), rand(this.h * 0.3, this.groundY - 40), 1, '#fff3a6')
     } else motes(this.particles, dt, this.w, this.groundY, 1.5, '#fff8d8')
+    this.critters.update(dt, this.w)
+    this.crowd.update(dt)
+    this.faceT = Math.max(0, this.faceT - dt)
+    if (this.faceT <= 0) this.face = undefined
     this.particles.update(dt)
+  }
+
+  /** Show a face on the player for a moment. */
+  feel(e: TExpr, sec = 0.8) {
+    this.face = e
+    this.faceT = sec
   }
 
   private playerPose(): { pose: Parameters<typeof drawPlayer>[2]; hold: 'chest' | 'reach' | 'scoop' | null } {
@@ -296,6 +327,9 @@ class AlmsScene implements Scene {
     g.draw(this.background(), 0, 0)
     if (this.morning) godRays(g, 26, Math.round(h * 0.45) - 10, h * 0.7, this.t, '#ffe7b0', 0.07, 8)
     lightPool(g, this.playerX + 20, gy, 60, '#ffe7a0', this.morning ? 0.9 : 0.5)
+    this.critters.render(g)
+    if (!this.boat) drawStall(g, 14, gy - 7, 'rice', AUNTIE_RICE, this.t, !this.blessing)
+    this.crowd.render(g)
     // monks (behind the player)
     if (this.blessing && this.boat) this.drawBoat(g, w * 0.44 + 6, this.monkY + Math.round(Math.sin(this.t * 2)), w + 6)
     for (const m of this.monks) {
@@ -323,7 +357,8 @@ class AlmsScene implements Scene {
     // the player
     const { pose, hold } = this.playerPose()
     const bob = pose === 'stand' ? 0 : pose === 'alms_hold' && !this.giving ? Math.round(Math.sin(this.t * 3) * 0.6) : 0
-    const pl = drawPlayer(g, this.look, pose, 'front', this.playerX, gy, { scale: S, t: this.t, barefoot: true, bob })
+    const expr = this.face ?? (pose === 'alms_scoop' ? 'think' : undefined)
+    const pl = drawPlayer(g, this.look, pose, 'front', this.playerX, gy, { scale: S, t: this.t, barefoot: true, bob, expr })
     this.drawHeld(g, pl, hold)
     this.particles.render(g)
     if (this.blessing) godRays(g, w * 0.7, gy - 60, h * 0.6, this.t, '#fff3c4', 0.06 * Math.min(1, this.blessT), 10)
@@ -420,6 +455,7 @@ export function AlmsActivity({ req }: { req: ActivityRequest }) {
     if (!sc) return
     setPhase('bless')
     sc.startBlessing()
+    sc.crowd.cheer('wai', 99)
     sfx.hum(0)
     ;[1, 2, 3, 4].forEach((i) => setTimeout(() => sfx.hum(i), i * 900))
     setTimeout(() => sfx.bell(1), 800)
@@ -511,6 +547,7 @@ export function AlmsActivity({ req }: { req: ActivityRequest }) {
         const sc = scene.current
         if (perfect && sc) {
           perfectRef.current++
+          sc.feel('open', 0.7)
           praise(stage.current, sc.playerX + 20, sc.groundY - 66, 'ตักพอดีเป๊ะ!', 'gold')
           tsfx.praise()
         } else if (s.fill > SCOOP_HI && sc) praise(stage.current, sc.playerX + 20, sc.groundY - 66, 'ล้นทัพพี!', 'pink')

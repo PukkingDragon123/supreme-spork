@@ -13,6 +13,8 @@ import { drawUbosot } from '../art/buildings'
 import { iconSprite } from '../art/icons'
 import { P } from '../art/palette'
 import { drawPlayer, godRays, handAt, incenseSmoke, Juice, lightPool, motes, softGlow, vignette, type Placed, type TPose } from '../art/minigames/temple'
+import { Critters, Crowd, drawFlowerPot } from '../art/minigames/scenery'
+import { AUNTIE_FLOWER, WORSHIPPERS } from '../art/minigames/hosts'
 import { tsfx } from '../art/minigames/sfx'
 import { game } from '../game/state'
 import { addMerit, count, recordWish, track, useItem } from '../game/actions'
@@ -44,6 +46,9 @@ class WishScene implements Scene {
   particles = new Particles()
   juice = new Juice()
   private bg: HTMLCanvasElement | null = null
+  critters = new Critters()
+  crowd = new Crowd()
+  private lifeInit = false
   constructor(
     public place: 'hall' | 'incense',
     public look: AvatarLook,
@@ -52,6 +57,17 @@ class WishScene implements Scene {
     this.w = w
     this.h = h
     this.bg = null
+    if (!this.lifeInit) {
+      this.lifeInit = true
+      const fy = this.footY
+      this.crowd.add({ look: AUNTIE_FLOWER, x: 12, y: fy - 22, idle: 'stand', reactPose: 'wai' })
+      if (this.place === 'hall') this.crowd.add({ look: WORSHIPPERS[0], x: Math.round(w * 0.82), y: fy - 24, view: 'back', idle: 'kneelWai', reactPose: 'kneelWai' }).add({ look: WORSHIPPERS[3], x: Math.round(w * 0.64), y: fy - 30, view: 'back', idle: 'kneel', reactPose: 'kneelWai' })
+      else {
+        this.crowd.add({ look: WORSHIPPERS[2], x: Math.round(w * 0.84), y: fy - 26, view: 'back', idle: 'wai', reactPose: 'wai' })
+        this.critters.bird(Math.round(w * 0.7), fy + 12, 'pigeon').bird(Math.round(w * 0.2), fy + 16, 'pigeon').butterfly(Math.round(w * 0.3), Math.round(h * 0.45), '#fff3a6')
+      }
+      this.critters.cat(w - 12, fy + 8, '#fbf3e4', 'loaf')
+    }
   }
   get footY() {
     return Math.round(this.h * 0.74)
@@ -135,6 +151,8 @@ class WishScene implements Scene {
       }
       if (before < 0.9 && this.plantT >= 0.9) {
         this.step = 'done'
+        this.crowd.cheer('wai', 3)
+        this.critters.startle(this.urnX, this.footY, 80)
         this.orb = { x: this.urnX, y: this.sandY - 20, t: 0 }
       }
     }
@@ -146,6 +164,8 @@ class WishScene implements Scene {
       if (this.orb.y < -20) this.orb = null
     }
     motes(this.particles, dt, this.w, this.footY, this.place === 'hall' ? 3 : 1.5, '#fff3a6')
+    this.critters.update(dt, this.w)
+    this.crowd.update(dt)
     this.particles.update(dt)
   }
 
@@ -239,6 +259,12 @@ class WishScene implements Scene {
     }
     // The player.
     const { pose, flip } = this.pose()
+    if (this.place !== 'hall') {
+      drawFlowerPot(g, 22, this.footY - 20, '#ff9fc0')
+      drawFlowerPot(g, 30, this.footY - 18, '#ffd23f')
+    }
+    this.critters.render(g)
+    this.crowd.render(g)
     const pl = drawPlayer(g, this.look, pose, 'back', this.playerX + (flip ? 6 : 0), this.footY, { flip, barefoot: this.place === 'hall', bob: this.lightT > 0.2 ? -1 : 0 })
     this.placed = pl
     // incense in hand / in the urn

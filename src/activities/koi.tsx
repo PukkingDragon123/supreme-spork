@@ -12,6 +12,8 @@ import { P } from '../art/palette'
 import { lotusFlower } from '../art/props'
 import type { AvatarLook } from '../art/avatar'
 import { drawFoodBag, drawPlayer, handAt, Juice, motes, vignette, type Placed } from '../art/minigames/temple'
+import { Critters, Crowd, drawStall } from '../art/minigames/scenery'
+import { TEMPLE_KID, UNCLE_KOI } from '../art/minigames/hosts'
 import { comboPraise, starsFrom } from '../art/minigames/rules'
 import { tsfx } from '../art/minigames/sfx'
 import { game, mutate } from '../game/state'
@@ -88,6 +90,9 @@ class PondScene implements Scene {
   onThrow?: () => boolean
   onEat?: (f: Fish) => void
   private bg: HTMLCanvasElement | null = null
+  critters = new Critters()
+  crowd = new Crowd()
+  private lifeInit = false
   private placed: Placed | null = null
   constructor(
     public river: boolean,
@@ -110,6 +115,12 @@ class PondScene implements Scene {
     this.h = h
     this.bg = null
     if (!this.fish.length) this.spawn()
+    if (!this.lifeInit) {
+      this.lifeInit = true
+      const dy = this.deckY
+      this.critters.bird(5, dy - 16).bird(w - 5, dy - 16).bird(Math.round(w * 0.42), dy - 6).cat(Math.round(w * 0.7), dy + 26, '#9a8a80', 'sleep').butterfly(Math.round(w * 0.3), Math.round(h * 0.2), '#ff9fc0')
+      this.crowd.add({ look: TEMPLE_KID, x: Math.round(w * 0.86), y: dy + 18, view: 'back', idle: 'stand', reactPose: 'cheer' })
+    }
   }
 
   private spawn() {
@@ -193,7 +204,7 @@ class PondScene implements Scene {
         g.rect(x, dy - 16, 4, 2, '#b8844a')
       }
       // A little honesty box of fish food and a lantern post on the deck.
-      const bx = Math.round(w * 0.16)
+      const bx = -100
       g.ellipse(bx, dy + 20, 10, 2.5, 'rgba(40,20,10,0.3)')
       g.rect(bx - 8, dy + 6, 16, 14, '#8e2a3c')
       g.rect(bx - 8, dy + 6, 16, 2, P.gold)
@@ -219,6 +230,7 @@ class PondScene implements Scene {
     this.tosses.push({ x0: hx, y0: hy, x1: e.x, y1: e.y, t: 0 })
     tsfx.swish(1.2)
     haptic(6)
+    this.critters.startle(this.playerX, this.deckY, 60)
   }
 
   /** Where the throwing hand is (for the start of the arc). */
@@ -301,6 +313,7 @@ class PondScene implements Scene {
           this.juice.shake(0.25)
           this.juice.flash('#fff3a6', 0.18)
           this.particles.confetti(f.x, f.y, 24, ['#ffd54f', '#fff3a6', '#ffffff'])
+          this.crowd.cheer('cheer', 1.6)
         }
         this.onEat?.(f)
       }
@@ -318,6 +331,8 @@ class PondScene implements Scene {
     }
     if (Math.random() < dt * 2) this.particles.add({ kind: 'sparkle', x: rand(0, w), y: rand(12, h - 12), max: 0.4, color: '#e6fbff' })
     motes(this.particles, dt, w, h, 0.6, '#e6fbff')
+    this.critters.update(dt, this.w)
+    this.crowd.update(dt)
     this.particles.update(dt)
   }
 
@@ -435,6 +450,9 @@ class PondScene implements Scene {
     }
     // The player on the deck, the bag of food in one hand.
     const pose = this.throwT > 0 ? 'toss_throw' : 'toss_ready'
+    drawStall(g, Math.round(this.w * 0.15), this.deckY + 24, 'koi', UNCLE_KOI, this.t, true)
+    this.critters.render(g)
+    this.crowd.render(g)
     const pl = drawPlayer(g, this.look, pose, 'back', this.playerX, this.footY, { flip: this.flip, bob: this.throwT > 0.2 ? -1 : 0 })
     this.placed = pl
     const [bx, by] = handAt(pl, 1)

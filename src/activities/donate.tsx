@@ -10,6 +10,8 @@ import { P } from '../art/palette'
 import type { AvatarLook } from '../art/avatar'
 import { drawHallInterior, drawBuddha, drawArch, drawAltar } from '../art/interior'
 import { drawPlayer, drawSpinCoin, handAt, Juice, lightPool, motes, softGlow, vignette } from '../art/minigames/temple'
+import { Critters, Crowd } from '../art/minigames/scenery'
+import { STEWARD } from '../art/minigames/hosts'
 import { tsfx } from '../art/minigames/sfx'
 import { game } from '../game/state'
 import { donateBox } from '../game/actions'
@@ -43,11 +45,19 @@ class BoxScene implements Scene {
   cheerT = 0
   onCoin?: () => void
   private bg: HTMLCanvasElement | null = null
+  critters = new Critters()
+  crowd = new Crowd()
+  private lifeInit = false
   constructor(public look: AvatarLook) {}
   resize(w: number, h: number) {
     this.w = w
     this.h = h
     this.bg = null
+    if (!this.lifeInit) {
+      this.lifeInit = true
+      this.crowd.add({ look: STEWARD, x: Math.min(w - 12, this.boxX + 34), y: this.footY - 6, idle: 'stand', reactPose: 'wai' })
+      this.critters.cat(Math.round(w * 0.1), this.footY + 6, '#fbf3e4', 'sleep')
+    }
   }
   get footY() {
     return Math.round(this.h * 0.73)
@@ -111,10 +121,13 @@ class BoxScene implements Scene {
         this.particles.sparkles(this.boxX, this.slotY, 4)
         this.particles.add({ kind: 'coin', x: this.boxX + rand(-4, 4), y: this.slotY - 2, vy: -20, g: 80, max: 0.3 })
         haptic(6)
+        this.crowd.cheer('wai', 0.8)
         this.onCoin?.()
       }
     }
     motes(this.particles, dt, this.w, this.footY, 2, '#ffe7a0')
+    this.critters.update(dt, this.w)
+    this.crowd.update(dt)
     this.particles.update(dt)
   }
   render(g: Surface) {
@@ -166,6 +179,8 @@ class BoxScene implements Scene {
     }
     // The player dropping coins.
     const pose = this.cheerT > 0 ? 'cheer' : this.dropT > 0.1 ? 'coin_drop' : 'coin_hold'
+    this.critters.render(g)
+    this.crowd.render(g)
     const pl = drawPlayer(g, this.look, pose, 'back', this.playerX, fy, { scale: S })
     const [hx, hy] = handAt(pl, -1)
     if (pose === 'coin_hold' && this.queue > 0) drawSpinCoin(g, hx + 2, hy - 5, this.t * 6, 3)

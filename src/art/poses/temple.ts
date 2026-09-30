@@ -377,8 +377,20 @@ let registered = false
 export function registerTemplePoses() {
   if (registered) return
   registered = true
-  for (const name of Object.keys(SPECS) as TPose[]) registerDollPose(`act_t_${name}`, (view) => def(name, view))
+  for (const name of Object.keys(SPECS) as TPose[]) {
+    registerDollPose(`act_t_${name}`, (view) => def(name, view))
+    // Face variants (happy / focused / surprised...) for the same body pose.
+    for (const e of EXPRS)
+      registerDollPose(`act_t_${name}__${e}`, (view) => {
+        const d = def(name, view)
+        return d ? { ...d, expr: e } : null
+      })
+  }
 }
+
+/** Faces a temple pose can wear: 'think' reads as focused, 'open' as surprised. */
+export const EXPRS = ['smile', 'happy', 'think', 'open', 'serene'] as const
+export type TExpr = (typeof EXPRS)[number]
 registerTemplePoses()
 
 /** Every temple pose name. */

@@ -10,6 +10,7 @@ import { rand } from '../engine/rng'
 import type { AvatarLook } from '../art/avatar'
 import { P } from '../art/palette'
 import { drawLadle, drawPlayer, godRays, handAt, Juice, lightPool, motes, softGlow, vignette } from '../art/minigames/temple'
+import { Critters, Crowd } from '../art/minigames/scenery'
 import { fillStars } from '../art/minigames/rules'
 import { tsfx } from '../art/minigames/sfx'
 import { game } from '../game/state'
@@ -36,6 +37,9 @@ class HolyScene implements Scene {
   particles = new Particles()
   juice = new Juice()
   private bg: HTMLCanvasElement | null = null
+  critters = new Critters()
+  crowd = new Crowd()
+  private lifeInit = false
   private blessBg: HTMLCanvasElement | null = null
   constructor(public look: AvatarLook) {}
   resize(w: number, h: number) {
@@ -43,6 +47,11 @@ class HolyScene implements Scene {
     this.h = h
     this.bg = null
     this.blessBg = null
+    if (!this.lifeInit) {
+      this.lifeInit = true
+      this.crowd.add({ monk: 'monk', x: 22, y: this.footY - 14 })
+      this.critters.cat(w - 18, this.footY + 8, '#f5a55a', 'sleep').bird(Math.round(w * 0.5), 20, 'sparrow')
+    }
   }
   get footY() {
     return Math.round(this.h * 0.77)
@@ -129,6 +138,8 @@ class HolyScene implements Scene {
       this.particles.add({ kind: 'ripple', x: this.jarX + rand(-16, 16), y: this.jarY + rand(-2, 2), max: 1, size: 5, color: '#d4f5fa' })
     }
     motes(this.particles, dt, this.w, this.footY, 2, '#fff3a6')
+    this.critters.update(dt, this.w)
+    this.crowd.update(dt)
     this.particles.update(dt)
   }
   spill() {
@@ -185,6 +196,8 @@ class HolyScene implements Scene {
     if (this.dip > 0.5) drawRing(g, this.jarX - 8, this.jarY, 10 + Math.sin(this.t * 6) * 2, 3, '#d4f5fa')
     // The player reaching into the jar with the ladle.
     const pose = this.dip > 0.45 ? 'ladle_dip' : 'ladle_up'
+    this.critters.render(g)
+    this.crowd.render(g)
     const pl = drawPlayer(g, this.look, pose, 'back', this.playerX, this.footY, { scale: 2, bob: this.dip > 0.45 ? 1 : 0 })
     const [hx, hy] = handAt(pl, -1)
     const [bx, by] = this.ladleBowl()

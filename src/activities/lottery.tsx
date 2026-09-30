@@ -11,6 +11,8 @@ import { rand } from '../engine/rng'
 import { P } from '../art/palette'
 import type { AvatarLook } from '../art/avatar'
 import { drawPlayer, handAt, impactBurst, Juice, motes, softGlow, vignette, type TPose } from '../art/minigames/temple'
+import { Critters, Crowd } from '../art/minigames/scenery'
+import { AUNTIE_POWDER } from '../art/minigames/hosts'
 import { tsfx } from '../art/minigames/sfx'
 import { game, mutate } from '../game/state'
 import { addMerit, adsLeft, lotteryLeft, rewardAd, spendCoins, useLottery } from '../game/actions'
@@ -58,6 +60,9 @@ class TreeScene implements Scene {
   sprinkleT = 0
   revealT = 0
   private bark: HTMLCanvasElement | null = null
+  critters = new Critters()
+  crowd = new Crowd()
+  private lifeInit = false
   private cell = 2
   private mask: Uint8Array = new Uint8Array(0)
   private cols = 0
@@ -71,6 +76,11 @@ class TreeScene implements Scene {
     this.h = h
     this.bark = null
     this.setupMask()
+    if (!this.lifeInit) {
+      this.lifeInit = true
+      this.crowd.add({ look: AUNTIE_POWDER, x: w - 16, y: this.playerFoot - 44, idle: 'stand', reactPose: 'cheer' })
+      this.critters.butterfly(Math.round(w * 0.7), Math.round(h * 0.18), '#fff3a6')
+    }
   }
   get zone() {
     const zw = Math.min(this.w - 20, 116)
@@ -149,6 +159,28 @@ class TreeScene implements Scene {
     }
     return row(this.three, z.y + 6) || row(this.two, z.y + 6 + 7 * S + 8)
   }
+  /** A little tokay gecko (ตุ๊กแก) wandering over the bark. */
+  private drawGecko(g: Surface) {
+    const t = this.t * 0.25
+    const x = Math.round(this.w * 0.5 + Math.sin(t) * this.w * 0.38)
+    const y = Math.round(this.h * 0.64 + Math.sin(t * 1.7) * 10)
+    const dir = Math.cos(t) > 0 ? 1 : -1
+    const step = Math.floor(this.t * 6) % 2
+    g.rect(x - 4, y - 1, 8, 3, '#7aa0c8')
+    g.rect(x - 3, y - 1, 6, 1, '#9fc0e0')
+    for (const k of [-2, 0, 2]) g.px(x + k, y, '#e8704a')
+    g.rect(x + dir * 4, y - 1, 3, 3, '#7aa0c8')
+    g.px(x + dir * 5, y - 1, '#1b1026')
+    g.line(x - dir * 4, y, x - dir * 8, y + 2 - step, '#7aa0c8')
+    for (const [lx, ly] of [
+      [-2, -2],
+      [2, -2],
+      [-2, 3],
+      [2, 3],
+    ])
+      g.px(x + lx + (step ? 1 : -1) * (ly < 0 ? 1 : -1), y + ly, '#5a80a8')
+  }
+
   private barkLayer() {
     if (this.bark) return this.bark
     const { w, h } = this
@@ -236,6 +268,7 @@ class TreeScene implements Scene {
   reveal() {
     if (this.revealed) return
     this.revealed = true
+    this.crowd.cheer('cheer', 2)
     this.revealT = 0
     for (let cy = 0; cy < this.rows; cy++) for (let cx = 0; cx < this.cols; cx++) if (!this.mask[cy * this.cols + cx]) this.paintCell(cx, cy)
     this.mask.fill(1)
@@ -267,6 +300,8 @@ class TreeScene implements Scene {
       this.particles.sparkles(z.x + rand(0, z.w), z.y + rand(0, z.h), 1, '#fff3a6')
     }
     motes(this.particles, dt, this.w, this.h * 0.7, 1.5, '#fff8d8')
+    this.critters.update(dt, this.w)
+    this.crowd.update(dt)
     this.particles.update(dt)
   }
   render(g: Surface) {
@@ -298,6 +333,9 @@ class TreeScene implements Scene {
       flip = f[0] < this.playerX - 4
       pose = this.rubT > 0 ? (Math.floor(this.t * 9) % 2 ? 'rub_a' : 'rub_b') : 'rub_b'
     } else if (this.revealed && this.revealT < 2) pose = 'cheer'
+    this.drawGecko(g)
+    this.critters.render(g)
+    this.crowd.render(g)
     const pl = drawPlayer(g, this.look, pose, 'back', this.playerX, this.playerFoot, { scale: 2, flip, shadow: false })
     if (pose === 'powder') {
       // shaking a bottle of baby powder

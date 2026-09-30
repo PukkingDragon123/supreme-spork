@@ -13,6 +13,8 @@ import { iconSprite } from '../art/icons'
 import { P } from '../art/palette'
 import { drawCandle } from '../art/interior'
 import { drawPlayer, godRays, handAt, incenseSmoke, Juice, lightPool, motes, softGlow, vignette, type Placed, type TPose } from '../art/minigames/temple'
+import { Critters, Crowd } from '../art/minigames/scenery'
+import { SHRINE_KEEPER, WORSHIPPERS } from '../art/minigames/hosts'
 import { tsfx } from '../art/minigames/sfx'
 import type { Stars } from '../art/minigames/rules'
 import { game, mutate } from '../game/state'
@@ -46,6 +48,9 @@ class ShrineScene implements Scene {
   juice = new Juice()
   private placed: Placed | null = null
   private bg: HTMLCanvasElement | null = null
+  critters = new Critters()
+  crowd = new Crowd()
+  private lifeInit = false
   constructor(
     public deity: Deity,
     public look: AvatarLook,
@@ -54,6 +59,12 @@ class ShrineScene implements Scene {
     this.w = w
     this.h = h
     this.bg = null
+    if (!this.lifeInit) {
+      this.lifeInit = true
+      const fy = this.footY
+      this.crowd.add({ look: SHRINE_KEEPER, x: w - 16, y: fy - 12, idle: 'stand', reactPose: 'wai' }).add({ look: WORSHIPPERS[3], x: Math.round(w * 0.64), y: fy - 4, view: 'back', idle: 'wai', reactPose: 'wai' })
+      this.critters.cat(Math.round(w * 0.9), fy + 8, '#4a3f55', 'loaf')
+    }
   }
   get deityBase() {
     return Math.round(this.h * 0.48)
@@ -123,6 +134,7 @@ class ShrineScene implements Scene {
     this.particles.confetti(this.w / 2, this.deityBase - 40, 40, ['#fff3a6', deityAura(this.deity.id), '#ffffff'])
     this.juice.shake(0.35)
     this.juice.flash(deityAura(this.deity.id), 0.3)
+    this.crowd.cheer('wai', 3)
   }
   private slotX(i: number) {
     const cx = Math.round(this.w / 2)
@@ -155,6 +167,8 @@ class ShrineScene implements Scene {
         this.particles.add({ kind: 'sparkle', x: this.playerX + rand(-10, 10), y: this.footY - rand(10, 50), vy: -20, max: 0.8, color: deityAura(this.deity.id) })
     }
     motes(this.particles, dt, this.w, this.footY, 2, '#ffe0a0')
+    this.critters.update(dt, this.w)
+    this.crowd.update(dt)
     this.particles.update(dt)
   }
   private pose(): { pose: TPose | 'happy' | 'stand'; view: 'front' | 'back'; flip: boolean } {
@@ -223,6 +237,8 @@ class ShrineScene implements Scene {
     // The worshipper.
     const { pose, view, flip } = this.pose()
     if (this.blessT >= 0) softGlow(g, this.playerX, this.footY - 26, 22, Math.max(0, 1 - this.blessT * 0.3), aura)
+    this.critters.render(g)
+    this.crowd.render(g)
     const pl = drawPlayer(g, this.look, pose, view, this.playerX, this.footY, { flip, t: this.t, bob: this.lightT > 0.2 ? -1 : 0 })
     this.placed = pl
     // Held things.
