@@ -2,6 +2,7 @@
 
 import { signal, computed } from '@preact/signals'
 import type { AvatarLook } from '../art/avatar'
+import { normalizeBody } from '../art/body'
 import { DEFAULT_LOOK } from '../art/avatar'
 import type { AreaId } from './data/areas'
 import type { GameEvent } from './data/quests'
@@ -285,7 +286,7 @@ export function migrate(raw: unknown): GameState {
   const merged: GameState = {
     ...base,
     ...s,
-    player: { ...base.player, ...(s.player ?? {}), look: { ...base.player.look, ...(s.player?.look ?? {}) } },
+    player: { ...base.player, ...(s.player ?? {}), look: normalizeBody({ ...base.player.look, ...(s.player?.look ?? {}) }) },
     daily: { ...emptyDaily(''), ...(s.daily ?? {}) },
     login: { ...base.login, ...(s.login ?? {}) },
     settings: { ...base.settings, ...(s.settings ?? {}) },

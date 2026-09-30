@@ -3,7 +3,8 @@
 // (comma separated, default all) &z=4
 // &slot=top (filter the new-items section) &ids=a,b (inspect items large)
 import { dollSprite, dollPortrait, dollDefaultLook, FACE_STYLES, type DollPose } from '../art/doll'
-import { avatarSprite, type AvatarLook, type Pose, type View } from '../art/avatar'
+import { avatarPortrait, avatarSprite, type AvatarLook, type Pose, type View } from '../art/avatar'
+import { BODY_KEYS, BODY_OPTIONS, BUILDS, HEIGHTS } from '../art/body'
 import { OUTFITS } from '../game/data/outfits'
 import type { Sprite } from '../engine/sprite'
 import { PACK_OUTFIT_IDS, PASS_FREE_OUTFIT_IDS, PASS_PREMIUM_OUTFIT_IDS, POP_OUTFIT_IDS } from '../game/data/cosmetics'
@@ -397,6 +398,92 @@ if (want('v4')) {
         [avatarSprite(l, 'back', 'stand'), Z],
         [avatarSprite(l, 'side', 'walk2'), Z],
       ])
+    }
+  }
+}
+
+// ?s=body – body & face options (art/body.ts): every height × build on both
+// presets, each face option, then outfits across extreme bodies.
+// &part=grid,face,outfits narrows it.
+if (want('body')) {
+  const part = params.get('part')?.split(',')
+  const has = (p: string) => !part || part.includes(p)
+  const presets: [string, AvatarLook][] = [
+    ['m', M],
+    ['f', F],
+  ]
+  if (has('grid')) {
+    for (const [g, base] of presets) {
+      title(`${g}: height × build (doll · small front / side walk / back)`)
+      for (let h = 0; h < HEIGHTS.length; h++) {
+        const r = row()
+        for (let b = 0; b < BUILDS.length; b++) {
+          const l = { ...base, height: h, build: b }
+          cell(r, `${HEIGHTS[h].name} · ${BUILDS[b].name}`, [
+            [dollSprite(l, 'stand'), Z],
+            [avatarSprite(l, 'front', 'stand'), Z],
+            [avatarSprite(l, 'side', 'walk1'), Z],
+            [avatarSprite(l, 'back', 'walk2'), Z],
+          ])
+        }
+      }
+    }
+  }
+  if (has('face')) {
+    for (const [g, base] of presets) {
+      title(`${g}: face options (doll portrait · small portrait)`)
+      for (const k of BODY_KEYS) {
+        if (k === 'height' || k === 'build') continue
+        const r = row()
+        for (const o of BODY_OPTIONS[k]) {
+          const l = { ...base, [k]: o.id }
+          cell(r, `${k} ${o.id} ${o.name}`, [
+            [dollPortrait(l, 32), Z],
+            [avatarPortrait(l), Z],
+          ])
+        }
+      }
+      const r = row()
+      for (const f of FACE_STYLES)
+        cell(r, `eyes ${f.id} ${f.name}`, [
+          [dollPortrait({ ...base, face: f.id }, 32), Z],
+          [avatarPortrait({ ...base, face: f.id }), Z],
+        ])
+    }
+  }
+  if (has('outfits')) {
+    const outfits: [string, Partial<AvatarLook>][] = [
+      ['suit trex', { suit: 'suit_trex' }],
+      ['suit rescue', { suit: 'suit_rescue' }],
+      ['thai silk', { top: 'top_chitralada', bottom: 'bot_chitralada', shoes: 'shoes_sandal', head: 'head_jasmine' }],
+      ['hoodie', { top: 'top_hoodie_over', bottom: 'bot_jeans', shoes: 'shoes_sneaker_white', head: 'head_cap' }],
+      ['office', { top: 'top_office', bottom: 'bot_slacks_grey', shoes: 'shoes_school', neck: 'neck_lanyard', hand: 'hand_bubbletea' }],
+      ['skirt + wings', { top: 'top_white', bottom: 'bot_skirt', back: 'back_angel', head: 'head_chefhat' }],
+      ['muay', { top: 'top_muay', bottom: 'bot_muay', shoes: 'shoes_wrap', head: 'head_mongkol' }],
+      ['astro', { top: 'top_astro', bottom: 'bot_astro', shoes: 'shoes_astro', head: 'head_spacehelmet', back: 'back_oxygen' }],
+    ]
+    const extremes: [string, Partial<AvatarLook>][] = [
+      ['tiny slim', { height: 0, build: 0 }],
+      ['tiny chubby', { height: 0, build: 2 }],
+      ['tall sturdy', { height: 3, build: 3 }],
+      ['tall chubby', { height: 3, build: 2 }],
+    ]
+    for (const [on, o] of outfits) {
+      title(`outfit: ${on} (stand / wave / kneelWai / back · small front / back kneel / side walk)`)
+      const r = row()
+      for (const [g, base] of presets)
+        for (const [bn, b] of extremes) {
+          const l = { ...base, ...o, ...b } as AvatarLook
+          cell(r, `${g} ${bn}`, [
+            [dollSprite(l, 'stand'), Z],
+            [dollSprite(l, 'wave'), Z],
+            [dollSprite(l, 'kneelWai'), Z],
+            [dollSprite(l, 'stand', { view: 'back' }), Z],
+            [avatarSprite(l, 'front', 'stand'), Z],
+            [avatarSprite(l, 'back', 'kneel'), Z],
+            [avatarSprite(l, 'side', 'walk2'), Z],
+          ])
+        }
     }
   }
 }

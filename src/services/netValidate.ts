@@ -6,6 +6,7 @@
 
 import type { AvatarLook } from '../art/avatar'
 import { DEFAULT_LOOK } from '../art/avatar'
+import { BODY_KEYS, bodyOf, EYE_COUNT } from '../art/body'
 import { HAIR_COLORS, SKIN_TONES } from '../art/palette'
 import { OUTFIT_BY_ID, type Slot } from '../game/data/outfits'
 import { PET_BY_ID } from '../game/data/pets'
@@ -38,7 +39,7 @@ export const NET_LIMITS = {
 export type Face = NetPlayer['face']
 export const FACES: Face[] = ['up', 'down', 'left', 'right']
 
-const FACE_COUNT = 6
+const FACE_COUNT = EYE_COUNT
 
 // ---------------------------------------------------------------------------
 // Text
@@ -184,12 +185,15 @@ export function cleanLook(v: unknown): AvatarLook {
     const ok = typeof id === 'string' && Object.prototype.hasOwnProperty.call(OUTFIT_BY_ID, id) && OUTFIT_BY_ID[id].slot === slot
     ;(out as unknown as Record<string, unknown>)[key] = ok ? id : (DEFAULT_LOOK as unknown as Record<string, unknown>)[key] ?? null
   }
-  return out
+  // body & face options: out-of-range or missing values fall back to the preset default
+  return { ...out, ...bodyOf({ ...r, gender: out.gender } as Partial<AvatarLook>) }
 }
 
 /** A look as presence data: only set slots, no nulls. */
 export function encodeLook(l: AvatarLook): Record<string, string | number> {
   const out: Record<string, string | number> = { gender: l.gender, skin: l.skin, face: l.face, hairColor: l.hairColor }
+  const b = bodyOf(l)
+  for (const k of BODY_KEYS) out[k] = b[k]
   for (const [key] of LOOK_SLOTS) {
     const v = l[key]
     if (typeof v === 'string' && v) out[key] = v

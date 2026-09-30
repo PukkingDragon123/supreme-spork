@@ -13,6 +13,7 @@ import { cached, outlineCanvas, type Sprite } from '../engine/sprite'
 import { HAIR_COLORS, P, SKIN_TONES } from './palette'
 import { OUTFIT_BY_ID, SUIT_FACE_ACCS, suitGarments, type BottomArt, type Pattern, type ShoeArt, type SuitArt, type SuitKind, type TopArt } from '../game/data/outfits'
 import { lookKey, type AvatarLook } from './avatar'
+import { bodyOf, bodyWiden, DOLL_HEIGHT, planIsIdentity, reshapeIndex, type BodyLook, type ReshapePlan } from './body'
 
 export type BaseDollPose = 'stand' | 'wave' | 'wai' | 'happy' | 'think' | 'kneel' | 'kneelWai' | 'bow' | 'sit'
 /**
@@ -36,8 +37,11 @@ export const FACE_STYLES = [
   { id: 1, name: 'ตายิ้มหยี' },
   { id: 2, name: 'ตาปรือชิล ๆ' },
   { id: 3, name: 'ตาคมเท่' },
-  { id: 4, name: 'ตาแมวขนตางอน' },
+  { id: 4, name: 'ตาแมวเฉี่ยว' },
   { id: 5, name: 'ตาโตใสแป๋ว' },
+  { id: 6, name: 'ตาตี่ยิ้มง่าย' },
+  { id: 7, name: 'ตาจุดมินิมอล' },
+  { id: 8, name: 'ตาเข้มมุ่งมั่น' },
 ] as const
 
 export const DOLL_POSES: DollPose[] = ['stand', 'wave', 'wai', 'happy', 'think', 'kneel', 'kneelWai', 'bow', 'sit']
@@ -50,6 +54,8 @@ const WHITE = '#ffffff'
 const EYE_K = '#2a1a2c'
 const EYE_P = '#4a2a48'
 const EYE_I = '#b8657f'
+/** Boys' iris glint: warm brown rather than pink. */
+const EYE_I_M = '#9a6a5c'
 const MOUTH = '#a8435a'
 const TONGUE = '#ff8f9c'
 
@@ -96,11 +102,16 @@ class Buf {
   tag(x: number, y: number) {
     return inb(x, y) ? this.t[y * IW + x] : 0
   }
+  /** Body reshape applied when rasterising (height / build, art/body.ts). */
+  plan: ReshapePlan | null = null
   canvas(): HTMLCanvasElement {
-    const cv = createCanvas(IW, IH)
+    const p = this.plan
+    const idx = p && !planIsIdentity(p, 0) ? reshapeIndex(p) : null
+    const H = idx ? p!.outH : IH
+    const cv = createCanvas(IW, H)
     const ctx = cv.getContext('2d')!
-    for (let i = 0; i < IW * IH; i++) {
-      const c = this.c[i]
+    for (let i = 0; i < IW * H; i++) {
+      const c = idx ? (idx[i] >= 0 ? this.c[idx[i]] : null) : this.c[i]
       if (!c) continue
       ctx.fillStyle = c
       ctx.fillRect(i % IW, Math.floor(i / IW), 1, 1)
@@ -314,6 +325,11 @@ interface Res {
   bare: boolean
   /** Worn full-body suit, if any. */
   suit: SuitArt | null
+  /** Body & face options (art/body.ts). */
+  body: BodyLook
+  /** Torso widening per side and the row it starts at (arms above it are pre-shifted). */
+  bw: number
+  bwY: number
 }
 
 function resolve(look: AvatarLook, bare: boolean): Res {
@@ -350,6 +366,9 @@ function resolve(look: AvatarLook, bare: boolean): Res {
     // onesie booties stay on when kneeling at the temple
     bare: bare && !g?.shoes,
     suit,
+    body: bodyOf(look),
+    bw: 0,
+    bwY: 24,
   }
 }
 
@@ -359,10 +378,14 @@ const DEFAULT_SHOE: ShoeArt = { kind: 'shoe', main: '#8a5a3c', shade: '#6e4a35',
 // Head & face. Stand coordinates: skull rows 6..23, columns 6..25.
 
 const HEAD_TOP = 6
-const FACE_SPANS: Record<'m' | 'f', [number, number][]> = {
-  f: [[11, 20], [9, 22], [8, 23], [7, 24], [7, 24], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [7, 24], [8, 23], [9, 22], [10, 21], [12, 19]],
-  m: [[11, 20], [9, 22], [8, 23], [7, 24], [7, 24], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [7, 24], [8, 23], [9, 22], [11, 20]],
-}
+/** Skull spans (rows 6..23) by FACE_SHAPES index: round, square, V, chubby cheeks. */
+const FACE_SPANS: [number, number][][] = [
+  [[11, 20], [9, 22], [8, 23], [7, 24], [7, 24], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [7, 24], [8, 23], [9, 22], [10, 21], [12, 19]],
+  [[11, 20], [9, 22], [8, 23], [7, 24], [7, 24], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [7, 24], [8, 23], [10, 21]],
+  [[11, 20], [9, 22], [8, 23], [7, 24], [7, 24], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [7, 24], [8, 23], [9, 22], [11, 20], [12, 19], [14, 17]],
+  [[11, 20], [9, 22], [8, 23], [7, 24], [7, 24], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [6, 25], [5, 26], [5, 26], [6, 25], [7, 24], [9, 22], [11, 20]],
+]
+const spansOf = (r: Res) => FACE_SPANS[r.body.faceShape] ?? FACE_SPANS[0]
 
 function drawHead(b: Buf, r: Res, dy: number, view: DollView) {
   // ears (behind the face edge)
@@ -382,7 +405,7 @@ function drawHead(b: Buf, r: Res, dy: number, view: DollView) {
   }
   commit(b, ear, r.sk.d, TAG.skin)
   const L = new Layer()
-  const spans = FACE_SPANS[r.g]
+  const spans = spansOf(r)
   spans.forEach(([x0, x1], j) => {
     const y = HEAD_TOP + j + dy
     for (let x = x0; x <= x1; x++) {
@@ -421,6 +444,28 @@ const EYES: EyeMap[] = [
   { rows: ['l....', 'lkkkk', '.kwpk', '.kppk', '.kiik', '..kk.'], ox: -1 },
   // 5 big glassy eyes with double shine
   { rows: ['.kkk.', 'kwwpk', 'kwppk', 'kpppk', 'kiiwk', '.kkk.'], ox: -1, keep: true, lash: [-1, 1] },
+  // 6 narrow smiley line eyes
+  { rows: ['kkkk', '.kk.'], oy: 3, lash: [-1, 3] },
+  // 7 tiny dot eyes
+  { rows: ['.kk.', 'kwpk', '.kk.'], oy: 2, keep: true, lash: [-1, 2] },
+  // 8 determined: heavy lid over a bright eye
+  { rows: ['kkkk', 'kkkk', 'kwpk', 'kpik', '.kk.'], oy: 1, keep: true, lash: [-1, 1] },
+]
+
+/**
+ * Boy versions: flatter upper lids, one row shorter, no lashes, so the eyes
+ * read "cool little brother" rather than "cute girl" while staying chibi.
+ */
+const EYES_M: EyeMap[] = [
+  { rows: ['kkkk', 'kwpk', 'kppk', '.kk.'], oy: 2, keep: true },
+  EYES[1],
+  { rows: ['ssss', 'kkkk', 'kwpk', '.kk.'], oy: 2 },
+  { rows: ['kkkkk', '.wppk', '.pppk', '..kk.'], ox: -1, oy: 2 },
+  { rows: ['kkkkk', '.kwpk', '.kppk', '..kk.'], ox: -1, oy: 2 },
+  { rows: ['kkkkk', 'kwwpk', 'kwppk', '.kkk.'], ox: -1, oy: 2, keep: true },
+  { rows: ['kkkk', '.kk.'], oy: 3 },
+  { rows: ['.kk.', 'kwpk', '.kk.'], oy: 2, keep: true },
+  { rows: ['kkkk', 'kkkk', 'kwpk', '.kk.'], oy: 2, keep: true },
 ]
 
 const EYE_CLOSED: EyeMap = { rows: ['....', '....', 'k..k', '.kk.'], oy: 2 }
@@ -433,8 +478,9 @@ function drawEye(b: Buf, e: EyeMap, left: boolean, dy: number, g: 'm' | 'f', las
   const w = e.rows[0].length
   const baseX = 10 + (e.ox ?? 0)
   const oy = 15 + (e.oy ?? 0) + dy
+  const iris = g === 'm' ? EYE_I_M : EYE_I
   const col = (ch: string) =>
-    ch === 'k' ? EYE_K : ch === 'p' ? EYE_P : ch === 'i' ? EYE_I : ch === 'w' ? WHITE : ch === 'l' ? INK : ch === 's' ? lid : null
+    ch === 'k' ? EYE_K : ch === 'p' ? EYE_P : ch === 'i' ? iris : ch === 'w' ? WHITE : ch === 'l' ? INK : ch === 's' ? lid : null
   for (let j = 0; j < e.rows.length; j++) {
     for (let i = 0; i < w; i++) {
       let ch = e.rows[j][i]
@@ -447,6 +493,7 @@ function drawEye(b: Buf, e: EyeMap, left: boolean, dy: number, g: 'm' | 'f', las
         }
       }
       if (ch === '.') continue
+      if (g === 'm' && ch === 'l') continue
       // viewer-left eye at x=10.., right eye mirrored around 15.5
       const x = left ? baseX + i : 31 - (baseX + w - 1) + i
       b.put(x, oy + j, col(ch), TAG.eye)
@@ -459,9 +506,10 @@ function drawEye(b: Buf, e: EyeMap, left: boolean, dy: number, g: 'm' | 'f', las
   }
 }
 
-function drawFace(b: Buf, r: Res, dy: number, expr: Expr, blink: boolean) {
-  // brows (usually hidden under the fringe)
+/** Brows drawn under the fringe (the classic soft arch; mostly hidden). */
+function drawBrowsUnder(b: Buf, r: Res, dy: number, expr: Expr) {
   const bc = r.hr.d
+  if (r.body.brows !== 0) return
   if (r.g === 'm') {
     for (const x of [10, 11, 12, 13]) {
       b.put(x, 13 + dy, bc)
@@ -479,7 +527,39 @@ function drawFace(b: Buf, r: Res, dy: number, expr: Expr, blink: boolean) {
     b.put(19, 12 + dy, bc)
     b.put(20, 12 + dy, bc)
   }
-  let e: EyeMap = EYES[r.face] ?? EYES[0]
+}
+
+/** Brow styles that show through the fringe (drawn after the hair). */
+function drawBrowsOver(b: Buf, r: Res, dy: number, expr: Expr) {
+  const st = r.body.brows
+  if (st === 0 || hoodedR(r)) return
+  const bc = mix(r.hr.d, INK, 0.25)
+  const lite = r.hr.s
+  // [x, row] for the viewer-left brow; mirrored for the right one
+  const px: [number, number, string][] =
+    st === 1
+      ? [[10, 14, bc], [11, 14, bc], [12, 14, bc], [13, 14, bc], [10, 13, bc], [11, 13, bc], [12, 13, bc], [13, 13, lite]]
+      : st === 2
+        ? [[11, 14, lite], [12, 14, lite]]
+        : st === 3
+          ? [[9, 13, bc], [10, 13, bc], [11, 13, bc], [12, 14, bc], [13, 14, bc], [11, 14, bc], [10, 14, lite]]
+          : [[10, 14, bc], [11, 14, bc], [12, 13, bc], [13, 13, bc]]
+  // sit just above the eye's top edge so they show below the fringe
+  const e = (r.g === 'm' ? EYES_M : EYES)[r.face] ?? EYES[0]
+  const first = e.rows.findIndex((row) => /[^.s]/.test(row))
+  const low = Math.min(15, 15 + (e.oy ?? 0) + Math.max(0, first) - (r.g === 'm' ? 2 : 1)) - 14
+  const up = low + (expr === 'happy' ? -1 : 0)
+  for (const [x, y, c] of px) {
+    b.put(x, y + dy + up, c, TAG.face)
+    // the thinking brow rises on one side only
+    b.put(31 - x, y + dy + up + (expr === 'think' ? -1 : 0), c, TAG.face)
+  }
+}
+
+function drawFace(b: Buf, r: Res, dy: number, expr: Expr, blink: boolean) {
+  const f = r.body
+  drawBrowsUnder(b, r, dy, expr)
+  let e: EyeMap = (r.g === 'm' ? EYES_M : EYES)[r.face] ?? EYES[0]
   let lash = true
   if (expr === 'happy') {
     e = EYE_HAPPY
@@ -493,17 +573,57 @@ function drawFace(b: Buf, r: Res, dy: number, expr: Expr, blink: boolean) {
   }
   drawEye(b, e, true, dy, r.g, lash, r.sk.s)
   drawEye(b, e, false, dy, r.g, lash, r.sk.s)
-  // blush
-  for (const x of [7, 8, 9]) {
-    b.put(x, 21 + dy, r.blush, TAG.face)
-    b.put(31 - x, 21 + dy, r.blush, TAG.face)
+  // blush: soft and small on boys, big for rosy cheeks
+  const cheekX = f.faceShape === 3 ? -1 : 0
+  if (f.marks === 4) {
+    for (const x of [6, 7, 8, 9, 10]) {
+      b.put(x + cheekX, 21 + dy, r.blush, TAG.face)
+      b.put(31 - x - cheekX, 21 + dy, r.blush, TAG.face)
+    }
+    for (const x of [7, 8, 9]) {
+      b.put(x + cheekX, 20 + dy, mix(r.sk.b, P.blush, 0.5), TAG.face)
+      b.put(31 - x - cheekX, 20 + dy, mix(r.sk.b, P.blush, 0.5), TAG.face)
+    }
+  } else if (r.g === 'm') {
+    for (const x of [8, 9]) {
+      b.put(x + cheekX, 21 + dy, mix(r.sk.b, P.blush, 0.3), TAG.face)
+      b.put(31 - x - cheekX, 21 + dy, mix(r.sk.b, P.blush, 0.3), TAG.face)
+    }
+  } else {
+    for (const x of [7, 8, 9]) {
+      b.put(x + cheekX, 21 + dy, r.blush, TAG.face)
+      b.put(31 - x - cheekX, 21 + dy, r.blush, TAG.face)
+    }
+    b.put(8 + cheekX, 20 + dy, mix(r.sk.b, P.blush, 0.35), TAG.face)
+    b.put(23 - cheekX, 20 + dy, mix(r.sk.b, P.blush, 0.35), TAG.face)
   }
-  b.put(8, 20 + dy, mix(r.sk.b, P.blush, 0.35), TAG.face)
-  b.put(23, 20 + dy, mix(r.sk.b, P.blush, 0.35), TAG.face)
   // cheek shine
-  b.put(7, 19 + dy, r.sk.l, TAG.face)
+  b.put(7 + cheekX, 19 + dy, r.sk.l, TAG.face)
+  // freckles & moles
+  const dot = mix(r.sk.d, '#8a4f3a', 0.4)
+  if (f.marks === 1)
+    for (const [x, y] of [
+      [9, 19],
+      [11, 20],
+      [8, 20],
+      [10, 21],
+    ]) {
+      b.put(x, y + dy, dot, TAG.face)
+      b.put(31 - x, y + dy, dot, TAG.face)
+    }
+  if (f.marks === 2) b.put(20, 21 + dy, '#4a2f33', TAG.face)
+  if (f.marks === 3) b.put(19, 23 + dy, '#4a2f33', TAG.face)
+  // nose
+  if (f.nose === 1) b.put(16, 20 + dy, r.sk.s, TAG.face)
+  if (f.nose === 2) {
+    b.put(16, 19 + dy, r.sk.s, TAG.face)
+    b.put(16, 20 + dy, r.sk.s, TAG.face)
+    b.put(15, 20 + dy, mix(r.sk.s, r.sk.d, 0.5), TAG.face)
+    b.put(15, 18 + dy, r.sk.l, TAG.face)
+  }
   // mouth
   const m = (x: number, y: number, c = MOUTH) => b.put(x, y + dy, c, TAG.eye)
+  const soft = mix(MOUTH, r.sk.b, 0.45)
   switch (expr) {
     case 'open':
     case 'happy':
@@ -513,6 +633,10 @@ function drawFace(b: Buf, r: Res, dy: number, expr: Expr, blink: boolean) {
       m(17, 22)
       m(15, 23, TONGUE)
       m(16, 23, TONGUE)
+      if (f.mouth === 4) {
+        m(15, 22, WHITE)
+        m(16, 22, WHITE)
+      }
       break
     case 'think':
       m(16, 22)
@@ -523,10 +647,87 @@ function drawFace(b: Buf, r: Res, dy: number, expr: Expr, blink: boolean) {
       m(16, 22)
       break
     default:
-      m(14, 21, mix(MOUTH, r.sk.b, 0.45))
-      m(15, 22)
-      m(16, 22)
-      m(17, 21, mix(MOUTH, r.sk.b, 0.45))
+      switch (f.mouth) {
+        case 1: // wide grin
+          m(13, 21, soft)
+          m(14, 22)
+          m(15, 22)
+          m(16, 22)
+          m(17, 22)
+          m(18, 21, soft)
+          break
+        case 2: // tiny
+          m(15, 22, soft)
+          m(16, 22)
+          break
+        case 3: // smirk
+          m(14, 22, soft)
+          m(15, 22)
+          m(16, 22)
+          m(17, 21)
+          m(18, 20, soft)
+          break
+        case 4: // bunny teeth
+          m(14, 21, soft)
+          m(15, 22)
+          m(16, 22)
+          m(17, 21, soft)
+          m(15, 23, WHITE)
+          m(16, 23, WHITE)
+          break
+        default:
+          m(14, 21, soft)
+          m(15, 22)
+          m(16, 22)
+          m(17, 21, soft)
+      }
+  }
+  drawBeard(b, r, dy)
+}
+
+/** Stubble, moustache, goatee or a full short beard in the hair colour. */
+function drawBeard(b: Buf, r: Res, dy: number) {
+  const k = r.body.beard
+  if (!k) return
+  const spans = spansOf(r)
+  const hair = r.hr.b
+  const hairS = r.hr.s
+  const stub = mix(r.sk.b, r.hr.d, 0.3)
+  const stub2 = mix(r.sk.b, r.hr.d, 0.18)
+  const put = (x: number, y: number, c: string) => {
+    if (b.tag(x, y + dy) === TAG.eye) return
+    b.put(x, y + dy, c, TAG.face)
+  }
+  const jaw = (j: number) => spans[j] ?? spans[spans.length - 1]
+  if (k === 1 || k === 4) {
+    // along the jaw: last two rows + the cheeks' lower edge
+    for (let j = 15; j <= 17; j++) {
+      const [x0, x1] = jaw(j)
+      for (let x = x0; x <= x1; x++) {
+        if (j === 15 && x > x0 + 1 && x < x1 - 1) continue
+        put(x, HEAD_TOP + j, k === 4 ? ((x + j) % 3 === 0 ? hairS : hair) : (x + j) % 2 ? stub : stub2)
+      }
+    }
+  }
+  if (k === 4) {
+    // sideburns and the moustache
+    for (let j = 11; j <= 14; j++) {
+      const [x0, x1] = jaw(j)
+      put(x0, HEAD_TOP + j, hair)
+      put(x1, HEAD_TOP + j, hairS)
+      if (j >= 13) {
+        put(x0 + 1, HEAD_TOP + j, hair)
+        put(x1 - 1, HEAD_TOP + j, hairS)
+      }
+    }
+  }
+  if (k === 2 || k === 4) {
+    for (const x of [13, 14, 15, 16, 17, 18]) put(x, 21, x === 13 || x === 18 ? hairS : hair)
+  }
+  if (k === 3) {
+    for (const x of [14, 15, 16, 17]) put(x, 23, hair)
+    put(15, 24, hair)
+    put(16, 24, hairS)
   }
 }
 
@@ -1665,7 +1866,11 @@ const HANDS: Record<Exclude<Hand, 'none'>, { rows: string[]; ax: number; ay: num
   chin: { rows: ['H..', 'HHh', 'HHh', '.h.'], ax: -1, ay: -2 },
 }
 
-function shiftArm(a: ArmDef, r: Res, side: 1 | -1): ArmDef {
+function shiftArm(a0: ArmDef, r: Res, side: 1 | -1): ArmDef {
+  // Joints raised above the shoulder line miss the body reshape (which widens
+  // rows from the shoulders down), so move them out by hand to keep arms whole.
+  const pre = (p: Pt): Pt => (r.bw && p[1] < r.bwY ? [p[0] - side * r.bw, p[1]] : p)
+  const a: ArmDef = r.bw ? { ...a0, s: pre(a0.s), e: pre(a0.e), w: pre(a0.w) } : a0
   if (r.g === 'm') return a
   const [ke, kw] = a.k ?? [1, 1]
   const sx = side
@@ -6213,10 +6418,47 @@ function drawV4SuitBow(b: Buf, r: Res, p: SPal, stage: 'crown' | 'back'): boolea
 // ---------------------------------------------------------------------------
 // Composition
 
+/**
+ * Height / build reshape for this pose (art/body.ts). Rows from the shoulders
+ * down get wider (torso+arms, then legs); chest and thigh rows are doubled or
+ * dropped for height. Sets r.bw so raised arms are pre-shifted to match.
+ */
+function bodyPlan(r: Res, dy: number, legs: LegsKind): ReshapePlan {
+  const b = r.body
+  const wT = bodyWiden(r.g, b.build, 'torso', 'doll')
+  const wL = bodyWiden(r.g, b.build, 'legs', 'doll')
+  const d = DOLL_HEIGHT[b.height] ?? 0
+  const bow = legs === 'bow'
+  const stand = legs === 'stand'
+  const torsoY = bow ? 30 : 24 + dy
+  // the top's hem (hands hang to ~34) ends the torso band when standing
+  const legY = bow ? 30 : stand ? Math.max(hemRow(r.top), 34) + 1 : 42
+  r.bw = bow ? 0 : wT
+  r.bwY = torsoY
+  const rows: { at: number; n: number }[] = []
+  if (!bow && d) {
+    const half = d / 2
+    if (stand) rows.push({ at: 29 + dy, n: half }, { at: 41, n: half })
+    else rows.push({ at: 29 + dy, n: d })
+  }
+  return {
+    w: IW,
+    h: IH,
+    outH: IH + Math.max(0, d),
+    widen: (y) => (y >= legY ? wL : y >= torsoY ? wT : 0),
+    xl: 12,
+    xr: 19,
+    left: true,
+    right: true,
+    rows,
+  }
+}
+
 function compose(look: AvatarLook, pose: DollPose, view: DollView, blink: boolean, bare: boolean): Buf {
   const r = resolve(look, bare)
   const b = new Buf()
   if (pose === 'bow') {
+    b.plan = bodyPlan(r, 0, 'bow')
     drawBow(b, r)
     drawBackBow(b, r, 'top')
     drawBackBow(b, r, 'behind')
@@ -6224,6 +6466,7 @@ function compose(look: AvatarLook, pose: DollPose, view: DollView, blink: boolea
   }
   const pd = poseDef(pose, view)
   const dy = pd.dy
+  b.plan = bodyPlan(r, dy, pd.legs)
   const hair = HAIR[r.hair] ?? HAIR.bob
   const handFree = view === 'front' && pd.R?.hand === 'rest' && pd.legs === 'stand'
   const handPos: [number, number] = [r.g === 'f' ? 22 : 23, 33]
@@ -6290,6 +6533,7 @@ function compose(look: AvatarLook, pose: DollPose, view: DollView, blink: boolea
       drawHairParts(b, r, hair.front, dy, 'front')
       if (r.suit) drawSuitCrown(b, r, view, dy)
     }
+    drawBrowsOver(b, r, dy, pd.expr)
   } else if (hoodedR(r)) drawSuitHood(b, r, view, dy)
   else {
     drawHairParts(b, r, hair.back, dy, 'back')

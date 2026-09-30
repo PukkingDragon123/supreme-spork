@@ -6,6 +6,7 @@ import { createCanvas } from '../engine/pixel'
 import { cached, outlineCanvas, paintRows, type Sprite } from '../engine/sprite'
 import { HAIR_COLORS, P, SKIN_TONES } from './palette'
 import { OUTFIT_BY_ID, SUIT_FACE_ACCS, suitGarments, type BottomArt, type Pattern, type ShoeArt, type SuitArt, type SuitKind, type TopArt } from '../game/data/outfits'
+import { bodyOf, bodyWiden, planIsIdentity, reshapeIndex, SPRITE_HEIGHT, type BodyLook, type ReshapePlan } from './body'
 
 export type BodyType = 'm' | 'f'
 
@@ -27,6 +28,23 @@ export interface AvatarLook {
   back?: string | null
   /** Full-body suit (slot 'suit'): replaces top + bottom (+ hair for hooded suits) while worn. */
   suit?: string | null
+  // Body & face options (art/body.ts). Missing = the body preset's default.
+  /** HEIGHTS index (0 tiny … 3 tall; 2 = classic). */
+  height?: number
+  /** BUILDS index: slim, average, chubby, sturdy. */
+  build?: number
+  /** FACE_SHAPES index: round, square, V, chubby cheeks. */
+  faceShape?: number
+  /** BROWS index. */
+  brows?: number
+  /** NOSES index. */
+  nose?: number
+  /** MOUTHS index (resting smile). */
+  mouth?: number
+  /** BEARDS index (0 none). */
+  beard?: number
+  /** MARKS index: freckles, moles, rosy cheeks (0 none). */
+  marks?: number
 }
 
 export type View = 'front' | 'back' | 'side'
@@ -2754,6 +2772,16 @@ function headColorFn(r: Resolved) {
         return P.blush
       case 'm':
         return '#c65a6a'
+      case 'z':
+        return mixHex(r.skin.b, r.hair.d, 0.28)
+      case 'h':
+        return r.hair.b
+      case 'n':
+        return mixHex(r.skin.b, r.skin.d, 0.75)
+      case 'k':
+        return '#4a2f33'
+      case 'f':
+        return mixHex(r.skin.d, '#8a4f3a', 0.45)
     }
     return null
   }
@@ -2795,8 +2823,122 @@ function faceRows(rows: string[], face: number, gender: BodyType, cols: number[]
         set(7, c + 1, 'E')
         set(8, c, 'e')
         break
+      case 6: // narrow line eyes
+        set(8, c, 's')
+        set(8, c + 1, 's')
+        break
+      case 7: // dot eyes
+        set(8, c, 's')
+        set(8, c + 1, 's')
+        set(9, c < 8 ? c : c + 1, 's')
+        break
+      case 8: // determined: heavy lid, bright eye below
+        set(8, c, 'E')
+        set(8, c + 1, 'E')
+        set(9, c < 8 ? c + 1 : c, 'e')
+        break
     }
-    if (gender === 'f' && face !== 4 && face !== 1) set(8, outer, 'E')
+    // girls keep the flick of lashes; the cat-eye flick is a lash too
+    if (gender === 'f' && face !== 4 && face !== 1 && face < 6) set(8, outer, 'E')
+    if (gender === 'm' && face === 4) set(7, outer, 's')
+  }
+  return out
+}
+
+/**
+ * Body-option face details on the small head: jaw shape, nose, mouth, beard,
+ * moles and blush. Codes: z stubble, h hair (beard), n nose, k mole,
+ * f freckle, B blush, m mouth, e teeth / eye white.
+ */
+function featureRows(rows: string[], gender: BodyType, b: BodyLook, view: View, closed: boolean): string[] {
+  const out = rows.slice()
+  const set = (y: number, x: number, ch: string) => {
+    if (y < 0 || y >= out.length || x < 0 || x >= 16) return
+    out[y] = out[y].slice(0, x) + ch + out[y].slice(x + 1)
+  }
+  const span = (y: number, x0: number, x1: number) => {
+    const row = out[y].split('')
+    for (let x = 0; x < 16; x++) {
+      if (x < x0 || x > x1) row[x] = '.'
+      else if (row[x] === '.' || row[x] === 's' || row[x] === 'd') row[x] = x === x1 ? 'd' : 's'
+    }
+    out[y] = row.join('')
+  }
+  if (view === 'side') {
+    if (b.faceShape === 1) set(12, 12, 's')
+    if (b.beard === 1) for (const x of [7, 8, 9, 10]) set(12, x, 'z')
+    if (b.beard === 2) set(10, 12, 'h')
+    if (b.beard === 3) for (const x of [9, 10]) set(12, x, 'h')
+    if (b.beard === 4) {
+      for (const x of [5, 6, 7, 8, 9, 10]) set(12, x, 'h')
+      for (const x of [4, 5]) set(11, x, 'h')
+    }
+    if (b.nose) set(9, 13, 'n')
+    if (b.marks === 1) set(10, 8, 'f')
+    return out
+  }
+  // jaw
+  if (b.faceShape === 1) {
+    span(11, 2, 13)
+    span(12, 3, 12)
+  } else if (b.faceShape === 2) {
+    span(12, 5, 10)
+  } else if (b.faceShape === 3) {
+    span(10, 1, 14)
+    span(11, 2, 13)
+  }
+  // blush: boys get a single soft pixel, rosy cheeks a wide one
+  const cheek = b.faceShape === 3 ? 1 : 0
+  if (gender === 'm') {
+    set(10, 4, 's')
+    set(10, 11, 's')
+  }
+  if (b.marks === 4) for (const x of [2, 3, 4, 5]) set(10, x - cheek, 'B'), set(10, 15 - x + cheek, 'B')
+  if (b.marks === 1) {
+    set(10, 4, 'f')
+    set(10, 11, 'f')
+    set(10, 3, 'B')
+    set(10, 12, 'B')
+    set(11, 4, 'f')
+    set(11, 11, 'f')
+  }
+  if (b.marks === 2) set(10, 10, 'k')
+  if (b.marks === 3) set(11, 10, 'k')
+  // nose
+  if (b.nose === 1) set(10, 8, 'n')
+  if (b.nose === 2) {
+    set(9, 8, 'n')
+    set(10, 8, 'n')
+  }
+  // mouth
+  if (!closed || b.mouth) {
+    if (b.mouth === 1) for (const x of [6, 7, 8, 9]) set(11, x, 'm')
+    if (b.mouth === 2) set(11, 8, 's')
+    if (b.mouth === 3) {
+      set(11, 7, 's')
+      set(10, 9, 'm')
+      set(11, 9, 'm')
+    }
+    if (b.mouth === 4) {
+      set(12, 7, 'e')
+      set(12, 8, 'e')
+    }
+  }
+  // beard
+  if (b.beard === 1) {
+    for (let x = 4; x <= 11; x++) if (out[12][x] !== '.') set(12, x, 'z')
+    set(11, 3, 'z')
+    set(11, 12, 'z')
+  }
+  if (b.beard === 2) for (const x of [6, 7, 8, 9]) set(10, x, 'h')
+  if (b.beard === 3) for (const x of [6, 7, 8, 9]) set(12, x, 'h')
+  if (b.beard === 4) {
+    for (let x = 2; x <= 13; x++) if (out[12][x] !== '.') set(12, x, 'h')
+    for (const x of [3, 4, 5, 10, 11, 12]) set(11, x, 'h')
+    set(10, 2, 'h')
+    set(10, 13, 'h')
+    set(10, 7, 'h')
+    set(10, 8, 'h')
   }
   return out
 }
@@ -3145,8 +3287,64 @@ export interface AvatarRenderOptions {
   frame?: number
 }
 
-/** Compose an avatar frame (unoutlined 16×27 canvas). */
+/**
+ * Compose an avatar frame (unoutlined, 16 wide). The classic height is 27
+ * rows; shorter / taller bodies (AvatarLook.height) return a frame that many
+ * rows shorter / taller, feet on the bottom row, head the same distance from
+ * the top.
+ */
 export function composeAvatar(look: AvatarLook, view: View, pose: Pose, opts: AvatarRenderOptions = {}): HTMLCanvasElement {
+  const body = bodyOf(look)
+  return reshapeSmall(composeBase(look, view, pose, opts, body), look.gender, body, view, pose)
+}
+
+/** Height/build reshape of a composed small frame (see art/body.ts). */
+function reshapeSmall(src: HTMLCanvasElement, g: BodyType, b: BodyLook, view: View, pose: Pose): HTMLCanvasElement {
+  const low = pose === 'kneel' || pose === 'sit' ? 3 : pose === 'pass' ? -1 : 0
+  const bow = pose === 'bow'
+  const torsoY = HEADROOM + (bow ? 17 : 13 + low)
+  const legY = HEADROOM + (bow ? 21 : low > 0 ? 22 : 19)
+  const side = view === 'side'
+  const wT = side ? (b.build === 2 || b.build === 3 ? 1 : 0) : bodyWiden(g, b.build, 'torso', 'sprite')
+  const wL = side ? (b.build === 2 ? 1 : 0) : bodyWiden(g, b.build, 'legs', 'sprite')
+  const d = bow ? 0 : SPRITE_HEIGHT[b.height] ?? 0
+  const standing = low <= 0
+  const chest = HEADROOM + 15 + low
+  const thigh = HEADROOM + 20
+  const rows: { at: number; n: number }[] = []
+  if (d > 0) rows.push({ at: chest, n: d })
+  else if (d === -1) rows.push({ at: chest, n: -1 })
+  else if (d === -2) rows.push(...(standing ? [{ at: chest, n: -1 }, { at: thigh, n: -1 }] : [{ at: chest, n: -2 }]))
+  const plan: ReshapePlan = {
+    w: FRAME_W,
+    h: FRAME_H,
+    outH: FRAME_H + (bow ? SPRITE_HEIGHT[b.height] ?? 0 : d),
+    widen: (y) => (y >= legY ? wL : y >= torsoY ? wT : 0),
+    xl: side ? -1 : 5,
+    xr: side ? 8 : 10,
+    left: !side,
+    right: true,
+    rows,
+  }
+  if (planIsIdentity(plan, torsoY)) return src
+  const idx = reshapeIndex(plan)
+  const sd = src.getContext('2d')!.getImageData(0, 0, FRAME_W, FRAME_H).data
+  const out = createCanvas(FRAME_W, plan.outH)
+  const octx = out.getContext('2d')!
+  const img = octx.createImageData(FRAME_W, plan.outH)
+  for (let i = 0; i < idx.length; i++) {
+    const s = idx[i]
+    if (s < 0) continue
+    img.data[i * 4] = sd[s * 4]
+    img.data[i * 4 + 1] = sd[s * 4 + 1]
+    img.data[i * 4 + 2] = sd[s * 4 + 2]
+    img.data[i * 4 + 3] = sd[s * 4 + 3]
+  }
+  octx.putImageData(img, 0, 0)
+  return out
+}
+
+function composeBase(look: AvatarLook, view: View, pose: Pose, opts: AvatarRenderOptions, body: BodyLook): HTMLCanvasElement {
   const r = resolve(look, opts.barefoot ?? false)
   r.view = view
   const c = createCanvas(FRAME_W, FRAME_H)
@@ -3235,6 +3433,7 @@ export function composeAvatar(look: AvatarLook, view: View, pose: Pose, opts: Av
   const closed = pose === 'happy' || pose === 'wai'
   let headRows = view === 'front' ? (closed ? HEAD_FRONT_CLOSED : HEAD_FRONT) : view === 'side' ? HEAD_SIDE : HEAD_BACK
   if (!closed && view !== 'back') headRows = faceRows(headRows, look.face ?? 0, look.gender, view === 'front' ? [4, 10] : [10])
+  if (view !== 'back') headRows = featureRows(headRows, look.gender, body, view, closed)
   paint(ctx, headRows, dy, head)
 
   // Long hair behind in side view is part of the side map.
@@ -3273,7 +3472,11 @@ export function registerAvatarAcc(key: string, art: AccArt) {
 }
 
 export function lookKey(l: AvatarLook): string {
-  return [l.gender, l.skin, l.face, l.hairColor, l.hair, l.top, l.bottom, l.head ?? '', l.neck ?? '', l.hand ?? '', l.shoes ?? '', l.back ?? '', l.suit ?? ''].join('|')
+  const b = bodyOf(l)
+  return [
+    l.gender, l.skin, l.face, l.hairColor, l.hair, l.top, l.bottom, l.head ?? '', l.neck ?? '', l.hand ?? '', l.shoes ?? '', l.back ?? '', l.suit ?? '',
+    b.height, b.build, b.faceShape, b.brows, b.nose, b.mouth, b.beard, b.marks,
+  ].join('|')
 }
 
 /** Portrait (head and shoulders) for lists and leaderboards. */

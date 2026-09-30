@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { bodyDefaults } from '../../art/body'
 import {
   NET_LIMITS,
   cleanChat,
@@ -88,7 +89,7 @@ describe('ids and looks', () => {
     expect(l.top).toBe(DEFAULT_LOOK.top)
     expect(l.bottom).toBe(DEFAULT_LOOK.bottom)
     expect(l.head).toBeNull()
-    expect(cleanLook(null)).toEqual({ ...DEFAULT_LOOK })
+    expect(cleanLook(null)).toEqual({ ...DEFAULT_LOOK, ...bodyDefaults('f') })
   })
 
   it('names are cleaned and filtered', () => {
