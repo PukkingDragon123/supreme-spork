@@ -288,6 +288,7 @@ class TreeScene implements Scene {
     const z = this.zone
     if (this.active && this.zoneCanvas) g.draw(this.zoneCanvas, z.x, z.y)
     if (this.revealed) drawGlow(g, z.x + z.w / 2, z.y + z.h / 2, 60, 0.5 + Math.sin(this.t * 3) * 0.15, '#fff3a6')
+    vignette(g, '#1b1008', 0.5)
     // The player seen over the shoulder, reaching up to the bark.
     const f = this.finger
     let pose: TPose | 'wai' | 'stand' = 'stand'
@@ -317,7 +318,6 @@ class TreeScene implements Scene {
       drawGlow(g, x, y, 7, 0.5, '#ffffff')
     }
     this.particles.render(g)
-    vignette(g, '#1b1008', 0.5)
     this.juice.end(g)
   }
 }
