@@ -38,7 +38,10 @@ const TRIGGERS: Record<string, { when: () => boolean; ring?: string; top?: boole
   online_card: { when: () => has('.ol-card-win'), ring: '.ol-card-win' },
   rank: { when: () => has('.hl-board'), ring: '.hl-board-regions' },
   rooms: { when: () => has('.hl-rooms-win') || (mode.value === 'house' && !houseEditing.value && !panel.value && has('.hl-roombar')), ring: '.hl-roombar' },
-  chant_memory: { when: () => panel.value === 'pray' && has('.ch-node-badge[title="ท่องจำ"]'), ring: '.ch-node:has(.ch-node-badge[title="ท่องจำ"])' },
+  chant_memory: {
+    when: () => panel.value === 'pray' && has('.bj-node-badge[title="ท่องจำ"], .ch-node-badge[title="ท่องจำ"]'),
+    ring: '.bj-node-badge[title="ท่องจำ"], .ch-node-badge[title="ท่องจำ"]',
+  },
 }
 
 function blocked(): boolean {

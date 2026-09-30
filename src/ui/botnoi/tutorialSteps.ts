@@ -142,8 +142,16 @@ export const STEP_UI: Record<TutStepId, StepUi> = {
       L('surprised', 'นี่คือแผนที่ด่านสวดมนต์ครับ! ผ่านด่านไหน ด่านถัดไปก็จะปลดล็อก'),
       L('happy', 'เก็บดาวให้เยอะ ๆ ดาวใช้ปลดล็อกวัดดังบนแผนที่ด้วย เริ่มด่าน 1 กด “เริ่มสวดมนต์” เลยครับ'),
     ],
-    targets: () => (panel.value === 'pray' ? [{ kind: 'ui', sel: '.ch-stage-card .btn.big', pad: 3 }] : []),
+    targets: () =>
+      panel.value === 'pray'
+        ? [
+            // Buddha-journey stage map (bj-*), with the older list layout as a fallback.
+            { kind: 'ui', sel: '.bj-card-actions .btn:not([disabled])', pad: 3 },
+            { kind: 'ui', sel: '.ch-stage-card .btn.big', pad: 3 },
+          ]
+        : [],
     nav: () => (closeAll(), (panel.value = 'pray')),
+    lost: 'กด “เริ่มสวดมนต์” ที่การ์ดด่านได้เลยครับ ถ้าหาไม่เจอกด “ข้ามขั้นนี้” ก็ได้นะ',
   },
   pray_do: {
     arm: 'cheer',

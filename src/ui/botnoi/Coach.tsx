@@ -340,7 +340,7 @@ function CoachMark({ id }: { id: TutStepId }) {
                     {ui.next}
                   </PBtn>
                 )}
-                {strays >= 2 && !ui.next && (
+                {(strays >= 2 || (place.kind === 'lost' && !fb)) && !ui.next && (
                   <PBtn tone="paper" size="small" onClick={() => tutorialInput({ kind: 'skipStep' })}>
                     ข้ามขั้นนี้
                   </PBtn>
