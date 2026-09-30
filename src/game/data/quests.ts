@@ -42,6 +42,10 @@ export type GameEvent =
   | 'flood_rescue'
   | 'fair_game'
   | 'hub_visit'
+  // Beaches (src/activities/beach): a sand chedi built, baby turtles guided to the sea, any beach mini-game round
+  | 'sand_chedi'
+  | 'sea_turtle'
+  | 'beach_play'
 
 export interface QuestDef {
   id: string

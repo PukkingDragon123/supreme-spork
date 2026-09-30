@@ -1436,6 +1436,18 @@ Object.assign(ACC, {
     side: { y: -2, rows: ['.....bbbbbb.....', '....bpbbwbbb....', '....bbbbpbbb....', '....wwwwwwww....', '..BBBBBBBBBBBB..', '.BBpBBBBBBBpBBB.'] },
     pal: { b: '#6fc7e8', p: '#ff9fc0', w: '#fffaf0', B: '#a9dff2' },
   },
+  // Beach souvenirs (data/beachOutfits.ts).
+  beachstraw: {
+    front: { y: -2, rows: ['.....hhhhhh.....', '....hkkhhkkh....', '....hhhhhhfh....', '....rrrrrrrr....', 'hhhhhhhhhhhhhhhh', '.dddddddddddddd.'] },
+    back: { y: -2, rows: ['.....hhhhhh.....', '....hhHhhhhh....', '....hhhhhhhh....', '....rrrrrrrrrr..', 'hhhhhhhhhhhhhrhh', '.ddddddddddddrd.', '.............r..'] },
+    side: { y: -2, rows: ['.....hhhhhh.....', '....hhHhhhkk....', '....hhhhhhhf....', '....rrrrrrrr....', 'hhhhhhhhhhhhhhhh', '.dddddddddddddd.'] },
+    pal: { h: '#f4d890', H: '#fff3c4', d: '#c9a05a', r: '#5ab4e8', k: '#2e2840', f: '#ff4f7b' },
+  },
+  sunsetshades: {
+    front: { y: 7, rows: ['...kkkk..kkkk...', '...kopkkkkopk...', '...kkkk..kkkk...'] },
+    side: { y: 7, rows: ['.........kkkk...', '.....kkkkkopk...', '.........kkkk...'] },
+    pal: { k: '#e8709e', o: '#ffb347', p: '#ff6f91' },
+  },
 
   // neck
   marigoldbig: {

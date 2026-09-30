@@ -45,6 +45,8 @@ function ramp(pal: [string, string, string]): MP {
 }
 
 type Motif = (g: Surface, p: MP) => void
+/** Colour ramp handed to motif painters: main / accent / detail with light and dark shades. */
+export type MotifRamp = MP
 
 // Small helpers ---------------------------------------------------------------
 
@@ -1276,6 +1278,11 @@ const MOTIFS: Record<string, Motif> = {
 const ALIAS: Record<string, string> = { lotus: 'flower', fish: 'betta', temple: 'sala', hippo_bite: 'hippo', orange: 'citrus', stupa: 'chedi', cup: 'boba' }
 
 export const MOTIF_NAMES = Object.keys(MOTIFS)
+
+/** Add motifs from other modules (e.g. the beach shells, src/art/beachMotifs.ts). Existing names are kept. */
+export function registerMotif(name: string, fn: (g: Surface, p: MotifRamp) => void) {
+  if (!MOTIFS[name]) MOTIFS[name] = fn
+}
 
 export function hasMotif(m: string): boolean {
   return !!MOTIFS[m] || !!ALIAS[m]

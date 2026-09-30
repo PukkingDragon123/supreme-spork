@@ -16,6 +16,7 @@ import { defaultLiveEvents, normalizeLiveEvents, type LiveEventsState } from './
 import { emptyCollection, normalizeCollection, type CollectionState } from './collectionState'
 import { emptyNpcQuests, normalizeNpcQuests, type NpcQuestsState } from './npcQuestState'
 import { defaultHubs, normalizeHubs, type HubsState } from './hubState'
+import { defaultBeach, normalizeBeach, type BeachState } from './beachState'
 import { defaultOnline, normalizeOnline, type OnlineState } from '../services/netState'
 
 export const SAVE_KEY = 'boondee.save.v1'
@@ -157,6 +158,8 @@ export interface GameState {
   collection: CollectionState
   /** Hub markets and the temple fair: passport stamps, prize tickets, prizes (see hubState.ts). */
   hubs: HubsState
+  /** Beaches: passport, daily plays, sand chedis, turtles, fish log, photos (see beachState.ts). */
+  beach: BeachState
   player: { name: string; birthDay: number; friendCode: string; look: AvatarLook }
   merit: number
   coins: number
@@ -237,6 +240,7 @@ export function defaultState(): GameState {
     market: { mine: [], bought: [], earned: 0 },
     collection: emptyCollection(),
     hubs: defaultHubs(),
+    beach: defaultBeach(),
     player: { name: 'สายบุญ', birthDay: new Date().getDay(), friendCode: makeFriendCode(), look: { ...DEFAULT_LOOK } },
     merit: 0,
     coins: 100,
@@ -299,6 +303,7 @@ export function migrate(raw: unknown): GameState {
     shop: normalizeShop(s.shop),
     npcQuests: normalizeNpcQuests(s.npcQuests),
     hubs: normalizeHubs(s.hubs),
+    beach: normalizeBeach(s.beach),
     online: normalizeOnline(s.online),
     v: SAVE_VERSION,
   }

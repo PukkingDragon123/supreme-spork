@@ -2670,9 +2670,10 @@ function drawHeadAcc(b: Buf, _r: Res, key: string | null, view: DollView, dy: nu
   switch (key) {
     case 'glasses':
     case 'sunglasses':
+    case 'sunsetshades':
     case 'mirrorshades': {
       if (!front || stage !== 'over') return
-      const k = key === 'mirrorshades' ? '#8a8496' : '#4a3246'
+      const k = key === 'mirrorshades' ? '#8a8496' : key === 'sunsetshades' ? '#e8709e' : '#4a3246'
       for (const x0 of [9, 18]) {
         for (let i = 0; i < 5; i++) {
           b.put(x0 + i, 14 + dy, k)
@@ -2685,6 +2686,12 @@ function drawHeadAcc(b: Buf, _r: Res, key: string | null, view: DollView, dy: nu
         if (key === 'sunglasses') {
           for (let y = 15; y <= 19; y++) for (let x = x0 + (y === 15 || y === 19 ? 1 : 0); x <= x0 + 4 - (y === 15 || y === 19 ? 1 : 0); x++) b.put(x, y + dy, y <= 16 ? '#4d4466' : '#2e2840')
           b.put(x0 + 1, 15 + dy, '#9fd0ff')
+        } else if (key === 'sunsetshades') {
+          // Beach souvenir: lenses fading sunset orange to pink, a sun glint.
+          const SS = ['#ffd23f', '#ffb347', '#ff8f6a', '#ff6f91', '#e8558a']
+          for (let y = 15; y <= 19; y++) for (let x = x0 + (y === 15 || y === 19 ? 1 : 0); x <= x0 + 4 - (y === 15 || y === 19 ? 1 : 0); x++) b.put(x, y + dy, SS[y - 15])
+          b.put(x0 + 1, 15 + dy, '#fff6c8')
+          b.put(x0 + 3, 18 + dy, '#ffd6e0')
         } else if (key === 'mirrorshades') {
           // chrome lenses with a rainbow sheen
           const MR = ['#f4f8ff', '#cfe0f5', '#a9c2e6', '#ffc4e6', '#8fb0dc']
@@ -2995,6 +3002,45 @@ function drawHeadAccNew(b: Buf, r: Res, key: string, view: DollView, dy: number,
       for (let x = 1; x <= 30; x++) p(x, 8, (x + 1) % 3 === 0 ? md : lt)
       for (let x = 0; x <= 31; x++) p(x, 9, x % 3 === 0 ? md : x >= 26 ? md : lt)
       for (let x = 1; x <= 30; x++) p(x, 10, dk)
+      done(mix(dk, INK, 0.3))
+      return true
+    }
+    case 'beachstraw': {
+      // Beach souvenir: woven straw hat, sky-blue ribbon, shades strapped on the crown, a hibiscus.
+      if (stage !== 'over') return true
+      const lt = '#f7df9e'
+      const md = '#e4bf70'
+      const dk = '#b98c45'
+      for (let y = 0; y <= 6; y++) {
+        const w = [4, 6, 7, 8, 8, 8, 8][y]
+        for (let x = 16 - w; x <= 15 + w; x++) p(x, y + 1, (x + y * 2) % 4 === 0 || (x - y) % 5 === 0 ? md : x >= 13 + w ? md : lt)
+      }
+      for (let x = 8; x <= 23; x++) {
+        p(x, 6, x % 5 === 0 ? '#9fdcff' : '#5ab4e8')
+        p(x, 7, '#3a8cc8')
+      }
+      if (front) {
+        for (const x0 of [10, 17]) {
+          for (let x = x0; x < x0 + 5; x++) {
+            p(x, 3, '#2e2840')
+            p(x, 4, x === x0 + 1 ? '#9fd0ff' : '#4d4466')
+            p(x, 5, '#2e2840')
+          }
+        }
+        p(15, 4, '#2e2840')
+        p(16, 4, '#2e2840')
+        const HB = ['.pp.', 'pPyp', 'pPPp', '.pp.']
+        HB.forEach((row, j) => {
+          for (let i = 0; i < 4; i++) if (row[i] !== '.') p(22 + i, 4 + j, row[i] === 'p' ? '#ff4f7b' : row[i] === 'P' ? '#ff9fc0' : '#ffe45e')
+        })
+        p(21, 7, '#43905a')
+      } else {
+        // Ribbon tails fluttering at the back.
+        for (const [x, y] of [[19, 8], [20, 9], [20, 10], [21, 11], [18, 8], [17, 9], [17, 10]] as Pt[]) p(x, y, '#3a8cc8')
+      }
+      for (let x = 1; x <= 30; x++) p(x, 8, (x + 1) % 3 === 0 ? md : lt)
+      for (let x = 0; x <= 31; x++) p(x, 9, x % 3 === 0 ? md : x >= 26 ? md : lt)
+      for (let x = 1; x <= 30; x++) p(x, 10, x % 4 === 1 ? mix(dk, INK, 0.15) : dk)
       done(mix(dk, INK, 0.3))
       return true
     }
