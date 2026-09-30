@@ -7,9 +7,14 @@ import { createCanvas, type Surface } from '../../engine/pixel'
 import { rand, pick } from '../../engine/rng'
 import { haptic, sfx } from '../../engine/audio'
 import { buddhaSculpt, softGlow, type BuddhaStyle } from '../../art/hall'
-import { bakeShrineShelf, drawRag, makeDust } from '../../art/jobs'
+import { bakeShrineShelf, makeDust } from '../../art/jobs'
 import { toStars, type JobStars } from '../../game/jobs'
 import { Drag, JobScene, type JobSummary } from './base'
+import { Worker } from './worker'
+import { wsfx } from './workSfx'
+import { reachPose, WP } from '../../art/poses/work'
+import { drawClothPole } from '../../art/workTools'
+import { glow, motes, vignette } from '../../art/workFx'
 
 const SCALE = 0.62
 const DONE_AT = 0.85
@@ -45,6 +50,7 @@ export class StatueScene extends JobScene {
   private measureT = 0
   private swishT = 0
   private hinted = false
+  private floorY = 330
 
   progress() {
     if (!this.statues.length) return 0
@@ -63,6 +69,9 @@ export class StatueScene extends JobScene {
   goalText() {
     return `สะอาด ${Math.round(this.progress() * 100)}% · รีบ ${this.rushes}`
   }
+  cheerText() {
+    return this.rushes < 3 ? 'ผ่องใส สาธุ!' : 'สะอาดแล้ว!'
+  }
   summary(): JobSummary {
     return {
       title: this.complete() && this.rushes < 3 ? 'องค์พระสะอาดผ่องใส สาธุ!' : undefined,
@@ -74,6 +83,27 @@ export class StatueScene extends JobScene {
     this.shelfY = Math.round(this.top + this.playH * 0.62)
     this.bg = bakeShrineShelf(this.w, this.h, this.shelfY)
     this.statues.forEach((s, i) => (s.x = this.slotX(i)))
+    // The player below the shelf with a long feather duster.
+    this.floorY = Math.min(this.bottom - 2, this.shelfY + 60)
+    if (!this.worker) this.worker = new Worker(this.cx, this.floorY)
+    else if (this.phase === 'ready') this.worker.place(this.cx, this.floorY)
+    this.worker.view = 'back'
+  }
+
+  private aimWorker() {
+    const wk = this.worker
+    if (!wk) return
+    const d = this.drag
+    if (!this.wiping) {
+      wk.pose = WP.scoopBack
+      wk.follow = 5
+      return
+    }
+    wk.follow = 8
+    wk.goTo(Math.max(14, Math.min(this.w - 14, d.x - 10)), this.floorY)
+    const sx = wk.x + 7.5
+    const sy = wk.feetY - 26
+    wk.pose = reachPose('back', 'R', Math.atan2(d.y - sy, d.x - sx), 10, 'smile', 'rest')
   }
 
   private slotX(i: number) {
@@ -143,6 +173,7 @@ export class StatueScene extends JobScene {
         this.say(x1, y1 - 18, pick(['เบา ๆ นะ ใจเย็น ๆ', 'ค่อย ๆ เช็ดนะ', 'ช้า ๆ ได้บุญกว่า']), 'warn', 1.3)
         sfx.error()
         haptic(20)
+        this.worker?.reactWith('oops', 0.7)
       }
       return
     }
@@ -172,7 +203,7 @@ export class StatueScene extends JobScene {
     if (hit) {
       this.swishT -= 1
       if (this.swishT <= 0) {
-        sfx.scratch()
+        wsfx.swish(0.4)
         this.swishT = 6
       }
       if (Math.random() < 0.3) this.particles.add({ kind: 'dot', x: x1 + rand(-4, 4), y: y1 + rand(-2, 4), vx: rand(-8, 8), vy: rand(4, 14), g: 40, max: 0.8, color: '#d8ccb8' })
@@ -183,6 +214,7 @@ export class StatueScene extends JobScene {
   protected tick(dt: number) {
     const d = this.drag
     if (!d.down) d.settle(dt)
+    this.aimWorker()
     this.rushCool -= dt
     this.turn *= Math.exp(-dt * 2)
     if (this.playing && !this.hinted && this.elapsed > 0.3) {
@@ -204,6 +236,7 @@ export class StatueScene extends JobScene {
           sfx.sparkle()
           haptic(20)
           this.say(s.x, oy - 4, pick(['สาธุ~', 'ผ่องใสแล้ว', 'สะอาดแล้ว']), 'good', 1.2)
+          if (!this.statues.every((q) => q.done)) this.praise(pick(['ผ่องใส!', 'สะอาดเอี่ยม!', 'สาธุ~']), 'gold', 1.1)
           void ox
         }
       }
@@ -219,9 +252,18 @@ export class StatueScene extends JobScene {
       g.draw(s.img, ox, oy)
       if (!s.done) g.draw(s.dust, ox, oy)
     }
-    if (this.wiping) {
-      const fast = this.drag.speed > RUSH
-      drawRag(g, this.drag.x, this.drag.y, this.t, Math.min(1, this.drag.speed / 300), fast ? '#e8514a' : '#ffd54f')
+    glow(g, this.cx, this.shelfY - 30, 80, 0.12 + this.progress() * 0.2, '#ffe7a0')
+    motes(g, this.w, this.top + 10, this.shelfY, this.t, 12)
+    vignette(g, this.w, this.h, 0.28)
+    const wk = this.worker
+    if (wk) {
+      // Duster pole behind the player's head, then the player.
+      if (this.wiping && this.phase !== 'done') {
+        const [hx, hy] = wk.wrist('R')
+        drawClothPole(g, hx, hy, this.drag.x, this.drag.y, this.t, Math.min(1, this.drag.speed / 300), this.drag.speed > RUSH ? '#e8514a' : '#ffd54f')
+        wk.fists(g, ['R'])
+      }
+      wk.draw(g)
     }
   }
 }

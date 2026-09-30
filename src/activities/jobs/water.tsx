@@ -6,9 +6,13 @@ import type { PointerInfo } from '../../engine/stage'
 import type { Surface } from '../../engine/pixel'
 import { rand, pick } from '../../engine/rng'
 import { haptic, sfx } from '../../engine/audio'
-import { bakeKutiGarden, drawButterfly, drawGauge, drawPlant, drawPot, drawWateringCan, type PlantKind } from '../../art/jobs'
+import { bakeHedge, bakeKutiGarden, drawButterfly, drawGauge, drawPlant, drawPot, drawWateringCanM, wateringSpoutFromHandle, type PlantKind } from '../../art/jobs'
 import { toStars, type JobStars } from '../../game/jobs'
 import { Drag, JobScene, type JobSummary } from './base'
+import { Worker } from './worker'
+import { wsfx } from './workSfx'
+import { reachPose } from '../../art/poses/work'
+import { glow, sunRays } from '../../art/workFx'
 
 const RATE = 0.36
 const SETTLE = 0.45
@@ -51,6 +55,9 @@ export class WaterScene extends JobScene {
   private canY = 300
   private pourSfx = 0
   private hinted = false
+  private hedge: HTMLCanvasElement | null = null
+  /** Can held in the right hand (spout pointing right) on the right side of the garden. */
+  private mirror = false
 
   get good() {
     return this.pots.filter((p) => p.done && !p.over).length
@@ -70,6 +77,9 @@ export class WaterScene extends JobScene {
   goalText() {
     return `รดพอดี ${this.good}/${this.pots.length}${this.over ? ` · ล้น ${this.over}` : ''}`
   }
+  cheerText() {
+    return this.over ? 'สวนชุ่มฉ่ำ!' : 'บานสะพรั่ง!'
+  }
   summary(): JobSummary {
     return {
       title: this.good === this.pots.length ? 'ดอกไม้บานสะพรั่งทั้งสวน!' : undefined,
@@ -77,14 +87,41 @@ export class WaterScene extends JobScene {
     }
   }
 
-  /** Spout tip: up and left of the finger so the pot stays visible. */
+  /** Spout tip of the can in the player's hand. */
   private get spout(): [number, number] {
-    return [this.canX - 16, this.canY - 22]
+    const wk = this.worker
+    if (!wk) return [this.canX - 16, this.canY - 22]
+    const [hx, hy] = wk.wrist(this.mirror ? 'R' : 'L')
+    return wateringSpoutFromHandle(hx, hy, this.tilt, this.mirror)
+  }
+
+  /** The player stands behind the hedge and holds the can out over the pots. */
+  private aimWorker() {
+    const wk = this.worker
+    if (!wk) return
+    const feet = this.ledgeY - 11
+    // The finger aims the spout; switch hands on the right side of the garden.
+    const aimX = this.canX - 14
+    if (this.holding) {
+      if (!this.mirror && aimX > this.w * 0.62) this.mirror = true
+      else if (this.mirror && aimX < this.w * 0.46) this.mirror = false
+    }
+    const side = this.mirror ? 'R' : 'L'
+    const up = this.holding ? 0.3 : -0.25
+    wk.pose = reachPose('front', side, this.mirror ? -up : Math.PI + up, 11, this.holding ? 'open' : 'smile')
+    wk.follow = this.holding ? 10 : 5
+    wk.clipY = this.ledgeY - 8
+    if (this.holding) wk.goTo(Math.max(10, Math.min(this.w - 10, aimX + (this.mirror ? -27 : 27))), feet)
+    else wk.goTo(wk.tx, feet)
   }
 
   protected anchor() {
     this.ledgeY = Math.round(this.top + this.playH * 0.58)
     this.bg = bakeKutiGarden(this.w, this.h, this.ledgeY)
+    this.hedge = bakeHedge(this.w)
+    if (!this.worker) this.worker = new Worker(this.w - 30, this.ledgeY - 11)
+    else if (this.phase === 'ready') this.worker.place(this.w - 30, this.ledgeY - 11)
+    this.worker.shadow = false
     const n = this.pots.length || 5
     this.pots.forEach((p, i) => (p.x = Math.round(18 + ((this.w - 42) * i) / (n - 1))))
     if (!this.holding) {
@@ -151,6 +188,7 @@ export class WaterScene extends JobScene {
 
   protected tick(dt: number) {
     this.tilt += ((this.holding ? 1 : 0) - this.tilt) * Math.min(1, dt * 12)
+    this.aimWorker()
     const pouring = this.holding && this.tilt > 0.6 && this.playing
     const target = pouring ? this.streamPot() : null
     const [sx, sy] = this.spout
@@ -158,6 +196,7 @@ export class WaterScene extends JobScene {
       this.pourSfx -= dt
       if (this.pourSfx <= 0) {
         sfx.pour(0.35)
+        if (target) wsfx.trickle()
         this.pourSfx = 0.3
       }
       for (let i = 0; i < 2; i++)
@@ -184,6 +223,8 @@ export class WaterScene extends JobScene {
           haptic(25)
           this.shake(0.15, 1)
           this.say(p.x, this.potTop(p) - 30, 'น้ำล้นแล้ว!', 'warn', 1.3)
+          this.breakStreak()
+          this.worker?.reactWith('oops', 0.9)
         }
       } else p.still += dt
       if (p.level > p.hi) p.spill = Math.min(1, p.spill + dt * 3)
@@ -194,6 +235,7 @@ export class WaterScene extends JobScene {
         sfx.sparkle()
         sfx.chime()
         haptic(14)
+        this.streak(p.x, this.potTop(p) - 30, 6)
         this.particles.sparkles(p.x, this.potTop(p) - 16, 10, '#fff3a6')
         this.particles.hearts(p.x, this.potTop(p) - 22, 2, '#ff9fc0')
         this.say(p.x, this.potTop(p) - 32, pick(['พอดีเลย!', 'ชุ่มชื่นจัง', 'ดอกบานแล้ว!']), 'good', 1.2)
@@ -218,6 +260,10 @@ export class WaterScene extends JobScene {
 
   protected draw(g: Surface) {
     if (this.bg) g.draw(this.bg, 0, 0)
+    glow(g, this.w * 0.5, this.ledgeY * 0.55, 60, 0.18, '#fff3c8')
+    // The player behind the hedge, then the hedge over their legs.
+    this.worker?.draw(g)
+    if (this.hedge) g.draw(this.hedge, 0, this.ledgeY - 26)
     for (const p of this.pots) {
       const top = this.potTop(p)
       drawPlant(g, p.kind, p.x, top + 1, p.life, p.bloom, this.t, p.seed)
@@ -228,12 +274,14 @@ export class WaterScene extends JobScene {
     }
     for (const f of this.flies) drawButterfly(g, f.x, f.y, f.t, f.color)
     const [sx, sy] = this.spout
-    drawWateringCan(g, sx, sy, this.tilt)
+    drawWateringCanM(g, sx, sy, this.tilt, this.mirror)
+    this.worker?.fists(g, [this.mirror ? 'R' : 'L'])
     // Aim marker under the spout while holding.
     if (this.holding) {
       const t = this.streamPot()
       const y = t ? this.potTop(t) : this.ledgeY
       if (Math.floor(this.t * 6) % 2) g.px(sx, y - 1, '#ffffff')
     }
+    sunRays(g, this.w, this.h, this.t, '#fff2c4', 0.18, this.top - 20)
   }
 }

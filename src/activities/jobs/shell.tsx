@@ -11,12 +11,18 @@ import { track } from '../../game/actions'
 import type { GameEvent } from '../../game/data/quests'
 import { MATERIAL_INFO } from '../../game/materials'
 import { closeActivity, coinStoreOpen } from '../../ui/store'
-import { ResultCard, useStage, type ResultData } from '../kit'
+import { useStage, type ResultData } from '../kit'
 import { PBtn, Window } from '../../ui/components/kit'
-import { Bar, Icon } from '../../ui/components/common'
+import { Bar, Btn, Coin, Icon, Merit } from '../../ui/components/common'
+import { FxCanvas } from '../../ui/components/FxCanvas'
+import { adsLeft, grantMeritRaw, rewardAd } from '../../game/actions'
+import { ads } from '../../services/ads'
+import { spriteDataUrl } from '../../engine/sprite'
+import { workerCard, type CardMood } from '../../art/workActor'
+import { wsfx } from './workSfx'
 import { PT, TONE_TEXT } from '../../ui/pixeltext'
 import { haptic, sfx } from '../../engine/audio'
-import { fmtTime, type Bubble, type JobScene, type JobSummary } from './base'
+import { fmtTime, type Bubble, type JobScene, type JobSummary, type Praise } from './base'
 
 const STYLE = `
 .jobx-hud { padding: 6px 10px 8px; display: flex; flex-direction: column; gap: 6px; }
@@ -46,6 +52,29 @@ const STYLE = `
 @keyframes jobx-pop-r { from { transform: translate(-100%, -80%) scale(0.6); } to { transform: translate(-100%, -100%) scale(1); } }
 @keyframes jobx-zoom { from { transform: scale(1.8); opacity: 0; } 40% { opacity: 1; } to { transform: scale(1); } }
 @keyframes jobx-pulse { 50% { filter: brightness(1.35); } }
+.jobx-praise { position: absolute; left: 50%; top: 24%; z-index: 5; pointer-events: none; transform: translate(-50%, -50%); animation: jobx-praise 1.3s cubic-bezier(.2,1.6,.4,1) forwards; line-height: 0; filter: drop-shadow(0 3px 0 rgba(58,40,56,0.45)); }
+.jobx-praise::before { content: ''; position: absolute; left: 50%; top: 50%; width: 150%; height: 190%; transform: translate(-50%, -50%); background: radial-gradient(closest-side, rgba(255,236,150,0.75), rgba(255,236,150,0)); z-index: -1; }
+.jobx-praise.pink::before { background: radial-gradient(closest-side, rgba(255,170,205,0.75), rgba(255,170,205,0)); }
+.jobx-praise.blue::before { background: radial-gradient(closest-side, rgba(160,215,255,0.75), rgba(160,215,255,0)); }
+.jobx-praise.green::before { background: radial-gradient(closest-side, rgba(180,240,140,0.75), rgba(180,240,140,0)); }
+.jobx-result { gap: 4px; padding-top: 10px; overflow: visible; }
+.jobx-hero { position: relative; width: 100%; height: 168px; margin-top: -8px; display: flex; align-items: flex-end; justify-content: center; }
+.jobx-hero-rays { position: absolute; left: 50%; top: 50%; width: 230px; height: 230px; margin: -115px 0 0 -115px; border-radius: 50%; background: repeating-conic-gradient(from 0deg, rgba(255, 222, 110, 0.55) 0 11deg, transparent 11deg 22deg); -webkit-mask-image: radial-gradient(circle, #000 18%, transparent 66%); mask-image: radial-gradient(circle, #000 18%, transparent 66%); animation: jobx-spin 9s linear infinite; }
+.jobx-hero.low .jobx-hero-rays { background: repeating-conic-gradient(from 0deg, rgba(170, 210, 255, 0.45) 0 11deg, transparent 11deg 22deg); }
+.jobx-hero-floor { position: absolute; bottom: 4px; left: 50%; width: 110px; height: 14px; margin-left: -55px; border-radius: 50%; background: radial-gradient(closest-side, rgba(58,40,56,0.28), rgba(58,40,56,0)); }
+.jobx-hero img { position: relative; image-rendering: pixelated; animation: jobx-hop 0.9s steps(1) infinite; }
+.jobx-hero img.b { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); animation: jobx-hop-b 0.9s steps(1) infinite; }
+@keyframes jobx-hop { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes jobx-hop-b { 0%, 49% { opacity: 0; } 50%, 100% { opacity: 1; } }
+@keyframes jobx-spin { to { transform: rotate(360deg); } }
+.jobx-rstars { display: flex; gap: 4px; margin: -4px 0 2px; }
+.jobx-rstar { line-height: 0; opacity: 0.25; transform: scale(0.7); transition: transform 0.28s cubic-bezier(.3,1.9,.5,1), opacity 0.2s; }
+.jobx-rstar.mid { margin-top: -10px; }
+.jobx-rstar.on { opacity: 1; transform: scale(1.12); }
+.jobx-rword { animation: jobx-zoom 0.5s ease-out both; line-height: 0; }
+.jobx-rchips { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; }
+.jobx-rlines { display: flex; flex-direction: column; gap: 2px; align-items: center; background: rgba(58,40,56,0.06); border-radius: 4px; padding: 4px 10px; width: 100%; box-sizing: border-box; }
+@keyframes jobx-praise { 0% { transform: translate(-50%, -50%) scale(0.3) rotate(-8deg); opacity: 0; } 18% { transform: translate(-50%, -50%) scale(1.15) rotate(3deg); opacity: 1; } 30% { transform: translate(-50%, -50%) scale(1) rotate(0); } 78% { transform: translate(-50%, -62%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -80%) scale(0.9); opacity: 0; } }
 `
 
 function ensureStyle() {
@@ -65,6 +94,14 @@ interface Hud {
   left: number
   thresholds: [number, number, number]
   bubbles: Bubble[]
+  praises: Praise[]
+}
+
+const PRAISE_TONE: Record<Praise['tone'], { color: string; outline: string }> = {
+  gold: { color: '#ffe45e', outline: '#7a3a10' },
+  pink: { color: '#ffd0e4', outline: '#8e2a5c' },
+  blue: { color: '#d4f1ff', outline: '#1f3f70' },
+  green: { color: '#d8ffb0', outline: '#1f4a26' },
 }
 
 /** How-to card for a job (goal, three steps, rewards). */
@@ -101,6 +138,100 @@ export function JobGoalCard({ def, onStart, onClose, again }: { def: JobDef; onS
   )
 }
 
+const MOOD: Record<JobStars, CardMood> = { 0: 'phew', 1: 'cheer', 2: 'thumbs', 3: 'thumbs' }
+
+/** Result card: the player's own avatar celebrating, stars landing one by one, rewards. */
+export function JobResultCard({ r, onDone, onAgain, mood, apron }: { r: ResultData & { stars: JobStars }; onDone: () => void; onAgain?: () => void; mood?: CardMood; apron?: boolean }) {
+  const [shown, setShown] = useState(0)
+  const [doubled, setDoubled] = useState(false)
+  const look = game.value.player.look
+  const m = mood ?? MOOD[r.stars]
+  const urls = [0, 1].map((f) => spriteDataUrl(workerCard(look, m, f as 0 | 1, apron), 3))
+  useEffect(() => {
+    sfx.merit()
+    const ids: number[] = []
+    for (let i = 1; i <= r.stars; i++)
+      ids.push(
+        window.setTimeout(() => {
+          setShown(i)
+          wsfx.star(i - 1)
+          haptic(10)
+        }, 260 + i * 300),
+      )
+    return () => ids.forEach(clearTimeout)
+  }, [])
+  const double = async () => {
+    const res = await ads().showRewarded('double_reward')
+    if (!res.rewarded) return
+    rewardAd('bonus')
+    grantMeritRaw(r.merit)
+    setDoubled(true)
+    sfx.chime()
+  }
+  const word = STAR_WORDS[r.stars]
+  return (
+    <div class="modal-backdrop celebrate">
+      <FxCanvas mode={r.stars >= 2 ? 'confetti' : 'sparkle'} />
+      <div class="panel modal center result-card jobx-result">
+        <div class={`jobx-hero ${r.stars <= 1 ? 'low' : ''}`}>
+          <span class="jobx-hero-rays" />
+          <span class="jobx-hero-floor" />
+          <img class="px a" src={urls[0]} alt="" width={138} height={180} draggable={false} />
+          <img class="px b" src={urls[1]} alt="" width={138} height={180} draggable={false} />
+        </div>
+        <div class="jobx-rstars" aria-label={`${r.stars} ดาว`}>
+          {[0, 1, 2].map((i) => (
+            <span key={i} class={`jobx-rstar ${i === 1 ? 'mid' : ''} ${shown > i ? 'on' : ''}`}>
+              <Icon name={shown > i ? 'star' : 'star_empty'} size={i === 1 ? 44 : 36} />
+            </span>
+          ))}
+        </div>
+        {shown >= r.stars && (
+          <div class="jobx-rword" key={word}>
+            <PT text={word} size={16} weight={600} color={r.stars >= 2 ? '#ffe45e' : '#d4f1ff'} outline={r.stars >= 2 ? '#7a3a10' : '#1f3f70'} scale={2} />
+          </div>
+        )}
+        <div class="title">{r.title}</div>
+        <div class="jobx-rchips">
+          <span class="chip pink big-chip">
+            <Merit n={`+${doubled ? r.merit * 2 : r.merit}`} size={20} />
+            <span class="small">บุญ</span>
+          </span>
+          {!!r.coins && (
+            <span class="chip gold big-chip">
+              <Coin n={`+${r.coins}`} size={20} />
+            </span>
+          )}
+        </div>
+        {!!r.lines?.length && (
+          <div class="jobx-rlines">
+            {r.lines.map((l) => (
+              <div class="small muted" key={l}>
+                {l}
+              </div>
+            ))}
+          </div>
+        )}
+        <div class="col" style={{ marginTop: '6px', width: '100%' }}>
+          {r.merit > 0 && !doubled && adsLeft() > 0 && (
+            <Btn tone="blue" block onClick={double}>
+              <Icon name="tv" size={18} /> ดูโฆษณา รับบุญ x2
+            </Btn>
+          )}
+          {onAgain && (
+            <Btn tone="paper" block onClick={onAgain}>
+              เล่นอีกครั้ง
+            </Btn>
+          )}
+          <Btn tone="green" block onClick={onDone}>
+            สาธุ ๆ ๆ
+          </Btn>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function JobRun({ def, make, onAgain, tw = 190 }: { def: JobDef; make: () => JobScene; onAgain: () => void; tw?: number }) {
   ensureStyle()
   const { host, scene, stage } = useStage(make, { targetWidth: tw })
@@ -113,7 +244,7 @@ export function JobRun({ def, make, onAgain, tw = 190 }: { def: JobDef; make: ()
   const [count, setCount] = useState<string | null>(null)
   const [hud, setHud] = useState<Hud | null>(null)
   const [reveal, setReveal] = useState<{ stars: JobStars; shown: number } | null>(null)
-  const [result, setResult] = useState<ResultData | null>(null)
+  const [result, setResult] = useState<(ResultData & { stars: JobStars }) | null>(null)
   const timers = useRef<number[]>([])
   const started = useRef(false)
 
@@ -162,7 +293,7 @@ export function JobRun({ def, make, onAgain, tw = 190 }: { def: JobDef; make: ()
       const s = scene.current
       if (!s) return
       measure()
-      setHud({ goal: s.goalText(), progress: s.progress(), stars: s.stars(), left: s.timeLeft, thresholds: s.thresholds, bubbles: [...s.bubbles] })
+      setHud({ goal: s.goalText(), progress: s.progress(), stars: s.stars(), left: s.timeLeft, thresholds: s.thresholds, bubbles: [...s.bubbles], praises: [...s.praises] })
     }, 100)
     // Dev/test hook.
     ;(window as unknown as { __jobScene?: JobScene; __jobK?: number }).__jobScene = sc
@@ -198,7 +329,7 @@ export function JobRun({ def, make, onAgain, tw = 190 }: { def: JobDef; make: ()
     const title = summary.title ?? (stars >= 2 ? `${def.name} เสร็จเรียบร้อย!` : `${def.name} ได้ช่วยวัดแล้ว`)
     later(1700, () => {
       setReveal(null)
-      setResult({ title, merit: r.merit, coins: r.coins, icon: def.icon, lines })
+      setResult({ title, merit: r.merit, coins: r.coins, icon: def.icon, lines: lines.slice(1), stars })
     })
   }
 
@@ -249,6 +380,11 @@ export function JobRun({ def, make, onAgain, tw = 190 }: { def: JobDef; make: ()
           </div>
         )
       })}
+      {hud?.praises.slice(-1).map((p) => (
+        <div key={p.id} class={`jobx-praise ${p.tone}`}>
+          <PT text={p.text} size={p.text.length > 10 ? 18 : 22} weight={600} color={PRAISE_TONE[p.tone].color} outline={PRAISE_TONE[p.tone].outline} scale={2} />
+        </div>
+      ))}
       {count && (
         <div class="act-center">
           <div key={count} class="jobx-count">
@@ -311,7 +447,7 @@ export function JobRun({ def, make, onAgain, tw = 190 }: { def: JobDef; make: ()
           <p class="goal-main">งานที่ทำไว้รอบนี้จะยังไม่ได้รับรางวัลนะ</p>
         </Window>
       )}
-      {result && <ResultCard r={result} onDone={closeActivity} again={{ label: 'เล่นอีกครั้ง', run: onAgain }} />}
+      {result && <JobResultCard r={result} onDone={closeActivity} onAgain={onAgain} />}
     </div>
   )
 }

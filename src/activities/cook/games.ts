@@ -31,6 +31,7 @@ import {
   drawStove,
   drawTray,
   drawWok,
+  drawWokFire,
   eggSprite,
   chopWidth,
   FOOD,
@@ -38,6 +39,12 @@ import {
   toolSprite,
   type Tool,
 } from '../../art/cooking'
+import type { Worker } from '../jobs/worker'
+import { reachPose, rollPose, WP, type ArmSpec } from '../../art/poses/work'
+import type { Expr } from '../../art/doll'
+import { drawFist } from '../../art/workActor'
+import { drawCookTool } from '../../art/workTools'
+import { wsfx } from '../jobs/workSfx'
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
 const TAU = Math.PI * 2
@@ -62,6 +69,10 @@ export interface Kitchen {
   /** Main cooking vessel of the recipe and what is in it (for plating). */
   readonly cookVessel: Vessel
   readonly carry: Bit[]
+  /** Back edge of the counter: the player stands behind it (waist here). */
+  readonly backY: number
+  /** Something burnt this recipe (for the chef's sooty face). */
+  burnt: boolean
   shake(px?: number): void
   sizzle(): void
 }
@@ -150,6 +161,15 @@ export abstract class StepGame {
     return null
   }
 
+  /** Pose the chef for this step (called every frame while it plays). */
+  chefPose(c: Worker) {
+    c.pose = WP.ready
+    if (this.down) chefTo(c, this.k, this.px + 10)
+  }
+
+  /** Draw whatever the chef holds, over the station. */
+  drawHeld(_g: Surface, _c: Worker) {}
+
   /** Tool under the finger (or the ghost hand). */
   drawCursor(g: Surface, t: number) {
     if (this.done) return
@@ -174,6 +194,35 @@ export abstract class StepGame {
       g.alpha(1)
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// The chef (the player behind the counter)
+
+/** Feet of the chef standing behind the counter. */
+export function chefFeet(k: Kitchen) {
+  return k.backY + 17
+}
+
+/** Walk the chef along the counter toward x. */
+function chefTo(c: Worker, k: Kitchen, x: number, follow = 8) {
+  c.follow = follow
+  c.goTo(Math.max(k.cx - 28, Math.min(k.cx + 28, x)), chefFeet(k))
+}
+
+/** Point the chef's right hand at (tx, ty). */
+function reachTo(c: Worker, tx: number, ty: number, expr: Expr = 'open', other: ArmSpec | 'rest' | null = { w: [11, 35] }) {
+  const sx = c.x + 7.5
+  const sy = c.feetY - 26
+  const d = Math.max(6, Math.min(10, Math.hypot(tx - sx, ty - sy)))
+  c.pose = reachPose('front', 'R', Math.atan2(ty - sy, tx - sx), d, expr, other)
+}
+
+/** A long-handled tool from the chef's right hand to (tx, ty). */
+function heldTool(g: Surface, c: Worker, kind: 'turner' | 'ladle' | 'whisk' | 'spoon' | 'knife', tx: number, ty: number) {
+  const [hx, hy] = c.wrist('R')
+  drawCookTool(g, kind, hx, hy, tx, ty)
+  drawFist(g, c.look, hx, hy)
 }
 
 // ---------------------------------------------------------------------------
@@ -244,6 +293,8 @@ export class ChopGame extends StepGame {
   private lx = 0
   private ly = 0
   private knifeT = 0
+  /** Perfect cuts in a row. */
+  private run = 0
   tool: Tool = 'knife'
   limit = 16
 
@@ -293,16 +344,23 @@ export class ChopGame extends StepGame {
       let gi = 0
       for (let i = 1; i < it.guides.length; i++) if (Math.abs(it.guides[i] - cx) < Math.abs(it.guides[gi] - cx)) gi = i
       const good = it.guides.length && Math.abs(it.guides[gi] - cx) <= 4
-      if (good) this.hits++
+      if (good) {
+        this.hits++
+        this.run++
+        if (this.run >= 2) {
+          this.k.particles.popText(it.x + cx, it.y - 16, `x${this.run}`, this.run >= 4 ? '#ff9fc0' : '#ffd54f')
+          wsfx.combo(this.run)
+        }
+      } else this.run = 0
       const at = good ? it.guides[gi] : Math.round(cx)
       it.guides.splice(gi, 1)
       it.cuts.push(at)
       this.made++
-      this.knifeT = 0.12
+      this.knifeT = 0.14
       const [c, l] = bitColors(it.bit)
-      burst(this.k.particles, it.x + at, it.y - 2, [c, l, c], 4)
+      burst(this.k.particles, it.x + at, it.y - 2, [c, l, c], 6)
       this.k.shake(1)
-      sfx.click()
+      wsfx.chop()
       haptic(6)
       if (it.cuts.length >= it.need) this.k.particles.sparkles(it.x + it.w / 2, it.y - 10, 5, '#fff3a6', 6)
     }
@@ -327,6 +385,18 @@ export class ChopGame extends StepGame {
       if (!this.done)
         for (const gx of it.guides) for (let y = it.y - 12; y <= it.y + 12; y += 3) g.px(it.x + gx, y, (Math.floor(this.k.t * 4) + y) % 2 ? '#ffffff' : '#fff3a6')
     }
+  }
+
+  chefPose(c: Worker) {
+    c.pose = this.knifeT > 0 ? WP.chopDown : WP.chopUp
+    if (this.down) chefTo(c, this.k, this.px + 12, 10)
+  }
+
+  drawHeld(g: Surface, c: Worker) {
+    const [hx, hy] = c.wrist('R')
+    const down = this.knifeT > 0
+    drawCookTool(g, 'knife', hx, hy, hx + (down ? 1 : 4), hy + 10)
+    drawFist(g, c.look, hx, hy)
   }
 
   ghost(t: number) {
@@ -451,6 +521,35 @@ export class CrackGame extends StepGame {
     g.draw(s.canvas, Math.round(x - s.w / 2), Math.round(y - s.h / 2))
   }
 
+  /** Where the egg is drawn right now (null once it is cracked in). */
+  private eggPos(): [number, number] | null {
+    if (this.cracked >= this.eggs && !this.anim) return null
+    if (this.anim) {
+      if (this.anim.t >= 0.26) return null
+      const a = this.anim.t
+      return [this.anim.x + (this.k.cx - this.anim.x) * Math.min(1, a / 0.12), this.rimY - 26 + Math.min(1, a / 0.12) * 16]
+    }
+    return [this.eggX(), this.rimY - 26 + Math.sin(this.swing * 7)]
+  }
+
+  chefPose(c: Worker) {
+    const e = this.eggPos()
+    if (!e) {
+      c.pose = WP.ready
+      return
+    }
+    chefTo(c, this.k, e[0] - 9, 14)
+    reachTo(c, e[0], e[1] - 5, this.anim ? 'open' : 'think')
+  }
+
+  drawHeld(g: Surface, c: Worker) {
+    const e = this.eggPos()
+    if (!e) return
+    const [hx, hy] = c.wrist('R')
+    // Fingers pinching the top of the egg.
+    if (Math.hypot(hx - e[0], hy - (e[1] - 5)) < 9) drawFist(g, c.look, e[0], e[1] - 5)
+  }
+
   ghost() {
     const x = this.eggX()
     return Math.abs(x - this.k.cx) < 10 ? { x: this.k.cx + 8, y: this.rimY - 20, down: true } : { x: this.k.cx + 8, y: this.rimY - 14, down: false }
@@ -469,6 +568,9 @@ export class StirGame extends StepGame {
   private sz = 0
   private f = { cx: 0, cy: 0, rx: 30, ry: 16 }
   private hot: boolean
+  /** Wok-hei: rises with vigorous stirring, drives the flare. */
+  heat = 0
+  private flareT = 0
   limit = 16
 
   constructor(step: CookStep, k: Kitchen) {
@@ -479,11 +581,40 @@ export class StirGame extends StepGame {
     this.hot = onStove(step.vessel)
     const v = step.vessel ?? 'wok'
     this.tool = v === 'pot' ? 'ladle' : v === 'bowl' ? 'whisk' : 'turner'
+    this.showCursor = false
     this.hint = `รอบที่ 1/${turns}`
+  }
+
+  private tipPos(): [number, number] {
+    if (this.down) return [this.px, this.py]
+    const a = this.spin
+    return [this.f.cx + Math.cos(a) * this.f.rx * 0.35, this.f.cy + Math.sin(a) * this.f.ry * 0.3]
+  }
+
+  chefPose(c: Worker) {
+    const [tx, ty] = this.tipPos()
+    chefTo(c, this.k, tx + 12, 7)
+    reachTo(c, tx, ty, this.burn > 0.4 ? 'think' : this.heat > 0.5 ? 'happy' : 'open', { w: [10.5, 34.5] })
+    c.face = this.burn > 0.5 ? 'sweat' : 'none'
+  }
+
+  drawHeld(g: Surface, c: Worker) {
+    const [tx, ty] = this.tipPos()
+    heldTool(g, c, this.tool as 'turner' | 'ladle' | 'whisk', tx, ty)
   }
 
   protected tick(dt: number) {
     const k = this.k
+    this.heat = Math.max(0, this.heat - dt * 0.7)
+    this.flareT -= dt
+    if (this.hot && this.heat > 0.75 && this.flareT <= 0) {
+      this.flareT = 1.4
+      wsfx.flare()
+      k.shake(1)
+      for (let i = 0; i < 10; i++) k.particles.add({ kind: 'dot', x: this.f.cx + rand(-this.f.rx, this.f.rx) * 0.8, y: this.f.cy - 4, vx: rand(-30, 30), vy: rand(-80, -40), g: 90, max: rand(0.4, 0.8), color: i % 3 ? '#ffb347' : '#fff3a6' })
+    }
+    if (this.hot && this.heat > 0.3 && Math.random() < dt * 14 * this.heat)
+      k.particles.add({ kind: 'dot', x: this.f.cx + rand(-this.f.rx, this.f.rx) * 0.9, y: this.f.cy + rand(-4, 4), vx: rand(-15, 15), vy: rand(-60, -30), g: 60, max: rand(0.25, 0.5), color: Math.random() < 0.5 ? '#ffd54f' : '#ff9a3a' })
     if (this.hot) {
       if (Math.random() < dt * 5) steam(k.particles, this.f.cx, this.f.cy - 6, this.f.rx * 0.6)
       if (this.idle > 1.8) {
@@ -518,10 +649,12 @@ export class StirGame extends StepGame {
       if (Math.abs(da) < 1.2) {
         this.acc += Math.abs(da)
         this.spin += da
+        if (this.hot) this.heat = Math.min(1.2, this.heat + Math.abs(da) * 0.14)
         if (this.hot && this.sz <= 0) {
           this.k.sizzle()
           this.sz = 0.12
           oilPop(this.k.particles, this.f.cx, this.f.cy, this.f.rx, this.f.ry)
+          if (this.heat > 0.6) oilPop(this.k.particles, this.f.cx, this.f.cy, this.f.rx, this.f.ry)
         } else if (!this.hot && this.sz <= 0) {
           sfx.scratch()
           this.sz = 0.2
@@ -533,6 +666,7 @@ export class StirGame extends StepGame {
     const turns = Math.round(this.need / TAU)
     this.hint = `รอบที่ ${Math.min(turns, Math.floor(this.acc / TAU) + 1)}/${turns}`
     if (this.acc >= this.need) {
+      if (this.burn > 0.45) this.k.burnt = true
       this.finish(timeFactor(this.time, turns * 1.3 + 1.5, this.limit) * (1 - this.burn * 0.5))
       this.k.particles.sparkles(this.f.cx, this.f.cy - 8, 10, '#fff3a6', 16)
       sfx.sparkle()
@@ -546,8 +680,9 @@ export class StirGame extends StepGame {
   draw(g: Surface) {
     const { cx, cy, t } = this.k
     const v = this.step.vessel ?? 'wok'
-    const f = drawVessel(g, v, cx, cy, t, 1)
+    const f = drawVessel(g, v, cx, cy, t, 1 + Math.min(0.6, this.heat * 0.5))
     this.f = { cx: f.cx, cy: f.cy, rx: f.rx, ry: f.ry }
+    if (this.hot) drawWokFire(g, f.cx, f.cy + f.ry * 0.2, f.rx, f.ry, t, Math.min(1, this.heat))
     const bits = this.step.items?.length ? this.step.items : (['rice'] as Bit[])
     drawBits(g, bits, f.cx, f.cy, f.rx, f.ry, this.spin, 3, this.progress * 0.8)
     if (this.burn > 0.2) {
@@ -756,6 +891,29 @@ export class PourGame extends StepGame {
     }
   }
 
+  /** Grip point on the pourer's body. */
+  private grip(): [number, number] {
+    const [px, py] = this.pivot()
+    const liquid = this.step.liquid ?? 'water'
+    const a = -this.tilt * (liquid === 'water' || liquid === 'broth' ? 1.3 : 1.9)
+    const lx = 6
+    const ly = -12
+    return [px + lx * Math.cos(a) - ly * Math.sin(a), py + lx * Math.sin(a) + ly * Math.cos(a)]
+  }
+
+  chefPose(c: Worker) {
+    // The chef mimes the pour (arm out, careful face) and sweats near the line.
+    if (this.done || !this.down) {
+      c.pose = WP.ready
+      c.face = 'none'
+      return
+    }
+    const [gx] = this.grip()
+    chefTo(c, this.k, gx + 14, 6)
+    c.pose = this.level > 0.7 ? WP.shake1 : WP.shake0
+    c.face = this.level > 0.9 ? 'sweat' : 'none'
+  }
+
   ghost() {
     const [px, py] = this.pivot()
     return { x: px + 2, y: py - 8, down: true }
@@ -847,6 +1005,7 @@ export class FryGame extends StepGame {
     else s = 0.35
     if (auto) {
       p.burnt = true
+      this.k.burnt = true
       for (let i = 0; i < 6; i++) this.k.particles.add({ kind: 'smoke', x: p.x + rand(-6, 6), y: p.y - 4, vx: rand(-5, 5), vy: rand(-26, -14), max: 1.2, color: '#6d6478', size: 2 })
     }
     this.scores.push(s)
@@ -959,6 +1118,29 @@ export class FryGame extends StepGame {
         g.px(mx, by - 3, '#fffaf0')
       }
     }
+  }
+
+  private turnerTip(): [number, number] {
+    const flipping = this.pieces.find((q) => q.flipT > 0)
+    if (flipping) {
+      const lift = Math.sin((flipping.flipT / 0.5) * Math.PI) * 14
+      return [flipping.x + 6, flipping.y - lift]
+    }
+    const p = this.pieces.find((q) => !q.done) ?? this.pieces[0]
+    return [p.x + (this.krok ? 8 : 20), p.y + 2]
+  }
+
+  chefPose(c: Worker) {
+    const [tx, ty] = this.turnerTip()
+    chefTo(c, this.k, tx + 10, 9)
+    const hot = this.pieces.some((q) => !q.done && q.c > 1.1)
+    reachTo(c, tx, ty, hot ? 'think' : this.pieces.some((q) => q.flipT > 0) ? 'happy' : 'open')
+    c.face = hot ? 'sweat' : 'none'
+  }
+
+  drawHeld(g: Surface, c: Worker) {
+    const [tx, ty] = this.turnerTip()
+    heldTool(g, c, 'turner', tx, ty)
   }
 
   ghost() {
@@ -1111,6 +1293,36 @@ export class SeasonGame extends StepGame {
         g.ctx.restore()
       } else g.draw(s.canvas, Math.round(bx - s.w / 2), Math.round(byy - s.h + 1))
     })
+  }
+
+  /** Where the flying bottle is (top of it), or null. */
+  private bottleAt(): [number, number, number] | null {
+    const a = this.anim
+    if (!a || !a.ok) return null
+    let [bx, byy] = this.bottlePos(a.i)
+    const k2 = a.t < 0.2 ? a.t / 0.2 : a.t > 0.45 ? 1 - (a.t - 0.45) / 0.17 : 1
+    bx = bx + (this.k.cx - bx) * k2
+    byy = byy + (this.vesselY() - 18 - byy) * k2
+    return [bx, byy, k2]
+  }
+
+  chefPose(c: Worker) {
+    const b = this.bottleAt()
+    if (b && b[2] > 0.55) {
+      chefTo(c, this.k, b[0] + 10, 14)
+      reachTo(c, b[0], b[1] + 2, 'open')
+      return
+    }
+    c.pose = this.anim && !this.anim.ok ? WP.oops : WP.ready
+    c.face = this.anim && !this.anim.ok ? 'sweat' : 'none'
+  }
+
+  drawHeld(g: Surface, c: Worker) {
+    const b = this.bottleAt()
+    if (!b || b[2] <= 0.55) return
+    const [hx, hy] = c.wrist('R')
+    // Upside down while pouring: hold it by the base (now on top).
+    if (Math.hypot(hx - b[0], hy - (b[1] + 2)) < 12) drawFist(g, c.look, b[0], b[1] + 2 + Math.sin(this.k.t * 40) * 1)
   }
 
   ghost() {
@@ -1285,6 +1497,13 @@ export class ShapeGame extends StepGame {
     }
     void cx
     void cy
+  }
+
+  chefPose(c: Worker) {
+    if (this.holding) {
+      c.pose = rollPose(this.holding.path * 0.25)
+      chefTo(c, this.k, this.holding.x + 2, 8)
+    } else c.pose = WP.ready
   }
 
   ghost(t: number) {
@@ -1462,6 +1681,7 @@ export class PlateGame extends StepGame {
     super(step, k)
     this.n = step.n ?? 3
     this.tool = step.serve === 'bowl' ? 'ladle' : 'spoon'
+    this.showCursor = false
     this.limit = 6 + this.n * 3
     this.hint = `0/${this.n}`
   }
@@ -1572,6 +1792,28 @@ export class PlateGame extends StepGame {
     }
     const h = this.holding
     if (h) drawBits(g, this.k.carry.length ? this.k.carry : ['rice'], h.x, h.y - 10, 7, 4, 0, 30, 0.7)
+  }
+
+  private scoopTip(): [number, number] {
+    if (this.holding) return [this.holding.x, this.holding.y - 8]
+    const [sx, sy] = this.src
+    return [sx + 6, sy - 2]
+  }
+
+  chefPose(c: Worker) {
+    if (this.reveal >= 0) {
+      c.pose = WP.cheer
+      return
+    }
+    const [tx, ty] = this.scoopTip()
+    chefTo(c, this.k, tx + 12, 9)
+    reachTo(c, tx, ty, this.holding ? 'open' : 'smile')
+  }
+
+  drawHeld(g: Surface, c: Worker) {
+    if (this.reveal >= 0) return
+    const [tx, ty] = this.scoopTip()
+    heldTool(g, c, this.tool === 'ladle' ? 'ladle' : 'spoon', tx, ty)
   }
 
   ghost(t: number) {

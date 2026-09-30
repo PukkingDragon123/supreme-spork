@@ -5,6 +5,7 @@
 //   <CookActivity req={{ id: 'cook', params: { recipe?: 'kaprao' } }} />
 
 import './cook.css'
+import type { ComponentChildren } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { game, level } from '../../game/state'
 import { COOKING_LEVEL, canCook, cook, dishFor, gradeFor, rewardCooking, starsFor, recipeBook, recipeStatus, type CookResult } from '../../game/cooking'
@@ -14,7 +15,7 @@ import { closeActivity, openActivity, type ActivityRequest } from '../../ui/stor
 import { ActivityFrame } from '../kit'
 import { useStage } from '../kit'
 import { PBtn, Stars } from '../../ui/components/kit'
-import { AvatarImg, Bar, Icon } from '../../ui/components/common'
+import { Bar, Icon } from '../../ui/components/common'
 import { FxCanvas } from '../../ui/components/FxCanvas'
 import { PT, TONE_TEXT } from '../../ui/pixeltext'
 import { sfx, haptic } from '../../engine/audio'
@@ -23,6 +24,9 @@ import { KitchenScene } from './scene'
 import type { Chip } from './games'
 import { LockedKitchen, RecipeBook } from './book'
 import { DishImg } from './parts'
+import { spriteDataUrl } from '../../engine/sprite'
+import { workerCard, type CardMood } from '../../art/workActor'
+import { wsfx } from '../jobs/workSfx'
 
 type View = 'book' | 'cook' | 'result'
 
@@ -54,7 +58,7 @@ export function CookActivity({ req }: { req: ActivityRequest }) {
   const [step, setStep] = useState(0)
   const [snap, setSnap] = useState<Snap>({ progress: 0, hint: '', time: 0, chips: [] })
   const [grade, setGrade] = useState<{ text: string; key: string; n: number; score: number } | null>(null)
-  const [result, setResult] = useState<(CookResult & { bonusMerit: number }) | null>(null)
+  const [result, setResult] = useState<(CookResult & { bonusMerit: number; burnt: boolean }) | null>(null)
   const panel = useRef<HTMLDivElement>(null)
   const recipe = RECIPE_BY_ID[sel]
 
@@ -122,7 +126,7 @@ export function CookActivity({ req }: { req: ActivityRequest }) {
         const bonusMerit = res ? rewardCooking(stars) : 0
         setTimeout(() => {
           if (res) {
-            setResult({ ...res, bonusMerit })
+            setResult({ ...res, bonusMerit, burnt: sc.burnt })
             sfx.levelUp()
           }
           setView(res ? 'result' : 'book')
@@ -216,12 +220,9 @@ export function CookActivity({ req }: { req: ActivityRequest }) {
 function GradePop({ grade }: { grade: { text: string; key: string; n: number; score: number } }) {
   const tone = GRADE_TONE[grade.key]
   const stars = grade.score >= 0.88 ? 3 : grade.score >= 0.66 ? 2 : grade.score >= 0.4 ? 1 : 0
-  const happy = grade.key === 'perfect' || grade.key === 'great'
+  // The chef behind the counter reacts in the scene; this is just the big word.
   return (
     <div class={`cook-grade ${grade.key}`} key={grade.n}>
-      <div class="cook-grade-avatar">
-        <AvatarImg look={game.value.player.look} pose={happy ? 'happy' : 'stand'} scale={3} />
-      </div>
       <div class="cook-grade-text">
         <PT text={grade.text} size={22} weight={600} color={tone.color} outline={tone.outline} scale={2} />
         {stars > 0 && <Stars n={stars} size={18} />}
@@ -230,7 +231,56 @@ function GradePop({ grade }: { grade: { text: string; key: string; n: number; sc
   )
 }
 
-function ResultView({ r, onAlms, onAgain, onDone }: { r: CookResult & { bonusMerit: number }; onAlms: () => void; onAgain: () => void; onDone: () => void }) {
+const TASTE_WORD: Record<number, { text: string; color: string; outline: string }> = {
+  3: { text: 'อร่อยเหาะ!', color: '#ffe45e', outline: '#7a3a10' },
+  2: { text: 'อร่อยจัง!', color: '#b4f08a', outline: '#1f4a26' },
+  1: { text: 'เค็มปี๋!', color: '#9fd0ff', outline: '#1f3f70' },
+}
+const BURNT_WORD = { text: 'ไหม้นิดนึง~', color: '#ffd0a0', outline: '#6e2a10' }
+const SOOTY_WORD = { text: 'อร่อย…แต่ไหม้!', color: '#ffd0a0', outline: '#6e2a10' }
+
+/** The chef tastes the dish (ชิม) and pulls a face: heart eyes, a thumbs up or a sour pucker. */
+function ChefTaste({ stars, burnt, children }: { stars: number; burnt: boolean; children?: ComponentChildren }) {
+  const [react, setReact] = useState(false)
+  const look = game.value.player.look
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setReact(true)
+      if (stars >= 2) wsfx.yum()
+      else wsfx.wahwah()
+      haptic(stars >= 3 ? 30 : 15)
+    }, 1100)
+    return () => clearTimeout(id)
+  }, [])
+  const mood: CardMood = !react ? 'taste' : stars >= 3 ? 'yum' : stars >= 2 ? 'thumbs' : burnt ? 'burnt' : 'sour'
+  // A burnt pan still gets a thumbs up, just with a sooty face.
+  const sooty = react && burnt && stars === 2
+  const urls = [0, 1].map((f) => spriteDataUrl(workerCard(look, mood, f as 0 | 1, true, sooty ? 'soot' : undefined), 2))
+  const word = stars <= 1 && burnt ? BURNT_WORD : sooty ? SOOTY_WORD : TASTE_WORD[Math.max(1, Math.min(3, stars))]
+  return (
+    <div class={`cook-reveal-row ${react ? 'react' : ''}`}>
+      <div class="cook-taste">
+        <div class="cook-taste-chef">
+          <img class="px a" src={urls[0]} width={92} height={120} alt="" draggable={false} />
+          <img class="px b" src={urls[1]} width={92} height={120} alt="" draggable={false} />
+          {!react && (
+            <span class="cook-taste-bubble">
+              <PT text="ชิม…" size={11} weight={600} {...TONE_TEXT.ink} />
+            </span>
+          )}
+        </div>
+      </div>
+      {children}
+      {react && (
+        <div class="cook-taste-word">
+          <PT text={word.text} size={17} weight={600} color={word.color} outline={word.outline} scale={2} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ResultView({ r, onAlms, onAgain, onDone }: { r: CookResult & { bonusMerit: number; burnt: boolean }; onAlms: () => void; onAgain: () => void; onDone: () => void }) {
   const gold = r.stars >= 3
   const [shown, setShown] = useState(0)
   useEffect(() => {
@@ -239,21 +289,23 @@ function ResultView({ r, onAlms, onAgain, onDone }: { r: CookResult & { bonusMer
       ids.push(
         setTimeout(() => {
           setShown(i)
-          sfx.coin()
-        }, 350 + i * 320),
+          wsfx.star(i - 1)
+        }, 1300 + i * 300),
       )
     return () => ids.forEach(clearTimeout)
   }, [])
   const dish = r.recipe
   return (
     <div class="modal-backdrop celebrate cook-result-back">
-      <FxCanvas mode="sparkle" />
+      <FxCanvas mode={gold ? 'confetti' : 'sparkle'} />
       <div class="panel modal center cook-result">
-        <PT text={`${dish.name} เสร็จแล้ว!`} size={17} weight={600} {...TONE_TEXT.ink} />
-        <div class={`cook-reveal ${gold ? 'gold' : ''}`}>
-          <span class="cook-rays" />
-          <DishImg id={r.id} scale={3} class="cook-reveal-dish" />
-        </div>
+        <PT text={dish.name} size={dish.name.length > 14 ? 13 : dish.name.length > 10 ? 15 : 17} weight={600} {...TONE_TEXT.ink} />
+        <ChefTaste stars={r.stars} burnt={r.burnt}>
+          <div class={`cook-reveal ${gold ? 'gold' : ''}`}>
+            <span class="cook-rays" />
+            <DishImg id={r.id} scale={3} class="cook-reveal-dish" />
+          </div>
+        </ChefTaste>
         <div class="cook-result-stars">
           <Stars n={shown} size={30} />
         </div>

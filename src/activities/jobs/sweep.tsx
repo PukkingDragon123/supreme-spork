@@ -10,6 +10,14 @@ import { haptic, sfx } from '../../engine/audio'
 import { noviceSweepSprite } from '../../art/characters'
 import { bakeCourtyard, drawAt, drawBasket, drawBroom, drawDustpan, leafSprite, LEAF_COLORS, shadow } from '../../art/jobs'
 import { Drag, JobScene, type JobSummary } from './base'
+import { Worker } from './worker'
+import { wsfx } from './workSfx'
+import { gripPose, WP } from '../../art/poses/work'
+import { DOLL_H, DOLL_W } from '../../art/doll'
+import { dapple, motes, sunRays } from '../../art/workFx'
+
+/** Broom tip distance below the hold point along the handle. */
+const TIP = 27
 
 type LeafState = 'air' | 'ground' | 'pile' | 'carry'
 
@@ -67,6 +75,9 @@ export class SweepScene extends JobScene {
   private wob = 0
   private hinted = { pile: false, carry: false }
   private novice = { x: 30, dir: 1, f: 0 as 0 | 1, ft: 0 }
+  private grip = gripPose(0.1)
+  private swishT = 0
+  private strokeDir = 0
 
   progress() {
     return Math.min(1, this.binned / TARGET)
@@ -77,8 +88,11 @@ export class SweepScene extends JobScene {
   summary(): JobSummary {
     return {
       title: this.binned >= TARGET ? 'ลานวัดสะอาดเอี่ยม!' : undefined,
-      lines: [`เก็บใบไม้ลงเข่ง ${this.binned} ใบ`, `ฝ่าลมแรงไป ${this.gusts} รอบ`],
+      lines: [`เก็บใบไม้ลงเข่ง ${this.binned} ใบ`, `ฝ่าลมแรงไป ${this.gusts} รอบ`, ...(this.bestCombo >= 3 ? [`กวาดรวดเดียว x${this.bestCombo}`] : [])],
     }
+  }
+  cheerText() {
+    return 'สะอาดเอี่ยม!'
   }
 
   get pileCount() {
@@ -95,6 +109,8 @@ export class SweepScene extends JobScene {
     this.binX = w - 24
     this.binY = bottom - 6
     for (const l of this.leaves) this.clampLeaf(l)
+    if (!this.worker) this.worker = new Worker(Math.round(w * 0.22), bottom - 14)
+    else if (this.phase === 'ready') this.worker.place(Math.round(w * 0.22), bottom - 14)
   }
 
   protected populate() {
@@ -135,6 +151,7 @@ export class SweepScene extends JobScene {
     l.oy = Math.sin(a) * r * 0.6 - Math.min(7, n * 0.3)
     l.rot = randInt(0, 7)
     this.particles.add({ kind: 'dot', x: this.pileX + l.ox, y: this.pileY + l.oy, vy: -10, max: 0.3, color: '#fff3a6' })
+    if (this.playing) this.streak(this.pileX, this.pileY - 10, 0.9)
     if (!this.hinted.carry && n + 1 >= 6) {
       this.hinted.carry = true
       this.say(this.pileX, this.pileY - 18, 'กดที่กอง แล้วลากไปเทใส่เข่ง', 'info', 2.6)
@@ -202,8 +219,20 @@ export class SweepScene extends JobScene {
       sfx.scratch()
       this.scrapeT = 0.09
     }
-    if (sp > 90 && Math.random() < 0.5)
-      this.particles.add({ kind: 'dot', x: x1 + rand(-6, 6), y: y1 + rand(0, 3), vx: -d.vx * 0.05, vy: rand(-8, -2), max: 0.45, color: '#e8dcc8' })
+    if (hit > 0 && sp > 140 && Math.random() < 0.6) {
+      // Leaves kicked up by a fast stroke.
+      const c = LEAF_COLORS[randInt(0, 3)]
+      this.particles.add({ kind: 'leaf', x: x1 + rand(-6, 6), y: y1, vx: d.vx * 0.35 + rand(-15, 15), vy: rand(-55, -25), g: 150, max: rand(0.45, 0.7), color: c.b, color2: c.d })
+    }
+    if (sp > 90 && Math.random() < 0.6)
+      this.particles.add({ kind: 'smoke', x: x1 + rand(-8, 8), y: y1 + rand(0, 3), vx: -d.vx * 0.06, vy: rand(-10, -3), max: rand(0.4, 0.7), color: '#efe4d0', size: 2, drag: 1 })
+    // A swish per stroke direction change.
+    const dir = Math.sign(d.vx)
+    if (sp > 110 && dir !== 0 && dir !== this.strokeDir && this.swishT <= 0) {
+      wsfx.swish(Math.min(1, sp / 300))
+      this.swishT = 0.12
+    }
+    if (dir !== 0) this.strokeDir = dir
   }
 
   private drop(x: number, y: number) {
@@ -223,7 +252,10 @@ export class SweepScene extends JobScene {
       sfx.rattle()
       sfx.coin()
       haptic(18)
-      if (n >= 8) this.say(this.binX - 10, this.binY - 30, n >= 14 ? 'เยอะมาก เก่งจัง!' : 'ลงเข่งแล้ว!', 'good')
+      wsfx.rustle()
+      if (n >= 14) this.praise('เทหมดเข่ง!', 'pink')
+      else if (n >= 8) this.praise('เยอะมาก!', 'gold')
+      else if (n >= 4) this.say(this.binX - 10, this.binY - 30, 'ลงเข่งแล้ว!', 'good')
       if (this.binned >= TARGET) {
         this.flash()
         this.particles.confetti(this.w / 2, this.top + this.playH * 0.4, 36)
@@ -305,6 +337,8 @@ export class SweepScene extends JobScene {
     const targetLean = Math.max(-0.7, Math.min(0.7, 0.35 - d.vx / 380))
     this.lean += (targetLean - this.lean) * Math.min(1, dt * 10)
     this.swish = Math.sin(this.t * 22) * Math.min(1, d.speed / 180)
+    this.swishT -= dt
+    this.aimWorker()
 
     if (this.playing) {
       this.spawnT -= dt
@@ -395,9 +429,79 @@ export class SweepScene extends JobScene {
     this.streaks.push({ x: dir > 0 ? rand(-40, this.w * 0.3) : rand(this.w * 0.7, this.w + 40), y: rand(this.top + 20, this.bottom - 10), len: rand(8, 20) * k, v: dir * rand(160, 240), life: rand(0.4, 0.8) })
   }
 
+  /** Put the player where their broom (or dustpan) reaches the finger. */
+  private aimWorker() {
+    const wk = this.worker
+    if (!wk) return
+    const d = this.drag
+    if (this.mode === 'broom') {
+      const fr = d.speed > 60 && Math.sin(this.t * 22) > 0 ? 1 : 0
+      // Keep the bristles out to the side of the feet.
+      const lean = Math.sign(this.lean || 1) * Math.max(0.42, Math.abs(this.lean))
+      this.grip = gripPose(lean, fr, d.speed > 160 ? 'open' : 'smile')
+      const a = this.grip.lean
+      const cx = d.x + Math.sin(a) * TIP
+      const cy = d.y + 2 - Math.cos(a) * TIP
+      wk.follow = 26
+      wk.pose = this.grip.name
+      wk.goTo(this.clampX(cx - this.grip.c[0] + DOLL_W / 2), this.clampY(cy - this.grip.c[1] + DOLL_H - 1))
+    } else if (this.mode === 'carry') {
+      wk.follow = 20
+      wk.pose = WP.carry
+      wk.goTo(this.clampX(d.x), this.clampY(d.y + 13))
+    } else {
+      this.grip = gripPose(Math.sin(this.t * 1.3) * 0.06 + 0.45, 0)
+      wk.pose = this.grip.name
+      wk.follow = 10
+    }
+  }
+
+  private clampX(x: number) {
+    return Math.max(14, Math.min(this.w - 14, x))
+  }
+  private clampY(y: number) {
+    return Math.max(this.top + 44, Math.min(this.bottom - 2, y))
+  }
+
+  /** Where the broom tip is for the worker's current (lagging) position. */
+  private broomTip(): [number, number] {
+    const wk = this.worker!
+    const [lx, ly] = wk.wrist('L')
+    const [rx, ry] = wk.wrist('R')
+    const a = this.grip.lean
+    // Hold point = between the fists; the tip hangs TIP below along the handle.
+    const cx = (lx + rx) / 2 + Math.sin(a) * 0.2
+    const cy = (ly + ry) / 2
+    return [cx - Math.sin(a) * TIP, cy + Math.cos(a) * TIP]
+  }
+
+  private drawWorker(g: Surface) {
+    const wk = this.worker
+    if (!wk) return
+    if (wk.reacting) {
+      // Broom leaning on the player's side while they celebrate.
+      drawBroom(g, wk.x - 13, wk.y, -0.22, 0)
+      wk.draw(g)
+      return
+    }
+    wk.draw(g)
+    if (this.mode === 'carry') {
+      const [lx, ly] = wk.wrist('L')
+      const [rx, ry] = wk.wrist('R')
+      const n = this.leaves.filter((l) => l.state === 'carry').length
+      drawDustpan(g, (lx + rx) / 2, (ly + ry) / 2 + 4, Math.min(1, n / 14))
+      wk.fists(g)
+      return
+    }
+    const [tx, ty] = this.broomTip()
+    drawBroom(g, tx, ty, this.grip.lean, this.mode === 'broom' ? this.swish : 0)
+    wk.fists(g)
+  }
+
   protected draw(g: Surface) {
     const { w } = this
     if (this.bg) g.draw(this.bg, 0, 0)
+    dapple(g, w, this.top + 20, this.bottom, this.t, 0.85)
     const nv = this.novice
     const ns = noviceSweepSprite(nv.f, nv.dir < 0)
     shadow(g, nv.x, this.top + 33, 7, 2)
@@ -438,15 +542,13 @@ export class SweepScene extends JobScene {
       const s = leafSprite(l.kind, l.rot)
       g.draw(s.canvas, Math.round(this.pileX + l.ox - s.w / 2), Math.round(this.pileY + l.oy - s.h / 2))
     }
+    // The player (y-sorted against the basket).
+    const behind = this.worker && this.worker.y < this.binY
+    if (behind) this.drawWorker(g)
     drawBasket(g, this.binX, this.binY, Math.min(1, this.binned / TARGET), this.wob, this.t)
-    if (this.mode === 'carry') {
-      // Glow the basket while carrying.
-      if (Math.sin(this.t * 10) > 0) drawRing(g, this.binX, this.binY - 9, 17, 12, '#fff3a6')
-      const n = this.leaves.filter((l) => l.state === 'carry').length
-      drawDustpan(g, this.drag.x, this.drag.y, Math.min(1, n / 14))
-    } else if (this.mode === 'broom') {
-      drawBroom(g, this.drag.x, this.drag.y + 2, this.lean, this.swish)
-    }
+    if (!behind) this.drawWorker(g)
+    // Glow the basket while carrying.
+    if (this.mode === 'carry' && Math.sin(this.t * 10) > 0) drawRing(g, this.binX, this.binY - 9, 17, 12, '#fff3a6')
     // Wind streaks.
     for (const s of this.streaks) {
       g.alpha(Math.min(1, s.life * 2.5) * 0.85)
@@ -454,6 +556,7 @@ export class SweepScene extends JobScene {
       g.px(s.x + s.len * Math.sign(s.v) * 1.1, s.y - 1, '#ffffff')
       g.alpha(1)
     }
-    void w
+    motes(g, w, this.top + 20, this.bottom - 20, this.t, 12)
+    sunRays(g, w, this.h, this.t, '#fff2c4', 0.16, this.top - 10)
   }
 }

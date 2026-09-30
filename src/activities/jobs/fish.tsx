@@ -10,6 +10,10 @@ import { bakePond, drawLilyPad, drawPondFish, drawTurtle, POND_FISH, type PondFi
 import { P } from '../../art/palette'
 import { JobScene, type JobSummary } from './base'
 import { toStars, type JobStars } from '../../game/jobs'
+import { Worker } from './worker'
+import { wsfx } from './workSfx'
+import { WP } from '../../art/poses/work'
+import { sunRays } from '../../art/workFx'
 
 interface Pellet {
   x: number
@@ -55,6 +59,8 @@ export class FishScene extends JobScene {
   private murk = 0
   private murkLvl = 0
   private murkC: HTMLCanvasElement | null = null
+  private deckY = 330
+  private tossT = 0
 
   get needTotal() {
     return this.fish.reduce((s, f) => s + f.need, 0)
@@ -78,6 +84,9 @@ export class FishScene extends JobScene {
   goalText() {
     return `ปลาอิ่ม ${this.fullCount}/${this.fish.length} · จม ${this.wasted}`
   }
+  cheerText() {
+    return this.wasted <= 2 ? 'อิ่มแปล้ น้ำใสแจ๋ว!' : 'ปลาอิ่มทุกตัว!'
+  }
   summary(): JobSummary {
     return {
       title: this.complete() && this.wasted <= 2 ? 'ปลาอิ่มทุกตัว น้ำยังใสแจ๋ว!' : undefined,
@@ -87,8 +96,14 @@ export class FishScene extends JobScene {
   }
 
   protected anchor() {
-    this.bg = bakePond(this.w, this.h, this.h + 10)
+    this.deckY = this.bottom - 13
+    this.bg = bakePond(this.w, this.h, this.deckY)
     for (const f of this.fish) this.keepIn(f)
+    if (!this.worker) this.worker = new Worker(this.cx, this.bottom - 2)
+    else if (this.phase === 'ready') this.worker.place(this.cx, this.bottom - 2)
+    this.worker.view = 'back'
+    this.worker.pose = WP.scoopBack
+    this.worker.follow = 5
   }
 
   protected populate() {
@@ -125,22 +140,31 @@ export class FishScene extends JobScene {
 
   private keepIn(f: Fish) {
     f.x = Math.max(14, Math.min(this.w - 14, f.x))
-    f.y = Math.max(this.top + 12, Math.min(this.bottom - 16, f.y))
+    f.y = Math.max(this.top + 12, Math.min(this.deckY - 10, f.y))
   }
 
   protected input(e: PointerInfo) {
     if (e.type !== 'down') return
     if (this.cool > 0) return
-    if (e.y < this.top + 4 || e.y > this.bottom - 4) return
+    if (e.y < this.top + 4 || e.y > this.deckY - 4) return
     this.cool = 0.14
-    this.pellets.push({ x: e.x, y: e.y, fly: 0, sx: this.cx + rand(-6, 6), sy: this.bottom + 8, life: SINK, taken: false })
-    sfx.tap()
+    const wk = this.worker!
+    wk.goTo(Math.max(16, Math.min(this.w - 16, wk.x + (e.x - wk.x) * 0.6)), this.bottom - 2)
+    this.tossT = 0.22
+    wk.pose = WP.tossBack1
+    const [hx, hy] = wk.wrist('R')
+    this.pellets.push({ x: e.x, y: e.y, fly: 0, sx: hx, sy: hy - 2, life: SINK, taken: false })
+    wsfx.toss()
     haptic(5)
   }
 
   protected tick(dt: number) {
     this.cool -= dt
     const { w } = this
+    if (this.tossT > 0) {
+      this.tossT -= dt
+      if (this.tossT <= 0 && this.worker) this.worker.pose = WP.scoopBack
+    }
     for (const p of this.pellets) {
       if (p.fly < 1) {
         p.fly = Math.min(1, p.fly + dt * 4)
@@ -159,6 +183,8 @@ export class FishScene extends JobScene {
         for (let i = 0; i < 5; i++) this.particles.add({ kind: 'smoke', x: p.x + rand(-3, 3), y: p.y + rand(-2, 2), vy: rand(-2, 2), max: 1.4, color: '#7a8a5a', size: 2 })
         this.say(p.x, p.y - 10, this.wasted >= 3 ? 'น้ำเริ่มขุ่นแล้ว!' : 'จมไปแล้ว...', 'warn', 1.2)
         sfx.error()
+        this.breakStreak()
+        if (this.wasted === 3) this.worker?.reactWith('oops', 0.9)
       }
     }
     this.pellets = this.pellets.filter((p) => !p.taken)
@@ -202,6 +228,7 @@ export class FishScene extends JobScene {
         f.gulp = 0.35
         sfx.gulp()
         haptic(8)
+        if (this.playing) this.streak(f.x, f.y - 12, 1.6)
         this.particles.add({ kind: 'ripple', x: f.x, y: f.y, max: 0.6, size: 6, color: '#ffffff' })
         for (let i = 0; i < 3; i++) this.particles.add({ kind: 'dot', x: f.x + rand(-2, 2), y: f.y, vy: rand(-12, -6), max: 0.6, color: '#e6fbff' })
         if (f.eaten >= f.need) {
@@ -210,6 +237,8 @@ export class FishScene extends JobScene {
           this.particles.sparkles(f.x, f.y, 6, '#fff3a6')
           sfx.sparkle()
           this.say(f.x, f.y - 12, 'อิ่มแล้ว!', 'good', 1)
+          const left = this.fish.filter((q) => q.eaten < q.need).length
+          if (left === 1) this.praise('อีกตัวเดียว!', 'blue', 1)
           if (this.complete()) {
             this.particles.confetti(this.cx, this.top + this.playH * 0.45, 36)
             sfx.chime()
@@ -263,6 +292,20 @@ export class FishScene extends JobScene {
         g.px(px, y, '#e8c07a')
       }
     }
+    // Cloudy water from wasted food.
+    const lvl = Math.round(this.murk * 24)
+    if (lvl > 0) {
+      if (lvl !== this.murkLvl || !this.murkC) {
+        this.murkLvl = lvl
+        const t = lvl / 24
+        this.murkC = bake(this.w, this.h, (m) => {
+          for (let y = 0; y < this.deckY - 2; y++) for (let x = y & 1; x < this.w; x += 2) if (ditherOn(x, y, t)) m.px(x, y, '#7a8a4a')
+        })
+      }
+      g.draw(this.murkC, 0, 0)
+    }
+    // The player on the deck, tossing from the hand.
+    this.worker?.draw(g)
     // Pellets in flight.
     for (const p of this.pellets) {
       if (p.fly >= 1) continue
@@ -273,17 +316,6 @@ export class FishScene extends JobScene {
       g.rect(x - 1, y - 1, 3, 3, P.ink)
       g.px(x, y, '#c28e5c')
     }
-    // Cloudy water from wasted food.
-    const lvl = Math.round(this.murk * 24)
-    if (lvl > 0) {
-      if (lvl !== this.murkLvl || !this.murkC) {
-        this.murkLvl = lvl
-        const t = lvl / 24
-        this.murkC = bake(this.w, this.h, (m) => {
-          for (let y = 0; y < this.h; y++) for (let x = y & 1; x < this.w; x += 2) if (ditherOn(x, y, t)) m.px(x, y, '#7a8a4a')
-        })
-      }
-      g.draw(this.murkC, 0, 0)
-    }
+    sunRays(g, this.w, this.h, this.t, '#e6fbff', 0.16, this.top - 20)
   }
 }

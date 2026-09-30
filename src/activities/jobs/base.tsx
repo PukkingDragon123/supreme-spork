@@ -8,6 +8,8 @@ import { Particles } from '../../engine/particles'
 import { rand } from '../../engine/rng'
 import type { GameEvent } from '../../game/data/quests'
 import { starsFor, type JobStars } from '../../game/jobs'
+import type { Worker } from './worker'
+import { wsfx } from './workSfx'
 
 export interface JobSummary {
   /** Result card title. */
@@ -31,6 +33,18 @@ export interface Bubble {
 
 export type JobPhase = 'ready' | 'play' | 'done'
 
+export type PraiseTone = 'gold' | 'pink' | 'blue' | 'green'
+
+/** Big praise pop-up ("สะอาดเอี่ยม!") shown by the DOM layer. */
+export interface Praise {
+  id: number
+  text: string
+  tone: PraiseTone
+  t: number
+}
+
+const STREAK_WORDS: Record<number, string> = { 3: 'ดีมาก!', 5: 'เยี่ยมไปเลย!', 8: 'สุดยอด!', 12: 'เทพมาก!', 16: 'ตำนานจิตอาสา!' }
+
 export abstract class JobScene implements Scene {
   w = 190
   h = 400
@@ -47,12 +61,20 @@ export abstract class JobScene implements Scene {
   top = 28
   bottom = 340
   bubbles: Bubble[] = []
+  praises: Praise[] = []
+  /** Current quick-success streak and the best of the round. */
+  combo = 0
+  bestCombo = 0
+  /** The player's avatar doing the job (set by scenes that show it). */
+  worker: Worker | null = null
   onDone?: (stars: JobStars, summary: JobSummary) => void
   protected shakeT = 0
   protected shakeMag = 1
   protected flashT = 0
   private doneT = -1
   private bubbleSeq = 0
+  private praiseSeq = 0
+  private comboT = 0
   private safeSet = false
 
   /** 0..1 completion shown on the progress bar. */
@@ -77,6 +99,10 @@ export abstract class JobScene implements Scene {
   }
   summary(): JobSummary {
     return { lines: [] }
+  }
+  /** Praise shown when the job is fully done (e.g. "สะอาดเอี่ยม!"). */
+  cheerText(): string {
+    return 'เยี่ยมมาก!'
   }
 
   get playing() {
@@ -132,7 +158,10 @@ export abstract class JobScene implements Scene {
     if (this.phase === 'done') return
     this.phase = 'done'
     this.ended()
-    this.doneT = 0.8
+    const st = this.stars()
+    this.worker?.reactWith(st >= 2 ? 'thumbs' : st >= 1 ? 'cheer' : 'phew', 5)
+    if (this.complete()) this.praise(this.cheerText(), 'gold')
+    this.doneT = this.complete() ? 1.3 : 0.8
   }
 
   update(dt: number) {
@@ -147,10 +176,17 @@ export abstract class JobScene implements Scene {
       this.doneT -= dt
       if (this.doneT <= 0) this.onDone?.(this.stars(), this.summary())
     }
+    this.worker?.update(dt, this.particles)
     this.shakeT = Math.max(0, this.shakeT - dt)
     this.flashT = Math.max(0, this.flashT - dt)
     for (const b of this.bubbles) b.t -= dt
     this.bubbles = this.bubbles.filter((b) => b.t > 0)
+    for (const p of this.praises) p.t -= dt
+    this.praises = this.praises.filter((p) => p.t > 0)
+    if (this.comboT > 0) {
+      this.comboT -= dt
+      if (this.comboT <= 0) this.combo = 0
+    }
     this.particles.update(dt)
   }
 
@@ -176,6 +212,34 @@ export abstract class JobScene implements Scene {
     // Only one bubble per text at a time.
     this.bubbles = this.bubbles.filter((b) => b.text !== text)
     this.bubbles.push({ id: ++this.bubbleSeq, x: Math.max(24, Math.min(this.w - 24, x)), y: Math.max(this.top + 12, y), text, t: life, tone })
+  }
+
+  /** Big praise pop-up in the middle of the screen. */
+  praise(text: string, tone: PraiseTone = 'gold', life = 1.3) {
+    this.praises = [...this.praises.filter((p) => p.text !== text).slice(-1), { id: ++this.praiseSeq, text, tone, t: life }]
+    wsfx.praise()
+  }
+
+  /**
+   * Count a quick success toward a streak: "x2", "x3"… above (x, y), a rising
+   * ping, and a praise word at 3, 5, 8, 12 and 16. Returns the streak.
+   */
+  streak(x: number, y: number, window = 1.8): number {
+    this.combo = this.comboT > 0 ? this.combo + 1 : 1
+    this.comboT = window
+    this.bestCombo = Math.max(this.bestCombo, this.combo)
+    if (this.combo >= 2) {
+      this.particles.popText(x, y - 8, `x${this.combo}`, this.combo >= 5 ? '#ff9fc0' : '#ffd54f')
+      wsfx.combo(this.combo)
+    }
+    const word = STREAK_WORDS[this.combo]
+    if (word) this.praise(word, this.combo >= 8 ? 'pink' : 'gold', 1.1)
+    return this.combo
+  }
+
+  breakStreak() {
+    this.combo = 0
+    this.comboT = 0
   }
 
   shake(t = 0.2, mag = 1) {

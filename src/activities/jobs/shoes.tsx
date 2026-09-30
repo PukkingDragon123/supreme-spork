@@ -9,6 +9,9 @@ import { haptic, sfx } from '../../engine/audio'
 import { avatarSprite } from '../../art/avatar'
 import { bakeEntrance, drawAt, drawShoePair, drawShoeRack, shadow, shoeSize, shoeSprite, SHOE_STYLES, TOURIST_LOOKS, type ShoeStyle } from '../../art/jobs'
 import { Drag, JobScene, type JobSummary } from './base'
+import { Worker } from './worker'
+import { WP } from '../../art/poses/work'
+import { glow, motes } from '../../art/workFx'
 
 const PAIRS = 8
 const COLS = 4
@@ -71,6 +74,9 @@ export class ShoeScene extends JobScene {
   goalText() {
     return `เก็บขึ้นชั้น ${this.racked}/${PAIRS} คู่`
   }
+  cheerText() {
+    return 'เป๊ะทุกคู่!'
+  }
   summary(): JobSummary {
     return {
       title: this.racked >= PAIRS ? 'รองเท้าเรียงเป็นระเบียบ!' : undefined,
@@ -88,6 +94,10 @@ export class ShoeScene extends JobScene {
     this.floorY = this.rackY + this.shelfH * 2 + 16
     this.bg = bakeEntrance(w, this.h, this.floorY)
     for (const it of this.items) if (it.slot < 0) this.clamp(it)
+    const hx = Math.round(w * 0.5)
+    const hy = this.floorY + 36
+    if (!this.worker) this.worker = new Worker(hx, hy)
+    else if (this.phase === 'ready') this.worker.place(hx, hy)
   }
 
   protected populate() {
@@ -201,6 +211,7 @@ export class ShoeScene extends JobScene {
         sfx.click()
         sfx.sparkle()
         haptic(12)
+        this.particles.popText(p.x, p.y - 14, 'x2')
         if (!this.hinted) {
           this.hinted = true
           this.say(p.x, p.y - 16, 'ได้คู่แล้ว! ลากขึ้นชั้นเลย', 'good', 1.8)
@@ -243,6 +254,8 @@ export class ShoeScene extends JobScene {
         this.particles.popText(sx, sy - 16, '+1')
         sfx.coin()
         haptic(16)
+        this.streak(sx, sy - 22, 6)
+        if (this.racked === PAIRS - 1) this.praise('อีกคู่เดียว!', 'blue', 1)
         if (this.racked >= PAIRS) {
           this.flash()
           this.particles.confetti(this.cx, this.rackY + 20, 40)
@@ -254,7 +267,30 @@ export class ShoeScene extends JobScene {
     this.clamp(it)
   }
 
+  /** Walk the player over to whatever is being carried, holding it up. */
+  private aimWorker() {
+    const wk = this.worker
+    if (!wk) return
+    const it = this.held
+    if (!it) {
+      wk.pose = 'stand'
+      wk.follow = 5
+      // Step back from the rack so it stays visible.
+      if (wk.ty < this.floorY + 34) wk.goTo(wk.tx, this.floorY + 40)
+      return
+    }
+    const hy = it.y - 4
+    const low = hy + 20.5 >= this.floorY + 10
+    wk.pose = low ? WP.lift : WP.liftHigh
+    wk.follow = 16
+    // Low: both hands at chest height. High: right hand raised beside the head.
+    const feet = low ? hy + 20.5 : it.y + 2 + 36.5
+    const x = low ? it.x : it.x - 12
+    wk.goTo(Math.max(14, Math.min(this.w - 14, x)), Math.max(this.floorY + 8, Math.min(this.bottom + 6, feet)))
+  }
+
   protected tick(dt: number) {
+    this.aimWorker()
     for (const it of this.items) {
       it.wob = Math.max(0, it.wob - dt)
       if (it.slot >= 0) {
@@ -324,6 +360,7 @@ export class ShoeScene extends JobScene {
     if (!tr.kicked) {
       tr.kicked = true
       this.say(tr.x, tr.y - 34, pick(['อุ๊ย! ขอโทษค่ะ', 'Oops! Sorry!', 'ขอโทษครับ!']), 'warn', 1.3)
+      this.worker?.reactWith('oops', 0.9)
     }
   }
 
@@ -369,19 +406,28 @@ export class ShoeScene extends JobScene {
           drawAt(g, s, tr.x, tr.y + 1)
         },
       })
+    const wk = this.worker
+    if (wk) drawables.push({ y: wk.y, fn: () => wk.draw(g) })
     drawables.sort((a, b) => a.y - b.y)
     for (const d of drawables) d.fn()
-    // The held item, lifted with a shadow.
+    // The held item, in the player's hands.
     const it = this.held
     if (it) {
-      shadow(g, it.x, it.y + 6, 9, 2.5, 0.5)
-      if (it.pair) drawShoePair(g, it.style, it.x, it.y, it.flip)
-      else drawAt(g, shoeSprite(it.style, it.flip, false), it.x, it.y + 1)
+      const high = wk?.pose === WP.liftHigh
+      const [lx, ly] = wk ? wk.wrist('L') : [it.x - 4, it.y]
+      const [rx, ry] = wk ? wk.wrist('R') : [it.x + 4, it.y]
+      const hx = high ? rx + 1 : (lx + rx) / 2
+      const hy = high ? ry - 1 : (ly + ry) / 2 + 4
+      if (it.pair) drawShoePair(g, it.style, hx, hy, it.flip)
+      else drawAt(g, shoeSprite(it.style, it.flip, false), hx, hy + 1)
+      wk?.fists(g, high ? ['R'] : ['L', 'R'])
       // Glow the mate while holding a single shoe.
       if (!it.pair && this.drag.down) {
         const mate = this.items.find((o) => o !== it && !o.pair && o.slot < 0 && o.style === it.style)
         if (mate && Math.hypot(mate.x - it.x, mate.y - it.y) < 26 && Math.sin(this.t * 10) > 0) this.particles.sparkles(mate.x, mate.y - 6, 1, '#ffffff', 4)
       }
     }
+    glow(g, this.cx, this.rackY + 10, 70, 0.2, '#fff0c8')
+    motes(g, this.w, this.top + 10, this.floorY + 30, this.t, 10)
   }
 }

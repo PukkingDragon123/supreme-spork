@@ -4,15 +4,21 @@
 
 import type { PointerInfo } from '../../engine/stage'
 import type { Surface } from '../../engine/pixel'
-import { rand, pick } from '../../engine/rng'
+import { rand } from '../../engine/rng'
 import { haptic, sfx } from '../../engine/audio'
 import { bakeRiver, drawCatfishBack, drawCatfishHead, drawCatfishLeap, drawFoodBowl } from '../../art/jobs'
 import { P } from '../../art/palette'
 import { JobScene, type JobSummary } from './base'
+import { Worker } from './worker'
+import { wsfx } from './workSfx'
+import { WP } from '../../art/poses/work'
+import { glow, sunRays } from '../../art/workFx'
+
+const GULP = 0.28
 
 const TARGET = 20
 
-type HeadState = 'rise' | 'open' | 'sink' | 'leap'
+type HeadState = 'rise' | 'open' | 'gulp' | 'sink' | 'leap'
 
 interface Head {
   x: number
@@ -61,12 +67,16 @@ export class CatfishScene extends JobScene {
   private spawnT = 0.3
   private cool = 0
   private albinoDone = false
+  private tossT = 0
 
   progress() {
     return Math.min(1, this.fed / TARGET)
   }
   goalText() {
     return `ป้อนปลาดุก ${Math.min(this.fed, TARGET)}/${TARGET} คำ`
+  }
+  cheerText() {
+    return 'ปลาดุกอิ่มแปล้!'
   }
   summary(): JobSummary {
     return {
@@ -80,6 +90,12 @@ export class CatfishScene extends JobScene {
     this.horizon = Math.round(this.top + this.playH * 0.2)
     this.pierY = this.bottom - 26
     this.bg = bakeRiver(this.w, this.h, this.horizon, this.pierY)
+    const hx = this.cx + 22
+    if (!this.worker) this.worker = new Worker(hx, this.bottom - 3)
+    else if (this.phase === 'ready') this.worker.place(hx, this.bottom - 3)
+    this.worker.view = 'back'
+    this.worker.pose = WP.scoopBack
+    this.worker.follow = 6
   }
 
   protected populate() {
@@ -101,7 +117,7 @@ export class CatfishScene extends JobScene {
       const y = Math.round(this.horizon + 34 + depth * (this.pierY - this.horizon - 56))
       const x = rand(22, this.w - 22)
       if (this.heads.some((h) => Math.abs(h.x - x) < 26 && Math.abs(h.y - y) < 20)) continue
-      const s = (1 + depth * 0.45) * (albino ? 1.3 : 1)
+      const s = (1.15 + depth * 0.5) * (albino ? 1.3 : 1)
       const quick = Math.max(0, Math.min(1, this.elapsed / this.duration))
       this.heads.push({ x, y, s, state: 'rise', t: 0, dur: (albino ? 2.4 : rand(1.5, 2.1)) - quick * 0.4, albino, lt: 0, lv: 0, dir: Math.random() < 0.5 ? 1 : -1 })
       if (albino) {
@@ -117,8 +133,13 @@ export class CatfishScene extends JobScene {
     if (e.type !== 'down' || this.cool > 0) return
     if (e.y < this.horizon - 10 || e.y > this.pierY) return
     this.cool = 0.12
-    this.tosses.push({ sx: this.cx + rand(-4, 4), sy: this.bottom - 12, tx: e.x, ty: e.y + 4, t: 0 })
-    sfx.whoosh()
+    const wk = this.worker!
+    wk.goTo(Math.max(this.cx - 50, Math.min(this.cx + 50, this.cx + 22 + (e.x - this.cx) * 0.45)), this.bottom - 3)
+    wk.pose = WP.tossBack1
+    this.tossT = 0.2
+    const [hx, hy] = wk.wrist('R')
+    this.tosses.push({ sx: hx, sy: hy - 2, tx: e.x, ty: e.y + 4, t: 0 })
+    wsfx.toss()
     haptic(5)
   }
 
@@ -126,7 +147,7 @@ export class CatfishScene extends JobScene {
     let best: Head | null = null
     let bd = 1e9
     for (const h of this.heads) {
-      if (h.state === 'leap' || h.state === 'sink') continue
+      if (h.state === 'leap' || h.state === 'sink' || h.state === 'gulp') continue
       if (h.state === 'rise' && h.t < 0.12) continue
       const mx = h.x
       const my = h.y - 12 * h.s
@@ -135,19 +156,22 @@ export class CatfishScene extends JobScene {
     }
     if (best) {
       const h = best
-      h.state = 'leap'
-      h.lt = 0
-      h.lv = 130 + h.s * 20
+      h.state = 'gulp'
+      h.t = 0
       const n = h.albino ? 3 : 1
       this.fed += n
       this.combo++
       this.best = Math.max(this.best, this.combo)
-      sfx.gulp()
+      wsfx.bigGulp()
       sfx.munch()
       haptic(h.albino ? 30 : 14)
-      this.particles.popText(h.x, h.y - 24 * h.s, this.combo >= 3 ? `x${this.combo}` : `+${n}`, this.combo >= 3 ? '#ffd54f' : '#fff2a0')
+      this.particles.popText(h.x, h.y - 26 * h.s, this.combo >= 3 ? `x${this.combo}` : `+${n}`, this.combo >= 3 ? '#ffd54f' : '#fff2a0')
       this.particles.sparkles(h.x, h.y - 14 * h.s, h.albino ? 10 : 4, '#fff3a6')
-      if (this.combo === 5 || this.combo === 10) this.say(h.x, h.y - 30, pick(['งับเก่งมาก!', 'แม่นสุด ๆ!', 'คอมโบ!']), 'good', 1)
+      if (this.combo >= 2) wsfx.combo(this.combo)
+      if (this.combo === 5) this.praise('งับเก่งมาก!', 'gold', 1.1)
+      else if (this.combo === 10) this.praise('แม่นสุด ๆ!', 'pink', 1.1)
+      else if (this.combo === 15) this.praise('เซียนปลาดุก!', 'pink', 1.2)
+      if (h.albino) this.praise('ปลาดุกเผือก +3!', 'blue', 1.1)
       if (this.fed >= TARGET) {
         this.particles.confetti(this.cx, this.horizon + 20, 40)
         sfx.chime()
@@ -156,6 +180,7 @@ export class CatfishScene extends JobScene {
       // Missed: it plops in and the crowd thrashes for it.
       this.combo = 0
       this.misses++
+      if (this.misses % 5 === 0) this.worker?.reactWith('oops', 0.7)
       this.splash(tz.tx, tz.ty, 0.6)
       sfx.plop()
       if (this.misses % 4 === 1) this.say(tz.tx, tz.ty - 12, 'แตะที่ปากที่อ้าอยู่นะ', 'info', 1.2)
@@ -171,6 +196,10 @@ export class CatfishScene extends JobScene {
 
   protected tick(dt: number) {
     this.cool -= dt
+    if (this.tossT > 0) {
+      this.tossT -= dt
+      if (this.tossT <= 0 && this.worker) this.worker.pose = WP.scoopBack
+    }
     if (this.playing) {
       this.spawnT -= dt
       if (this.spawnT <= 0) {
@@ -181,6 +210,12 @@ export class CatfishScene extends JobScene {
     for (const h of this.heads) {
       h.t += dt
       if (h.state === 'rise' && h.t > 0.22) (h.state = 'open'), (h.t = 0)
+      else if (h.state === 'gulp' && h.t > GULP) {
+        h.state = 'leap'
+        h.lt = 0
+        h.lv = 130 + h.s * 20
+        this.splash(h.x, h.y, 0.5)
+      }
       else if (h.state === 'open' && h.t > h.dur) {
         h.state = 'sink'
         h.t = 0
@@ -222,6 +257,7 @@ export class CatfishScene extends JobScene {
     }
     while (hi < heads.length) this.drawHead(g, heads[hi++])
     drawFoodBowl(g, this.cx, this.bottom - 6)
+    this.worker?.draw(g)
     // Food in flight.
     for (const tz of this.tosses) {
       const t = tz.t
@@ -231,6 +267,8 @@ export class CatfishScene extends JobScene {
       g.rect(x - 1, y - 1, 2, 2, '#e8c07a')
       g.px(x - 1, y - 1, '#fff3c8')
     }
+    glow(g, this.w * 0.5, this.horizon, 90, 0.18, '#ffe0a0')
+    sunRays(g, this.w, this.h, this.t, '#fff2c4', 0.12, this.top - 20)
   }
 
   private drawHead(g: Surface, h: Head) {
@@ -239,6 +277,20 @@ export class CatfishScene extends JobScene {
       const vy = h.lv - 320 * h.lt
       const ang = Math.atan2(-vy, h.dir * 40)
       drawCatfishLeap(g, h.x + h.dir * h.lt * 40, h.y - yy - 6, ang, h.s, this.t, h.albino, h.dir)
+      return
+    }
+    if (h.state === 'gulp') {
+      // Big chomp: the head pops up, swells and snaps shut with puffed cheeks.
+      const k = Math.sin(Math.PI * Math.min(1, h.t / GULP))
+      const s = h.s * (1 + 0.5 * k)
+      const y = h.y - k * 6 * h.s
+      drawCatfishHead(g, h.x, y, s, 1, h.t < 0.06 ? 1 : 0, this.t, h.albino)
+      const my = y - 14 * s + 3.2 * s
+      for (const side of [-1, 1]) {
+        g.ellipse(h.x + side * 5.5 * s, my + 3 * s, 2.6 * s * (0.6 + k * 0.4) + 1, 2 * s + 1, P.ink)
+        g.ellipse(h.x + side * 5.5 * s, my + 3 * s, 2.6 * s * (0.6 + k * 0.4), 2 * s, h.albino ? '#f7d4c6' : '#7a746a')
+      }
+      if (k > 0.5) for (let i = 0; i < 2; i++) this.particles.add({ kind: 'drop', x: h.x + rand(-6, 6) * s, y: y - 4, vx: rand(-30, 30), vy: rand(-50, -20), g: 220, max: 0.35, color: '#e6f2d8', size: 1 })
       return
     }
     const rise = h.state === 'rise' ? h.t / 0.22 : h.state === 'sink' ? Math.max(0, 1 - h.t / 0.25) : 1
