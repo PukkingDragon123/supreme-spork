@@ -82,6 +82,8 @@ export class Juice {
   private flashT = 0
   private flashMax = 0
   private flashC = '#ffffff'
+  /** Fade in from dark when the scene opens. */
+  private fadeT = 0.45
   ox = 0
   oy = 0
   /** Add screen shake (0..1, stacks). */
@@ -103,6 +105,7 @@ export class Juice {
   step(dt: number): number {
     this.trauma = Math.max(0, this.trauma - dt * 1.6)
     this.flashT = Math.max(0, this.flashT - dt)
+    this.fadeT = Math.max(0, this.fadeT - dt)
     const k = this.trauma * this.trauma * 6
     this.ox = Math.round((Math.random() * 2 - 1) * k)
     this.oy = Math.round((Math.random() * 2 - 1) * k * 0.7)
@@ -122,6 +125,11 @@ export class Juice {
     if (this.flashT > 0) {
       g.alpha((this.flashT / this.flashMax) * 0.55)
       g.rect(0, 0, g.w, g.h, this.flashC)
+      g.alpha(1)
+    }
+    if (this.fadeT > 0) {
+      g.alpha(Math.min(1, this.fadeT / 0.45))
+      g.rect(0, 0, g.w, g.h, '#1b1026')
       g.alpha(1)
     }
   }
