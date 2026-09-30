@@ -8,6 +8,7 @@ import { soldCount } from '../game/market'
 import { presence } from '../services/presence'
 import { game } from '../game/state'
 import { sfx } from '../engine/audio'
+import { netSummary } from './online/onlineStore'
 
 export function Menu() {
   const close = () => openPanel(null)
@@ -57,7 +58,7 @@ export function Menu() {
         </PBtn>
       </div>
       <p class="small muted center menu-note">
-        <span class="online-dot" /> ออนไลน์ {presence().onlineCount().toLocaleString('th-TH')} คน{mode.value === 'world' ? ' · แตะนอกหน้าต่างเพื่อเล่นต่อ' : ''}
+        <span class="online-dot" /> {netSummary.value.count > 0 ? `ออนไลน์จริง ${netSummary.value.count.toLocaleString('th-TH')} คน` : `ผู้เล่นจำลอง ${presence().onlineCount().toLocaleString('th-TH')} คน`}{mode.value === 'world' ? ' · แตะนอกหน้าต่างเพื่อเล่นต่อ' : ''}
       </p>
     </Window>
   )
