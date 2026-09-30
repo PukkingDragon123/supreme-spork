@@ -81,6 +81,8 @@ export function MapModal() {
     st.start()
     stage.current = st
     scene.current = sc
+    // Dev hook so e2e tests can find a pin on screen and tap it for real.
+    if (import.meta.env.DEV) (window as unknown as Record<string, unknown>).__thaimap = sc
     return () => {
       st.destroy()
       scene.current = null
