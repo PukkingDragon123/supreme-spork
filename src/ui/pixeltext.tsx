@@ -1,8 +1,8 @@
 // Crisp pixel text for Thai (and Latin): the string is drawn with the UI font
 // on a tiny canvas, its anti-aliasing is thresholded away and an outline or
 // drop shadow is added, then the result is shown as a pixelated image at an
-// integer scale. Used for titles, buttons, the HUD and captions; long body
-// text stays in the regular (smooth) font for readability.
+// integer scale. Used for titles, buttons, the HUD and captions. All other
+// text uses the same font, which is itself a pixel font (styles/pixelfont.css).
 
 import { signal } from '@preact/signals'
 import type { JSX } from 'preact'
