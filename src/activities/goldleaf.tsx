@@ -9,7 +9,7 @@ import { Particles } from '../engine/particles'
 import { drawBuddha, drawBuddhaBack, BRONZE, GOLD, drawCandleStand } from '../art/interior'
 import { P } from '../art/palette'
 import type { AvatarLook } from '../art/avatar'
-import { drawLeafSheet, drawPlayer, godRays, handAt, impactBurst, Juice, motes, vignette, type TPose } from '../art/minigames/temple'
+import { drawLeafSheet, drawPlayer, godRays, handAt, impactBurst, Juice, motes, softGlow, vignette, type TPose } from '../art/minigames/temple'
 import { starsFrom } from '../art/minigames/rules'
 import { tsfx } from '../art/minigames/sfx'
 import { game } from '../game/state'
@@ -19,7 +19,6 @@ import { ActivityFrame, useStage } from './kit'
 import { Btn, Icon } from '../ui/components/common'
 import { QuickBuy } from './quickbuy'
 import { sfx, haptic } from '../engine/audio'
-import { drawGlow } from '../scenes/sky'
 import { PraiseLayer, TempleResult, banner, praise, type TempleResultData } from './temple-ui'
 
 const SHEET_CAPACITY = 900
@@ -177,11 +176,11 @@ class GoldScene implements Scene {
     const cx = this.cx
     const by = this.baseY
     godRays(g, cx, by - 70, h * 0.6, this.t, '#ffcf7a', 0.06, 10)
-    drawGlow(g, cx, by - 60, 60, 0.35, '#ffcf7a')
+    softGlow(g, cx, by - 60, 60, 0.35, '#ffcf7a')
     drawCandleStand(g, 14, by + 10, this.t)
     drawCandleStand(g, w - 14, by + 10, this.t)
-    drawGlow(g, 14, by - 36, 10, 0.8, '#ffcf7a')
-    drawGlow(g, w - 14, by - 36, 10, 0.8, '#ffcf7a')
+    softGlow(g, 14, by - 36, 10, 0.8, '#ffcf7a')
+    softGlow(g, w - 14, by - 36, 10, 0.8, '#ffcf7a')
     const slide = this.turnT > 0 ? Math.round(Math.sin((this.turnT / 0.5) * Math.PI) * 10) : 0
     g.draw(this.layer('bronze', this.back), slide, 0)
     // Gold where the mask has been rubbed.
@@ -219,7 +218,7 @@ class GoldScene implements Scene {
     if (pose === 'leaf_hold' && this.sheet > 0) {
       const [hx, hy] = handAt(pl, -1)
       drawLeafSheet(g, hx + 1, hy - 7, this.t, 2)
-      drawGlow(g, hx, hy - 7, 8, 0.6, '#fff3a6')
+      softGlow(g, hx, hy - 7, 8, 0.6, '#fff3a6')
     }
     if (f) {
       // the leaf under your fingertip, getting smaller as it's used
@@ -227,7 +226,7 @@ class GoldScene implements Scene {
       const s = Math.max(1, Math.round(3 * k))
       g.rect(f[0] - s, f[1] - s, s * 2 + 1, s * 2 + 1, P.gold)
       g.rect(f[0] - s, f[1] - s, s, s, P.goldL)
-      drawGlow(g, f[0], f[1], 8, 0.7, '#fff3a6')
+      softGlow(g, f[0], f[1], 8, 0.7, '#fff3a6')
     }
     this.particles.render(g)
     this.juice.end(g)

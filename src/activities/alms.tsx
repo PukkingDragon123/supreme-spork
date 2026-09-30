@@ -10,7 +10,7 @@ import { Particles } from '../engine/particles'
 import { rand } from '../engine/rng'
 import type { AvatarLook } from '../art/avatar'
 import { hdMonkSprite, hdMonkBowl } from '../art/minigames/monk'
-import { drawPlayer, handAt, impactBurst, Juice, lightPool, motes, godRays, vignette, type Placed } from '../art/minigames/temple'
+import { drawPlayer, godRays, handAt, impactBurst, Juice, lightPool, motes, softGlow, vignette, type Placed } from '../art/minigames/temple'
 import { starsFrom } from '../art/minigames/rules'
 import { tsfx } from '../art/minigames/sfx'
 import { iconSprite } from '../art/icons'
@@ -26,7 +26,7 @@ import { ActivityFrame, useStage } from './kit'
 import { QuickBuy } from './quickbuy'
 import { Btn, Icon } from '../ui/components/common'
 import { sfx, haptic } from '../engine/audio'
-import { drawGlow, drawSky } from '../scenes/sky'
+import { drawSky } from '../scenes/sky'
 import { Meter, PraiseLayer, StatusPill, TempleResult, praise, type TempleResultData } from './temple-ui'
 
 const BOUGHT_ALMS = ITEMS.filter((i) => i.category === 'alms').map((i) => i.id)
@@ -317,7 +317,7 @@ class AlmsScene implements Scene {
       g.drawScaled(s.canvas, Math.round(m.x - (s.w * S) / 2), Math.round(by - s.h * S + 1), S)
       if (m.state === 'receive' && !this.giving) {
         const [bx, bby] = this.bowlOf(m)
-        drawGlow(g, bx, bby, 6, 0.5 + Math.sin(this.t * 5) * 0.3, '#fff3a6')
+        softGlow(g, bx, bby, 6, 0.5 + Math.sin(this.t * 5) * 0.3, '#fff3a6')
       }
     }
     // the player
@@ -362,7 +362,7 @@ class AlmsScene implements Scene {
       const f = Math.min(1.2, this.scoop)
       if (f > 0.05) g.ellipse(tx + 2, ty - 2 - f * 2, 4 * Math.min(1, f + 0.3), 1.5 + f * 2.4, '#fffaf0')
       if (f > SCOOP_HI) for (let i = 0; i < 2; i++) this.particles.add({ kind: 'dot', x: tx + rand(-3, 6), y: ty - 3, vy: rand(10, 30), g: 120, max: 0.6, color: '#fffaf0' })
-      if (f >= SCOOP_LO && f <= SCOOP_HI) drawGlow(g, tx + 2, ty - 3, 8, 0.8, '#fff3a6')
+      if (f >= SCOOP_LO && f <= SCOOP_HI) softGlow(g, tx + 2, ty - 3, 8, 0.8, '#fff3a6')
     }
   }
 

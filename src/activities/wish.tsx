@@ -12,7 +12,7 @@ import { drawAltar, drawArch, drawBuddha, drawHallInterior, drawCandle } from '.
 import { drawUbosot } from '../art/buildings'
 import { iconSprite } from '../art/icons'
 import { P } from '../art/palette'
-import { drawPlayer, godRays, handAt, incenseSmoke, Juice, lightPool, motes, vignette, type Placed, type TPose } from '../art/minigames/temple'
+import { drawPlayer, godRays, handAt, incenseSmoke, Juice, lightPool, motes, softGlow, vignette, type Placed, type TPose } from '../art/minigames/temple'
 import { tsfx } from '../art/minigames/sfx'
 import { game } from '../game/state'
 import { addMerit, count, recordWish, track, useItem } from '../game/actions'
@@ -21,7 +21,7 @@ import { closeActivity, type ActivityRequest } from '../ui/store'
 import { ActivityFrame, useStage } from './kit'
 import { Btn, Icon } from '../ui/components/common'
 import { sfx, haptic } from '../engine/audio'
-import { drawGlow, SKY } from '../scenes/sky'
+import { SKY } from '../scenes/sky'
 import { PraiseLayer, StatusPill, TempleResult, banner, praise, type TempleResultData } from './temple-ui'
 
 const CATS = ['การงาน', 'การเงิน', 'ความรัก', 'สุขภาพ', 'การเรียน', 'ครอบครัว', 'โชคลาภ']
@@ -192,7 +192,7 @@ class WishScene implements Scene {
       if (i < this.lit) {
         g.px(tx, ty - 1, Math.sin(this.t * 11 + i) > 0 ? '#ffd54f' : '#ff8a3d')
         g.px(tx, ty, '#ff6a3d')
-        drawGlow(g, tx, ty - 1, 3, 0.9, '#ff9a5a')
+        softGlow(g, tx, ty - 1, 3, 0.9, '#ff9a5a')
       }
     })
   }
@@ -212,7 +212,7 @@ class WishScene implements Scene {
     g.rect(csx - 5, this.footY - 3, 10, 3, P.goldDD)
     g.rect(csx - 4, this.flameY + 5, 8, 2, P.gold)
     drawCandle(g, csx, this.flameY + 5, 5, this.t, true)
-    drawGlow(g, csx, this.flameY - 2, 10, 0.9)
+    softGlow(g, csx, this.flameY - 2, 10, 0.9)
     // Incense urn on its stand, with candles either side and the flower tray.
     const ux = this.urnX
     const uy = this.footY - 18
@@ -230,8 +230,8 @@ class WishScene implements Scene {
     for (let i = 0; i < 5; i++) g.vline(ux - 8 + i * 4, uy - 16 + (i % 2) * 3, uy - 9, '#8a3a3a')
     drawCandle(g, ux - 16, uy + 6, 10, this.t, true)
     drawCandle(g, ux + 16, uy + 6, 10, this.t, true)
-    drawGlow(g, ux - 16, uy - 6, 7, 0.8)
-    drawGlow(g, ux + 16, uy - 6, 7, 0.8)
+    softGlow(g, ux - 16, uy - 6, 7, 0.8)
+    softGlow(g, ux + 16, uy - 6, 7, 0.8)
     if (this.offered) {
       const ic = iconSprite(ITEM_BY_ID[this.offered]?.icon ?? this.offered)
       g.ellipse(ux, uy + 7, 7, 1.5, P.gold)
@@ -279,11 +279,11 @@ class WishScene implements Scene {
       g.draw(ic.canvas, Math.round(x - 8), Math.round(y - 8))
     }
     if (this.charge > 0) {
-      drawGlow(g, this.playerX, this.footY - 30, 18 + this.charge * 26, this.charge, '#fff3a6')
-      drawGlow(g, cx, this.footY - 110, 20 + this.charge * 30, this.charge * 0.8, '#fff3c4')
+      softGlow(g, this.playerX, this.footY - 30, 18 + this.charge * 26, this.charge, '#fff3a6')
+      softGlow(g, cx, this.footY - 110, 20 + this.charge * 30, this.charge * 0.8, '#fff3c4')
     }
     if (this.orb) {
-      drawGlow(g, this.orb.x, this.orb.y, 12, 1, '#fff3a6')
+      softGlow(g, this.orb.x, this.orb.y, 12, 1, '#fff3a6')
       g.circle(this.orb.x, this.orb.y, 3, '#fffaf0')
       g.px(this.orb.x - 1, this.orb.y - 1, P.goldL)
     }

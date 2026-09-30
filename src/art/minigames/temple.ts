@@ -7,7 +7,6 @@ import { dollSprite, type BaseDollPose, type DollView } from '../doll'
 import type { AvatarLook } from '../avatar'
 import { bake, mix, type Surface } from '../../engine/pixel'
 import { P } from '../palette'
-import { drawGlow } from '../../scenes/sky'
 import { T_POSE_NAMES, tWrist, tp, type TPose } from '../poses/temple'
 import type { Particles } from '../../engine/particles'
 import { rand } from '../../engine/rng'
@@ -232,7 +231,7 @@ export function drawIncense(g: Surface, x: number, y: number, t: number, lit: bo
     if (lit) {
       g.px(tx, ty - 1, Math.sin(t * 11 + i) > 0 ? '#ffd54f' : '#ff8a3d')
       g.px(tx, ty, '#ff6a3d')
-      drawGlow(g, tx, ty - 1, 3, 0.8, '#ff9a5a')
+      softGlow(g, tx, ty - 1, 4, 0.9, '#ff9a5a')
     }
   }
 }
@@ -358,7 +357,7 @@ export function drawKrathong(g: Surface, x: number, y: number, s: number, flower
   }
   if (lit) {
     g.px(x, y - 12 * s - 1, Math.sin(t * 10 + x) > 0 ? '#ffd54f' : '#fff3a6')
-    drawGlow(g, x, y - 12 * s, Math.max(4, 12 * s), 0.9)
+    softGlow(g, x, y - 12 * s, Math.max(5, 12 * s), 0.9)
   }
 }
 

@@ -17,7 +17,6 @@ import { addBuff, addMerit, track } from '../game/actions'
 import { closeActivity, type ActivityRequest } from '../ui/store'
 import { ActivityFrame, useStage } from './kit'
 import { sfx, haptic } from '../engine/audio'
-import { drawGlow } from '../scenes/sky'
 import { drawCandle } from '../art/interior'
 import { Meter, PraiseLayer, TempleResult, banner, praise, type TempleResultData } from './temple-ui'
 
@@ -154,7 +153,7 @@ class HolyScene implements Scene {
     if (this.mode === 'bless') {
       g.draw(this.blessBackground(), 0, 0)
       godRays(g, w / 2, this.footY - 110, h * 0.7, this.t, '#fffbe8', 0.12, 10)
-      drawGlow(g, w / 2, this.footY - 50, 60, 0.9, '#fff3c4')
+      softGlow(g, w / 2, this.footY - 50, 60, 0.9, '#fff3c4')
       const pose = this.blessT > 2.8 ? 'wai' : 'pour_head'
       const pl = drawPlayer(g, this.look, pose, 'front', Math.round(w / 2), this.footY, { scale: 2, t: this.t, barefoot: true })
       if (pose === 'pour_head') {

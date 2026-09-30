@@ -10,7 +10,7 @@ import { rand } from '../engine/rng'
 import { drawHallInterior, drawBuddha, drawArch, drawAltar, drawCandleStand } from '../art/interior'
 import { P, SKIN_TONES } from '../art/palette'
 import type { AvatarLook } from '../art/avatar'
-import { drawPlayer, drawStick, godRays, handAt, impactBurst, Juice, lightPool, motes, vignette } from '../art/minigames/temple'
+import { drawPlayer, drawStick, godRays, handAt, impactBurst, Juice, lightPool, motes, softGlow, vignette } from '../art/minigames/temple'
 import { tsfx } from '../art/minigames/sfx'
 import { game } from '../game/state'
 import { addMerit, recordFortune, spendCoins, track } from '../game/actions'
@@ -19,7 +19,6 @@ import { closeActivity, type ActivityRequest } from '../ui/store'
 import { ActivityFrame, useStage } from './kit'
 import { Btn, Coin, Icon, Modal } from '../ui/components/common'
 import { sfx, haptic } from '../engine/audio'
-import { drawGlow } from '../scenes/sky'
 import { PraiseLayer, banner } from './temple-ui'
 
 const PRICE_EXTRA = 5
@@ -128,8 +127,8 @@ class SiamsiScene implements Scene {
     godRays(g, cx, this.footY - 150, h * 0.7, this.t, '#fff3c4', 0.06 + this.shake * 0.05, 10)
     drawCandleStand(g, 16, this.footY - 30, this.t)
     drawCandleStand(g, w - 16, this.footY - 30, this.t)
-    drawGlow(g, 16, this.footY - 76, 10, 0.8, '#ffcf7a')
-    drawGlow(g, w - 16, this.footY - 76, 10, 0.8, '#ffcf7a')
+    softGlow(g, 16, this.footY - 76, 10, 0.8, '#ffcf7a')
+    softGlow(g, w - 16, this.footY - 76, 10, 0.8, '#ffcf7a')
     lightPool(g, cx, this.floorY, 56, '#ffe7a0', 0.8)
     // The player, kneeling and shaking the cup.
     const f = this.falling
@@ -163,7 +162,7 @@ class SiamsiScene implements Scene {
     }
     // The falling stick with its number once it lands.
     if (f) {
-      if (f.landed) drawGlow(g, f.x, f.y - 2, 16, 0.8 + Math.sin(this.t * 6) * 0.2, '#fff3a6')
+      if (f.landed) softGlow(g, f.x, f.y - 2, 16, 0.8 + Math.sin(this.t * 6) * 0.2, '#fff3a6')
       drawStick(g, f.x, f.y - 1, f.landed ? f.rot : f.rot, 26)
       if (f.landed && this.landedT > 0.25) {
         const label = String(f.n)
@@ -195,7 +194,7 @@ class SiamsiScene implements Scene {
         const off = Math.round((y - bottom) * shear)
         g.rect(baseX + off, y, 1, 1, y < top - len + 3 ? '#e8514a' : i % 2 ? '#e8c38a' : '#f3d9a8')
       }
-      if (chosen && rise > 4) drawGlow(g, baseX + Math.round((top - len - bottom) * shear), top - len, 5, 0.6, '#fff3a6')
+      if (chosen && rise > 4) softGlow(g, baseX + Math.round((top - len - bottom) * shear), top - len, 5, 0.6, '#fff3a6')
     }
     for (let y = top; y < bottom; y++) {
       const off = Math.round((y - bottom) * shear)

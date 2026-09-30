@@ -9,7 +9,7 @@ import { rand } from '../engine/rng'
 import { P } from '../art/palette'
 import type { AvatarLook } from '../art/avatar'
 import { drawHallInterior, drawBuddha, drawArch, drawAltar } from '../art/interior'
-import { drawPlayer, drawSpinCoin, handAt, Juice, lightPool, motes, vignette } from '../art/minigames/temple'
+import { drawPlayer, drawSpinCoin, handAt, Juice, lightPool, motes, softGlow, vignette } from '../art/minigames/temple'
 import { tsfx } from '../art/minigames/sfx'
 import { game } from '../game/state'
 import { donateBox } from '../game/actions'
@@ -17,7 +17,6 @@ import { closeActivity, coinStoreOpen, type ActivityRequest } from '../ui/store'
 import { ActivityFrame, useStage } from './kit'
 import { Btn, Coin, Icon } from '../ui/components/common'
 import { sfx, haptic } from '../engine/audio'
-import { drawGlow } from '../scenes/sky'
 import { PraiseLayer, TempleResult, praise, type TempleResultData } from './temple-ui'
 
 const AMOUNTS = [5, 10, 20, 50, 100]
@@ -137,7 +136,7 @@ class BoxScene implements Scene {
     g.rect(bx + 19 + dx, sy + 2, 5, 46, '#8e2a3c')
     g.rect(bx - 24 + dx, sy + 44, 48, 4, '#7e2436')
     g.rect(bx - 10 + dx, sy - 3, 20, 2, P.ink)
-    drawGlow(g, bx + dx, sy - 2, 10, 0.5 + this.shake * 0.5, '#fff3a6')
+    softGlow(g, bx + dx, sy - 2, 10, 0.5 + this.shake * 0.5, '#fff3a6')
     // Emblem: a lotus in a gold wheel.
     const ey = sy + 24
     g.circle(bx + dx, ey, 12, P.gold)
@@ -152,7 +151,7 @@ class BoxScene implements Scene {
       P.pink,
     )
     g.rect(bx - 6 + dx, ey + 4, 12, 2, P.leaf)
-    drawGlow(g, bx, ey, 20, 0.35)
+    softGlow(g, bx, ey, 20, 0.35)
     // Lotus sign above the box.
     for (const ox of [-14, 0, 14]) {
       g.poly(

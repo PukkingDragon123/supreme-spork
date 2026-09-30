@@ -18,7 +18,7 @@ import { addMerit, track } from '../game/actions'
 import { closeActivity, type ActivityRequest } from '../ui/store'
 import { ActivityFrame, useStage } from './kit'
 import { sfx, haptic } from '../engine/audio'
-import { drawGlow, drawSky } from '../scenes/sky'
+import { drawSky } from '../scenes/sky'
 import { PraiseLayer, StatusPill, TempleResult, banner, type TempleResultData } from './temple-ui'
 
 const ROUNDS = 3
@@ -228,14 +228,14 @@ class CircleScene implements Scene {
     list.push({ y: this.cy, draw: () => drawChedi(g, this.cx, Math.round(this.cy + 6), { gold: true, scale: 1.25 }) })
     list.sort((a, b) => a.y - b.y)
     for (const d of list) d.draw()
-    drawGlow(g, this.cx, this.cy - 60, 40, 0.45 + (this.done ? 0.4 : 0), '#ffe7a0')
+    softGlow(g, this.cx, this.cy - 60, 40, 0.45 + (this.done ? 0.4 : 0), '#ffe7a0')
     if (this.done) {
       // the candle planted at the base of the chedi
       const bx = Math.round(this.cx + 4)
       const by = Math.round(this.cy + 8)
       drawHeldCandle(g, bx, by, this.t, true)
       drawLotusBud(g, bx - 4, by - 1)
-      drawGlow(g, bx, by - 8, 14, 1, '#fff3a6')
+      softGlow(g, bx, by - 8, 14, 1, '#fff3a6')
     }
     this.particles.render(g)
     vignette(g, '#0e0c24', 0.5)

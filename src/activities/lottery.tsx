@@ -10,7 +10,7 @@ import { Particles } from '../engine/particles'
 import { rand } from '../engine/rng'
 import { P } from '../art/palette'
 import type { AvatarLook } from '../art/avatar'
-import { drawPlayer, handAt, impactBurst, Juice, motes, vignette, type TPose } from '../art/minigames/temple'
+import { drawPlayer, handAt, impactBurst, Juice, motes, softGlow, vignette, type TPose } from '../art/minigames/temple'
 import { tsfx } from '../art/minigames/sfx'
 import { game, mutate } from '../game/state'
 import { addMerit, adsLeft, lotteryLeft, rewardAd, spendCoins, useLottery } from '../game/actions'
@@ -21,7 +21,6 @@ import { ActivityFrame, useStage } from './kit'
 import { Btn, Coin, Icon, Modal } from '../ui/components/common'
 import { toast } from '../game/events'
 import { sfx, haptic } from '../engine/audio'
-import { drawGlow } from '../scenes/sky'
 import { PraiseLayer, banner } from './temple-ui'
 
 const EXTRA_PRICE = 15
@@ -287,7 +286,7 @@ class TreeScene implements Scene {
     g.ctx.restore()
     const z = this.zone
     if (this.active && this.zoneCanvas) g.draw(this.zoneCanvas, z.x, z.y)
-    if (this.revealed) drawGlow(g, z.x + z.w / 2, z.y + z.h / 2, 60, 0.5 + Math.sin(this.t * 3) * 0.15, '#fff3a6')
+    if (this.revealed) softGlow(g, z.x + z.w / 2, z.y + z.h / 2, 60, 0.5 + Math.sin(this.t * 3) * 0.15, '#fff3a6')
     vignette(g, '#1b1008', 0.5)
     // The player seen over the shoulder, reaching up to the bark.
     const f = this.finger
@@ -315,7 +314,7 @@ class TreeScene implements Scene {
       g.ellipse(x, y, 5, 4, '#ffffff')
       g.ellipse(x - 1, y - 1, 3, 2.4, '#fff3f8')
       g.px(x + 2, y + 2, '#e9dfd2')
-      drawGlow(g, x, y, 7, 0.5, '#ffffff')
+      softGlow(g, x, y, 7, 0.5, '#ffffff')
     }
     this.particles.render(g)
     this.juice.end(g)

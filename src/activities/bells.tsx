@@ -12,7 +12,7 @@ import { rand } from '../engine/rng'
 import { P } from '../art/palette'
 import type { AvatarLook } from '../art/avatar'
 import { drawBeatCue, drawTempleBell } from '../art/minigames/bells'
-import { drawPlayer, drawStriker, handAt, impactBurst, Juice, motes, vignette } from '../art/minigames/temple'
+import { drawPlayer, drawStriker, handAt, impactBurst, Juice, motes, softGlow, vignette } from '../art/minigames/temple'
 import { beatTiming, comboPraise, type Stars, type Timing } from '../art/minigames/rules'
 import { tsfx } from '../art/minigames/sfx'
 import { treeLine } from '../scenes/maps/common'
@@ -22,7 +22,7 @@ import { closeActivity, type ActivityRequest } from '../ui/store'
 import { ActivityFrame, useStage } from './kit'
 import { Btn } from '../ui/components/common'
 import { sfx, haptic } from '../engine/audio'
-import { drawGlow, drawSky, currentPhase } from '../scenes/sky'
+import { drawSky, currentPhase } from '../scenes/sky'
 import { ComboBadge, PraiseLayer, StatusPill, TempleResult, banner, praise, type TempleResultData } from './temple-ui'
 
 const BEAT = 0.62
@@ -307,7 +307,7 @@ class BellScene implements Scene {
     for (const b of this.bells) {
       // Rope.
       g.vline(b.x, b.y - 3, b.y, '#6e4a35')
-      if (b === target) drawGlow(g, b.x, b.y + SMALL_H / 2, 14, 0.5 + phase * 0.5, '#fff3a6')
+      if (b === target) softGlow(g, b.x, b.y + SMALL_H / 2, 14, 0.5 + phase * 0.5, '#fff3a6')
       drawTempleBell(g, b.x, b.y, SMALL_H, Math.round(b.swing), b.flash)
       if (b.rung) {
         // little red ribbon tied on the rung bells
@@ -343,7 +343,7 @@ class BellScene implements Scene {
     const beamY = b.y - 14
     // rope from the beam to the crown
     g.vline(b.x, beamY, b.y, '#6e4a35')
-    drawGlow(g, b.x, b.y + BIG_H / 2, 40, 0.3 + b.flash * 0.8, '#ffe7a0')
+    softGlow(g, b.x, b.y + BIG_H / 2, 40, 0.3 + b.flash * 0.8, '#ffe7a0')
     drawTempleBell(g, b.x, b.y, BIG_H, Math.round(b.swing), b.flash, true)
     // the hanging log striker
     const x0 = b.x + Math.round(BIG_H * 0.45) + this.logRest + Math.round(this.logOff)

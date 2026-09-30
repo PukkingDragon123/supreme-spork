@@ -12,7 +12,7 @@ import { drawDeity, deityAura } from '../art/deities'
 import { iconSprite } from '../art/icons'
 import { P } from '../art/palette'
 import { drawCandle } from '../art/interior'
-import { drawPlayer, godRays, handAt, incenseSmoke, Juice, lightPool, motes, vignette, type Placed, type TPose } from '../art/minigames/temple'
+import { drawPlayer, godRays, handAt, incenseSmoke, Juice, lightPool, motes, softGlow, vignette, type Placed, type TPose } from '../art/minigames/temple'
 import { tsfx } from '../art/minigames/sfx'
 import type { Stars } from '../art/minigames/rules'
 import { game, mutate } from '../game/state'
@@ -25,7 +25,6 @@ import { QuickBuy } from './quickbuy'
 import { Btn, Icon } from '../ui/components/common'
 import { toast } from '../game/events'
 import { sfx, haptic } from '../engine/audio'
-import { drawGlow } from '../scenes/sky'
 import { PraiseLayer, StatusPill, TempleResult, banner, praise, type TempleResultData } from './temple-ui'
 
 const OFFER_IDS = ITEMS.filter((i) => i.category === 'offering' && i.id !== 'gold_leaf').map((i) => i.id).concat(['lotus', 'dessert', 'egg'])
@@ -183,7 +182,7 @@ class ShrineScene implements Scene {
     const aura = deityAura(this.deity.id)
     const glow = 0.4 + this.charge * 0.6 + (this.blessT >= 0 ? 0.6 : 0)
     godRays(g, cx, this.deityBase - 40, h * 0.55, this.t, aura, 0.05 + this.charge * 0.1 + (this.blessT >= 0 ? 0.1 : 0), 12)
-    drawGlow(g, cx, this.deityBase - 40, 48, glow, aura)
+    softGlow(g, cx, this.deityBase - 40, 48, glow, aura)
     drawDeity(g, this.deity.id, cx, this.deityBase, 2, this.t)
     // Offering table.
     const ty = this.tableY
@@ -217,13 +216,13 @@ class ShrineScene implements Scene {
       if (this.lit) g.px(cx + i * 2, ty - 23, Math.sin(this.t * 9 + i) > 0 ? '#ffd54f' : '#ff8a3d')
     }
     if (this.lit) {
-      drawGlow(g, cx - 12, ty - 14, 8, 0.8)
-      drawGlow(g, cx + 12, ty - 14, 8, 0.8)
+      softGlow(g, cx - 12, ty - 14, 8, 0.8)
+      softGlow(g, cx + 12, ty - 14, 8, 0.8)
     }
     lightPool(g, this.playerX, this.footY, 40, aura, 0.5 + this.charge)
     // The worshipper.
     const { pose, view, flip } = this.pose()
-    if (this.blessT >= 0) drawGlow(g, this.playerX, this.footY - 26, 22, Math.max(0, 1 - this.blessT * 0.3), aura)
+    if (this.blessT >= 0) softGlow(g, this.playerX, this.footY - 26, 22, Math.max(0, 1 - this.blessT * 0.3), aura)
     const pl = drawPlayer(g, this.look, pose, view, this.playerX, this.footY, { flip, t: this.t, bob: this.lightT > 0.2 ? -1 : 0 })
     this.placed = pl
     // Held things.
@@ -254,10 +253,10 @@ class ShrineScene implements Scene {
       this.heldTips().forEach(([x, y], i) => {
         g.line(bx - 1 + i, by, x, y, i % 2 ? '#c0392b' : '#a8313f')
         g.px(x, y - 1, Math.sin(this.t * 11 + i) > 0 ? '#ffd54f' : '#ff8a3d')
-        drawGlow(g, x, y - 1, 3, 0.9, '#ff9a5a')
+        softGlow(g, x, y - 1, 3, 0.9, '#ff9a5a')
       })
     }
-    if (this.charge > 0) drawGlow(g, this.playerX, this.footY - 30, 16 + this.charge * 24, this.charge, aura)
+    if (this.charge > 0) softGlow(g, this.playerX, this.footY - 30, 16 + this.charge * 24, this.charge, aura)
     this.particles.render(g)
     vignette(g, '#1b0a14', 0.5)
     this.juice.end(g)
