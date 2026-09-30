@@ -42,7 +42,7 @@ const STYLE = `
 .tg-meter.over .f { background: linear-gradient(#ff8a7a, #b8343f); }
 @keyframes tg-glow { 50% { filter: brightness(1.4); } }
 .tg-result { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 4px; }
-.tg-hero { position: relative; width: 160px; height: 150px; margin: -58px auto -4px; display: grid; place-items: end center; }
+.tg-hero { position: relative; width: 160px; height: 150px; margin: -4px auto -6px; display: grid; place-items: end center; }
 .tg-burst { position: absolute; left: 50%; top: 50%; width: 170px; height: 170px; margin: -85px 0 0 -85px; border-radius: 50%; background: radial-gradient(circle, rgba(255,243,166,0.95) 0 22%, rgba(255,213,79,0.5) 36%, transparent 62%), repeating-conic-gradient(rgba(255,233,168,0.9) 0 9deg, transparent 9deg 22deg); -webkit-mask: radial-gradient(circle, #000 40%, transparent 71%); mask: radial-gradient(circle, #000 40%, transparent 71%); animation: tg-spin 14s linear infinite; }
 .tg-hero img.tg-doll { position: relative; image-rendering: pixelated; animation: tg-hop 0.9s ease-in-out infinite alternate; }
 .tg-hero .tg-badge { position: absolute; right: 10px; bottom: 4px; padding: 4px; background: #fffaf0; border-radius: 50%; box-shadow: 0 0 0 2px #3a2838, 0 3px 0 2px rgba(0,0,0,0.25); line-height: 0; animation: tg-bump 0.4s 0.3s cubic-bezier(.3,1.8,.5,1) both; }
