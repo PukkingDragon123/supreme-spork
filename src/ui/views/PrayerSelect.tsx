@@ -63,6 +63,18 @@ function writeAvatar(id: string) {
 
 const isNight = () => ['dusk', 'night'].includes(currentPhase())
 
+// Paint the journey map while the app is idle, so the stage select opens at once.
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  setTimeout(() => {
+    const idle = (window as unknown as { requestIdleCallback?: (f: () => void) => void }).requestIdleCallback ?? ((f: () => void) => setTimeout(f, 1200))
+    idle(() => {
+      const phone = document.querySelector('.phone') as HTMLElement | null
+      const w = Math.max(176, Math.min(240, Math.ceil((phone?.clientWidth ?? Math.min(480, window.innerWidth)) / S)))
+      journeyArt(w)
+    })
+  }, 7000)
+}
+
 function nodeLook(st: PrayerStage): NodeLook {
   const n = game.value.prayer.stars[st.id] ?? 0
   if (!stageUnlocked(st)) return 'locked'
@@ -221,7 +233,7 @@ function JourneyMap({
       if (last) g.ctx.clearRect(0, last[0], art.layout.w, last[1] - last[0])
       g.ctx.clearRect(0, y0, art.layout.w, y1 - y0)
       last = [y0, y1]
-      drawJourneyFx(g, art, still ? 2 : t, y0, y1, { night, scrollY: top, still })
+      drawJourneyFx(g, art, still ? 2 : t, y0, y1, { night, viewMid: top + el.clientHeight / S / 2, still })
       // Walking.
       let pose: DollPose = 'stand'
       let v: 'front' | 'back' = 'front'
@@ -276,7 +288,7 @@ function JourneyMap({
       const g = new Surface(L.w, L.h, fxc.current)
       const top = el.scrollTop / S
       g.ctx.clearRect(0, 0, L.w, L.h)
-      drawJourneyFx(g, art!, 2, top - 24, top + el.clientHeight / S + 24, { night, scrollY: top, still })
+      drawJourneyFx(g, art!, 2, top - 24, top + el.clientHeight / S + 24, { night, viewMid: top + el.clientHeight / S / 2, still })
     }
   }
   useEffect(onScroll, [art])
@@ -316,10 +328,10 @@ function JourneyMap({
             {JOURNEY.map((c, i) => {
               const b = L.bands[i]
               const entry = c.route[0] as [number, number]
-              const side = entry[0] < 0 ? 1 : -1
-              const label = `${thaiNum(c.n)} ${c.title}`
-              // Keep the cartouche on the map, away from where the road crosses.
+              const label = `${thaiNum(c.n)} ${c.tag}`
               const half = (renderPixelText(label, { size: 9, weight: 600, shadow: '#3b1a0e' }).w * 2 + 48) / 2
+              // On the สินเทา, beside (not over) the place where the road crosses it.
+              const side = entry[0] < 0 ? 1 : -1
               const want = (L.cx + entry[0] + side * 22) * S + side * half
               const left = Math.max(half + 2, Math.min(L.w * S - half - 2, want))
               return (
@@ -348,21 +360,14 @@ function JourneyMap({
               }),
             )}
             {gates.map((gt) => {
+              // A name board hung on each temple gate; a locked gate shows what it needs.
               const p = gatePoint(L, gt.stageId)
               const ch = CHAPTERS.find((c) => c.id === gt.temple)!
               const open = chapterUnlocked(gt.temple, s)
-              // The name board hangs beside the gate, away from the nodes around it.
-              const n = nodeOf(gt.stageId)!
-              const prevN = L.nodes[n.i - 1]
-              const side = (prevN ? (n.x + prevN.x) / 2 : n.x) > p.x ? -1 : 1
               return (
-                <div
-                  key={`g${gt.temple}`}
-                  class={`bj-gate ${open ? '' : 'locked'} ${side < 0 ? 'left' : 'right'}`}
-                  style={{ left: `${(p.x + side * 17) * S}px`, top: `${(p.y - 12) * S}px` }}
-                >
-                  {!open && <Icon name="lock" size={14} />}
-                  <PT text={open ? ch.name : `${ch.name} · ${Math.min(stars, ch.stars)}/${ch.stars}★`} size={8} weight={600} {...(open ? TONE_TEXT.gold : TONE_TEXT.dark)} />
+                <div key={`g${gt.temple}`} class={`bj-gate ${open ? '' : 'locked'}`} style={{ left: `${p.x * S}px`, top: `${(p.y - 11) * S}px` }} title={ch.name}>
+                  {!open && <Icon name="lock" size={12} />}
+                  <PT text={open ? ch.short : `${Math.min(stars, ch.stars)}/${ch.stars}★`} size={7} weight={600} {...(open ? TONE_TEXT.gold : TONE_TEXT.dark)} />
                 </div>
               )
             })}
@@ -406,7 +411,7 @@ function JourneyMap({
       {offView !== 0 && L && (
         <button class={`bj-goto ${offView < 0 ? 'up' : 'down'}`} onClick={() => (sfx.tap(), api.current?.scrollToStage(here))}>
           <Icon name="map" size={16} />
-          <PT text="ด่านถัดไป" size={11} weight={600} {...TONE_TEXT.gold} />
+          <PT text="ด่านถัดไป" size={9} weight={600} {...TONE_TEXT.gold} />
         </button>
       )}
     </div>
@@ -439,6 +444,12 @@ function StoryCard({ ch, i, art: mapArt, onClose, onGo }: { ch: JourneyChapterId
     const ctx = el.getContext('2d')!
     ctx.imageSmoothingEnabled = false
     ctx.drawImage(isNight() ? journeyNight(art) : art.day, x, y, ww, hh, 0, 0, ww, hh)
+    // Whole-pixel zoom that fits the card.
+    const availW = (el.parentElement?.clientWidth ?? 300) - 4
+    const availH = Math.max(120, window.innerHeight * 0.34)
+    const k = Math.max(1, Math.min(4, Math.floor(Math.min(availW / ww, availH / hh))))
+    el.style.width = `${ww * k}px`
+    el.style.height = `${hh * k}px`
   }, [ch, i])
   const go = (d: number) => {
     const [a, k] = all[(at + d + all.length) % all.length]
@@ -449,7 +460,7 @@ function StoryCard({ ch, i, art: mapArt, onClose, onGo }: { ch: JourneyChapterId
     <div class="bj-story-back" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div class="bj-story bj-frame" role="dialog" aria-label={sc.title} style={{ ['--bj-frame' as string]: `url(${muralFrame()})` }}>
         <div class="bj-story-head">
-          <PT text={`บทที่ ${thaiNum(c.n)} · ${c.title}`} size={12} weight={600} color="#fff1c4" shadow="#3b1a0e" />
+          <PT text={`บทที่ ${thaiNum(c.n)} · ${c.title}`} size={10} weight={600} color="#fff1c4" shadow="#3b1a0e" />
           <span class="small bj-story-place">{c.place}</span>
         </div>
         <div class="bj-story-pic">
@@ -460,7 +471,7 @@ function StoryCard({ ch, i, art: mapArt, onClose, onGo }: { ch: JourneyChapterId
         </div>
         <p class="bj-story-text">{sc.caption}</p>
         <div class="row bj-story-nav">
-          <PBtn tone="wood" size="small" icon="retry" onClick={() => go(-1)} aria-label="เรื่องก่อนหน้า">
+          <PBtn tone="wood" size="small" onClick={() => go(-1)} aria-label="เรื่องก่อนหน้า">
             ก่อนหน้า
           </PBtn>
           <span class="grow center small muted">

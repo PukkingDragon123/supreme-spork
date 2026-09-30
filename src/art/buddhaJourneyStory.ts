@@ -31,6 +31,8 @@ export interface JourneyChapter {
   /** 1…8, shown as a Thai numeral. */
   n: number
   title: string
+  /** Short title for the cartouche painted on the map. */
+  tag: string
   /** Where it happened. */
   place: string
   /** Painted at night (the escape, the enlightenment). */
@@ -63,6 +65,7 @@ export const JOURNEY: JourneyChapter[] = [
     id: 'birth',
     n: 1,
     title: 'ประสูติ ณ ลุมพินีวัน',
+    tag: 'ประสูติ',
     place: 'สวนลุมพินี',
     stages: ['wat-1', 'wat-2', 'wat-3'],
     h: 214,
@@ -91,6 +94,7 @@ export const JOURNEY: JourneyChapter[] = [
     id: 'palace',
     n: 2,
     title: 'ชีวิตในวัง และเทวทูต ๔',
+    tag: 'เทวทูต ๔',
     place: 'กรุงกบิลพัสดุ์',
     stages: ['wat-4', 'wat-5', 'wat-6', 'wat-7'],
     h: 262,
@@ -138,6 +142,7 @@ export const JOURNEY: JourneyChapter[] = [
     id: 'renounce',
     n: 3,
     title: 'เสด็จออกผนวช',
+    tag: 'ออกผนวช',
     place: 'ฝั่งแม่น้ำอโนมา',
     night: true,
     stages: ['wat-8', 'wat-9', 'wat-10'],
@@ -167,6 +172,7 @@ export const JOURNEY: JourneyChapter[] = [
     id: 'ascetic',
     n: 4,
     title: 'แสวงหาทางพ้นทุกข์',
+    tag: 'ทางสายกลาง',
     place: 'ริมแม่น้ำเนรัญชรา',
     stages: ['shrine-1', 'shrine-2', 'shrine-3', 'shrine-4', 'shrine-5', 'shrine-6'],
     h: 330,
@@ -210,6 +216,7 @@ export const JOURNEY: JourneyChapter[] = [
     id: 'enlighten',
     n: 5,
     title: 'ตรัสรู้ใต้ต้นโพธิ์',
+    tag: 'ตรัสรู้',
     place: 'พุทธคยา',
     night: true,
     stages: ['river-1', 'river-2', 'river-3', 'river-4', 'river-5', 'river-6', 'river-7', 'river-8'],
@@ -256,6 +263,7 @@ export const JOURNEY: JourneyChapter[] = [
     id: 'sermon',
     n: 6,
     title: 'ปฐมเทศนา',
+    tag: 'ปฐมเทศนา',
     place: 'ป่าอิสิปตนมฤคทายวัน',
     stages: ['mountain-1', 'mountain-2'],
     h: 200,
@@ -283,6 +291,7 @@ export const JOURNEY: JourneyChapter[] = [
     id: 'teaching',
     n: 7,
     title: 'ประกาศพระศาสนา',
+    tag: 'เผยแผ่ธรรม',
     place: 'ราชคฤห์ · สาวัตถี',
     stages: ['mountain-3', 'mountain-4', 'mountain-5', 'mountain-6'],
     h: 282,
@@ -324,6 +333,7 @@ export const JOURNEY: JourneyChapter[] = [
     id: 'nibbana',
     n: 8,
     title: 'ปรินิพพาน',
+    tag: 'ปรินิพพาน',
     place: 'เมืองกุสินารา',
     stages: ['mountain-7', 'mountain-8'],
     h: 270,

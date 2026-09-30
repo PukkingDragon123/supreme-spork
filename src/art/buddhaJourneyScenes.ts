@@ -47,7 +47,7 @@ import {
 } from './buddhaJourneyPaint'
 import {
   attendantSprite,
-  babySprite,
+  babyBuddha,
   bierSprite,
   channaSprite,
   chariotSprite,
@@ -297,23 +297,37 @@ function polyBox(poly: [number, number][]): Box {
 /** Bridges where the road crosses this chapter's water. */
 function bridges(c: PaintCtx) {
   const r = c.L.road
-  for (const poly of c.water) {
-    let inside = false
-    let y0 = 0
-    let x0 = 0
-    for (let i = 0; i < r.xs.length; i++) {
-      if (r.ys[i] < c.band.top - 4 || r.ys[i] > c.band.bottom + 4) continue
-      const on = pointIn(poly, r.xs[i], r.ys[i])
-      if (on && !inside) {
-        inside = true
-        y0 = r.ys[i]
-        x0 = r.xs[i]
-      } else if (!on && inside) {
-        inside = false
-        bridge(c.g, Math.round((x0 + r.xs[i]) / 2), Math.round((y0 + r.ys[i]) / 2), Math.round(Math.abs(r.ys[i] - y0) + 12), c.night)
+  const n = r.xs.length
+  const wet = new Uint8Array(n)
+  for (let i = 0; i < n; i++) {
+    if (r.ys[i] < c.band.top - 4 || r.ys[i] > c.band.bottom + 4) continue
+    if (c.water.some((poly) => pointIn(poly, r.xs[i], r.ys[i]))) wet[i] = 1
+  }
+  // Widen each wet run a little so the planks reach the banks.
+  const span = new Uint8Array(n)
+  for (let i = 0; i < n; i++) if (wet[i]) for (let k = -7; k <= 7; k++) if (i + k >= 0 && i + k < n) span[i + k] = 1
+  const plank = c.night ? '#6a4a3a' : '#a8743e'
+  const plankL = c.night ? '#8a6a52' : '#c9924e'
+  const rail = c.night ? '#3a2620' : '#6a4028'
+  // Planks laid across the road's direction, then the two rails.
+  for (let pass = 0; pass < 3; pass++)
+    for (let i = 0; i < n; i += pass === 1 ? 3 : 1) {
+      if (!span[i]) continue
+      const a2 = r.xs[Math.min(n - 1, i + 2)] - r.xs[Math.max(0, i - 2)]
+      const b2 = r.ys[Math.min(n - 1, i + 2)] - r.ys[Math.max(0, i - 2)]
+      const l = Math.hypot(a2, b2) || 1
+      const nx = -b2 / l
+      const ny = a2 / l
+      const x = r.xs[i]
+      const y = r.ys[i]
+      if (pass === 0) c.g.thickLine(x - nx * 8, y - ny * 8, x + nx * 8, y + ny * 8, 3, J.ink)
+      else if (pass === 1) c.g.line(x - nx * 7, y - ny * 7, x + nx * 7, y + ny * 7, (i / 3) % 2 < 1 ? plankL : plank)
+      else {
+        c.g.px(Math.round(x - nx * 8), Math.round(y - ny * 8), rail)
+        c.g.px(Math.round(x + nx * 8), Math.round(y + ny * 8), rail)
       }
     }
-  }
+  void bridge
 }
 
 function lotusPatch(c: PaintCtx, pts: [number, number, number][]) {
@@ -409,15 +423,18 @@ function parasol(c: PaintCtx, dx: number, up: number) {
   const y = c.Y(up)
   c.both((g) => {
     g.rect(x, y, 1, 14, J.goldD)
+    // Tiers from the widest (bottom) up; each a white canopy with a gold fringe.
     for (let i = 0; i < 4; i++) {
-      const w = 12 - i * 2.5
-      const yy = y + 2 - i * 3
-      g.rect(Math.round(x - w / 2) - 1, yy - 1, Math.round(w) + 3, 3, J.ink)
-      g.rect(Math.round(x - w / 2), yy, Math.round(w) + 1, 1, '#fffaf0')
-      g.px(Math.round(x - w / 2), yy + 1, J.goldM)
-      g.px(Math.round(x + w / 2), yy + 1, J.goldM)
+      const w = 14 - i * 3
+      const yy = y + 1 - i * 3
+      const x0 = Math.round(x - w / 2)
+      g.rect(x0 - 1, yy - 2, w + 3, 4, J.inkS)
+      g.rect(x0, yy - 1, w + 1, 2, '#fffaf0')
+      g.hline(x0, x0 + w, yy, '#e8dcc4')
+      for (let k = x0; k <= x0 + w; k += 2) g.px(k, yy + 1, J.goldM)
     }
-    g.px(x, y - 11, J.goldL)
+    g.rect(x - 1, y - 12, 3, 2, J.inkS)
+    g.px(x, y - 12, J.goldL)
   })
 }
 
@@ -458,7 +475,7 @@ const birth: ScenePainter = {
     })
     const [bx, by] = steps[6]
     c.both((gg) => aureole(gg, c.X(bx), c.Y(by + 14), 15, 24))
-    sprite(c, babySprite(), bx, by + 4, false, true)
+    figure(c, babyBuddha(0.21), bx, by + 3)
     parasol(c, bx, by + 34)
     c.light(bx, by + 12, 18, '#ffe6a0', 0.7)
     c.addFx(sparklesFx(c.X(bx), c.Y(by + 12), 13, 8, 71))

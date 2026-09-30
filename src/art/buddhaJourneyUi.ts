@@ -73,6 +73,22 @@ export function nodeSprite(look: NodeLook): string {
     bake(24, 24, (g) => {
       const p = NODE_PAL[look]
       const c = 12
+      if (look === 'locked') {
+        // A plain stone disc with a faint lotus carved in it.
+        g.circle(c, c + 1, 10.5, J.ink)
+        g.circle(c, c, 10.5, J.ink)
+        g.circle(c, c, 9.5, p.petalD)
+        g.circle(c - 0.5, c - 0.5, 8.6, p.petal)
+        g.circle(c - 1, c - 1, 6.5, p.petalL)
+        g.circle(c - 0.5, c - 0.5, 5.6, p.face)
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 + Math.PI / 8
+          g.px(Math.round(c + Math.cos(a) * 7.6), Math.round(c + Math.sin(a) * 7.6), p.petalD)
+        }
+        g.px(c - 5, c - 4, p.faceL)
+        g.px(c - 4, c - 5, p.faceL)
+        return
+      }
       petalRing(g, c, c, 8, 6, 11.6, 3.4, p.petalD, p.petal, Math.PI / 8)
       petalRing(g, c, c, 8, 5, 10.2, 3.1, p.petal, p.petalL, 0)
       g.circle(c, c, 6.2, J.ink)

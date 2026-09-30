@@ -168,9 +168,9 @@ export interface FxItem {
 
 export interface FxEnv {
   night: boolean
-  /** Map-space scroll offset (art px), for parallax. */
-  scrollY: number
-  /** 0..1 progress unlock of the chapter this item sits in (1 = open). */
+  /** Map y (art px) at the middle of the view: parallax items drift relative to it. */
+  viewMid: number
+  /** Reduced motion: draw a still frame. */
   still: boolean
 }
 
@@ -623,7 +623,7 @@ export interface RoadSamples {
 export function paintRoad(g: Surface, road: RoadSamples, y0: number, y1: number, nightAt: (y: number) => boolean) {
   const n = road.xs.length
   const pass = (r: number, cDay: Color, cNight: Color) => {
-    for (let i = 0; i < n; i += 1) {
+    for (let i = 0; i < n; i += 2) {
       const x = road.xs[i]
       const y = road.ys[i]
       if (y < y0 - 8 || y > y1 + 8) continue
@@ -631,9 +631,9 @@ export function paintRoad(g: Surface, road: RoadSamples, y0: number, y1: number,
     }
   }
   pass(6.2, J.ink, '#0e1624')
-  pass(5.3, J.sandDD, '#5a5a6a')
-  pass(4.4, J.sandD, '#7a7a86')
-  pass(3.6, J.sand, '#9a98a0')
+  pass(5.3, J.sandDD, '#5a5652')
+  pass(4.4, J.sandD, '#7c766c')
+  pass(3.6, J.sand, '#a29a8a')
   // Pebbles and footprints.
   for (let i = 0; i < n; i += 5) {
     const x = Math.round(road.xs[i])

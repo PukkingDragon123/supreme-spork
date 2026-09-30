@@ -333,6 +333,49 @@ export function princeSculpt(pose: 'palace' | 'sword', s: number): Sculpted {
   })
 }
 
+/**
+ * The newborn prince standing on a lotus, right hand raised to the sky and
+ * the left pointing to the earth; origin = between the feet.
+ */
+export function babyBuddha(s: number): Sculpted {
+  const q = Math.round(s * 40) / 40
+  return sculptOnce(`baby:${q}`, () =>
+    sculpt({
+      prims: [
+        C([-4.2, 1, 2], [-4.5, 24, 2], 3.8, 4.6, 1),
+        C([4.2, 1, 2], [4.5, 24, 2], 3.8, 4.6, 1),
+        E(0, 34, 2.5, 10.5, 13, 8.5, 2),
+        E(0, 46, 1.5, 11, 7, 7, 2),
+        C([0, 48, 1], [0, 54, 1.5], 3.6, 3.4, 2),
+        E(0, 63, 2, 10.5, 11, 9.5, 3),
+        C([-9.8, 66, 0.5], [-10.4, 58, 1.5], 1.2, 1.8, 8),
+        C([9.8, 66, 0.5], [10.4, 58, 1.5], 1.2, 1.8, 8),
+        ...M(1, E(0, 75, 1, 4.6, 4.2, 4, 7)),
+        // Right hand to the sky, left hand to the earth.
+        C([-10.5, 48, 1], [-15, 64, 2.5], 3.4, 2.9, 4),
+        C([-15, 64, 2.5], [-13.5, 82, 3.5], 2.9, 2.3, 4),
+        C([-13.5, 82, 3.5], [-13.2, 91, 3.5], 1.3, 0.9, 6),
+        C([10.5, 48, 1], [14.5, 34, 3], 3.4, 2.9, 5),
+        C([14.5, 34, 3], [15.5, 20, 4], 2.9, 2.3, 5),
+        C([15.5, 20, 4], [15.6, 13, 4], 1.3, 0.9, 6),
+      ],
+      s: q,
+      x0: -22,
+      x1: 22,
+      y0: -1,
+      y1: 95,
+      ramps: [GOLD_RAMP, ['#0a0808', '#141010', '#1e1818', '#282020', '#342a28', '#403430', '#4c3e38', '#5a4a42', '#6a584e']],
+      rim: 0.34,
+      spec: [14, 0.5],
+      detail: (d) => {
+        d.curve(-6, -2.2, (x) => 64 - 0.08 * (x + 4) * (x + 4), -3)
+        d.curve(2.2, 6, (x) => 64 - 0.08 * (x - 4) * (x - 4), -3)
+        d.line(-2, 58.4, 2, 58.4, -2)
+      },
+    }),
+  )
+}
+
 /** Draw a sculpted figure with its origin at (x, y). */
 export function drawSculpt(g: Surface, f: Sculpted, x: number, y: number) {
   g.draw(f.canvas, Math.round(x) - f.ox, Math.round(y) - f.oy)

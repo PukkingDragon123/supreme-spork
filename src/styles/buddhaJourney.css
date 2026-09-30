@@ -235,15 +235,15 @@
   animation: bj-tag 3.2s ease-in-out infinite;
 }
 
-/* Temple gates on the road. */
+/* Name boards hung on the temple gates. */
 .bj-gate {
   position: absolute;
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 3px;
-  padding: 1px 5px 2px;
-  transform: translate(0, -50%);
+  gap: 2px;
+  padding: 0 4px 1px;
+  transform: translate(-50%, -50%);
   background: linear-gradient(#ffe58a, #f2c54e);
   box-shadow:
     0 0 0 2px #7a4a14,
@@ -252,14 +252,10 @@
   pointer-events: none;
 }
 
-.bj-gate.left {
-  transform: translate(-100%, -50%);
-}
-
 .bj-gate.locked {
   background: #2c2238;
   box-shadow:
-    0 0 0 2px #8a7a9a,
+    0 0 0 2px #b8a8c8,
     0 3px 0 2px rgba(10, 4, 20, 0.5);
 }
 
@@ -495,7 +491,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
+  padding: 2px 8px;
   border: 0;
   background: linear-gradient(#ffe58a, #f2c54e);
   box-shadow:
@@ -652,6 +648,7 @@
 
 .bj-story-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   margin: -2px -2px 6px;
@@ -667,6 +664,8 @@
 }
 
 .bj-story-pic {
+  display: flex;
+  justify-content: center;
   line-height: 0;
   padding: 2px;
   background: #2b1a12;
@@ -674,8 +673,8 @@
 }
 
 .bj-story-pic canvas {
-  width: 100%;
-  height: auto;
+  display: block;
+  margin: 0 auto;
   image-rendering: pixelated;
 }
 

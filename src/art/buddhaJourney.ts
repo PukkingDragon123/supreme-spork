@@ -100,7 +100,7 @@ export function journeyNight(art: JourneyArt): HTMLCanvasElement {
 /** Draw the visible fx between map rows y0 and y1. */
 export function drawJourneyFx(g: Surface, art: JourneyArt, t: number, y0: number, y1: number, env: FxEnv) {
   for (const f of art.fx) {
-    const shift = (f.par ?? 0) * env.scrollY
+    const shift = (f.par ?? 0) * (env.viewMid - (f.box[1] + f.box[3]) / 2)
     if (f.box[3] + shift < y0 || f.box[1] + shift > y1) continue
     f.draw(g, t, env)
   }

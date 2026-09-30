@@ -67,7 +67,7 @@ export function cloudFx(x: number, y: number, w: number, speed: number, mapW: nu
     z: 20,
     draw: (g, t, env) => {
       const xx = ((((x + t * speed) % span) + span) % span) - w
-      const yy = Math.round(y + env.scrollY * 0.25)
+      const yy = Math.round(y + (env.viewMid - y) * 0.25)
       if (env.night || night) muralCloud(g, Math.round(xx), yy, w, '#5a6498', '#3a4274')
       else muralCloud(g, Math.round(xx), yy, w)
     },
@@ -83,7 +83,7 @@ export function birdsFx(y: number, mapW: number, seed: number): FxItem {
     par: 0.12,
     z: 30,
     draw: (g, t, env) => {
-      const yy = y + env.scrollY * 0.12
+      const yy = y + (env.viewMid - y) * 0.12
       for (let i = 0; i < 3; i++) {
         const bx = ((t * speed + i * 11 + seed * 37) % span) - 40
         const by = yy + Math.sin(t * 1.3 + i) * 2 + (i % 2) * 4
