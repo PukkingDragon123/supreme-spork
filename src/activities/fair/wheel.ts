@@ -70,15 +70,12 @@ export class WheelRide extends FairShow {
 
   onAction() {
     if (!this.playing) return
+    // Snap the frame on screen now (before the camera flash lights it up).
+    const url = this.snap?.() ?? null
+    if (url && (this.atTop() || !this.photo)) this.photo = url
     this.flashT2 = 0.35
     sfx.click()
     haptic(20)
-    // Snap after this frame is drawn with the flash off (next tick).
-    setTimeout(() => {
-      const url = this.snap?.() ?? null
-      if (!url) return
-      if (this.atTop() || !this.photo) this.photo = url
-    }, 30)
     this.photos++
     if (this.atTop()) {
       this.prize = { id: 'fair_wheel_photo', once: true }

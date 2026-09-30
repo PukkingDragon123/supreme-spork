@@ -445,6 +445,9 @@ function gags(): Gag[] {
         g.rect(p.x + 2, p.y - 9, 6, 5, '#8a2335')
       },
     }),
+    ...[0, 1, 2].map((i) =>
+      personGag(look(i === 1 ? { gender: 'f', hair: 'hair_twin', hand: 'hand_bubbletea' } : i === 2 ? { head: 'head_catears' } : {}), WHEEL.x + 26 + i * 11, WHEEL.y + WHEEL.r + 26, [['ต่อคิวชิงช้าสวรรค์จ้า', 'อีกสองรอบถึงเรา!'], ['กลัวความสูงนิดนึง…', 'ขอนั่งกระเช้าสีชมพูนะ'], ['ถ่ายรูปบนยอดต้องสวยแน่', 'พลุขึ้นตอนเราอยู่บนยอดทีเถอะ']][i], { view: 'back' }),
+    ),
     tradePairGag(236, 1026, { hair: 'hair_bob', top: 'top_tee_black' }, { hair: 'hair_ponytail', top: 'top_hoodie_over' }, ['แลกปลาทองกับพวงกุญแจผีไหม', 'ได้ตั๋วตั้งแปดใบ! 🎟️', 'ดีลลล 🤝']),
   ]
 }
@@ -526,8 +529,8 @@ export function fairMap(): MapDef {
     ...hooksAt(contest.base, 'bulbs', CONTEST.x, CONTEST.y),
   ]
   const neon: NeonItem[] = [
-    lit(stage, STAGE.x, STAGE.y, 0.75),
-    lit(contest, CONTEST.x, CONTEST.y, 0.7),
+    lit(stage, STAGE.x, STAGE.y, 0.55),
+    lit(contest, CONTEST.x, CONTEST.y, 0.4),
     ...booths.map((b) => lit(b.sprite, b.x, BOOTH_Y, 0.7)),
     lit(prizes, PRIZES.x, PRIZES.y, 0.7),
     ...claws.map((c) => lit(c.sprite, c.x, CLAW_Y, 0.85)),
@@ -717,6 +720,8 @@ export function fairMap(): MapDef {
           { x0: 8, x1: 160, y: 1180, n: 11, sag: 10, color: '#fffaf0' },
           { x0: 240, x1: 392, y: 1180, n: 11, sag: 10 },
           { x0: 176, x1: 224, y: 1398, n: 5, sag: 6, color: '#ffd23f' },
+          { x0: 150, x1: 250, y: 360, n: 9, sag: 12 },
+          { x0: 150, x1: 250, y: 850, n: 9, sag: 10, color: '#fffaf0' },
         ]),
         new Neon(s, neon, bulbs),
         new Gags(s, gags()),
@@ -791,6 +796,6 @@ export function fairMap(): MapDef {
       { x: PRIZES.x + 14, y: PRIZES.y - 12 },
     ],
     dogs: ['mali'],
-    visitors: 18,
+    visitors: 22,
   }
 }

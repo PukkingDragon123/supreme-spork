@@ -85,7 +85,7 @@ function RideResultCard({ id, summary, res, photo, onAgain }: { id: RideId; summ
         {photo && (
           <div class="fairx-polaroid">
             <img src={photo} alt="รูปที่ถ่ายไว้" />
-            <div class="small">{def.name} · งานวัดศรีบุญดี</div>
+            <div class="small">{def.name} · งานวัด</div>
           </div>
         )}
         {res.got && (

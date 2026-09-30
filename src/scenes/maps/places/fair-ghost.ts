@@ -78,12 +78,12 @@ class Scares implements Life {
     const n = this.found
     setTimeout(() => {
       if (n >= GHOST_COUNT) {
-        this.s.say('เจอผีครบทุกตัว! คนกล้าตัวจริง!', this.s.camX + this.s.vw / 2, this.s.camY + 36, 2.8)
+        this.s.say('เจอผีครบทุกตัว! คนกล้าตัวจริง!', this.s.camX + this.s.vw / 2, this.s.camY + this.s.vh * 0.3, 2.8)
         if (live(this.s) && ownedCount('fair_brave_cert') === 0) {
           grantCollectible('fair_brave_cert')
         }
         this.s.particles.sparkles(p.x, p.y - 20, 16, '#c8ff8a', 14)
-      } else this.s.say(`เจอผีแล้ว ${n}/${GHOST_COUNT}`, this.s.camX + this.s.vw / 2, this.s.camY + 36, 1.6)
+      } else this.s.say(`เจอผีแล้ว ${n}/${GHOST_COUNT}`, this.s.camX + this.s.vw / 2, this.s.camY + this.s.vh * 0.3, 1.6)
     }, 1200)
   }
   update(dt: number) {
@@ -160,9 +160,9 @@ class Scares implements Life {
     const p = this.s.player
     const x = p.x - g.ox
     const y = p.y - 14 - g.oy
-    const grad = ctx.createRadialGradient(x, y, 18, x, y, 78)
+    const grad = ctx.createRadialGradient(x, y, 16, x, y, 84)
     grad.addColorStop(0, 'rgba(10,4,18,0)')
-    grad.addColorStop(1, 'rgba(10,4,18,0.72)')
+    grad.addColorStop(1, 'rgba(10,4,18,0.8)')
     ctx.save()
     ctx.fillStyle = grad
     ctx.fillRect(0, 0, g.w, g.h)

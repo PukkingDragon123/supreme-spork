@@ -259,16 +259,20 @@ export class RamwongScene extends JobScene {
     for (const side of ['L', 'R'] as const) {
       const r = this.ring(side)
       const hot = side === 'L' ? this.flashL > 0 : this.flashR > 0
-      for (let i = 0; i < 36; i++) {
-        const a = (i / 36) * Math.PI * 2
-        const rr = 10 + (hot ? 1 : 0)
+      g.alpha(hot ? 0.45 : 0.16)
+      g.ellipse(r.x, r.y, 12, 10, '#fff3a6')
+      g.alpha(1)
+      for (let i = 0; i < 44; i++) {
+        const a = (i / 44) * Math.PI * 2
+        const rr = 13 + (hot ? 1 : 0)
         g.px(Math.round(r.x + Math.cos(a) * rr), Math.round(r.y + Math.sin(a) * rr * 0.8), i % 3 ? '#ffd54f' : '#fff3a6')
+        if (i % 2) g.px(Math.round(r.x + Math.cos(a) * (rr - 1)), Math.round(r.y + Math.sin(a) * (rr - 1) * 0.8), '#b8742a')
       }
-      if (hot) {
-        g.alpha(0.35)
-        g.ellipse(r.x, r.y, 9, 7, '#fff3a6')
-        g.alpha(1)
-      }
+      // A little จีบ hand in the ring: which side to tap.
+      const hx = r.x + (side === 'L' ? -1 : 1)
+      g.rect(hx - 2, r.y - 1, 4, 4, '#f0bd90')
+      g.px(hx + (side === 'L' ? -3 : 2), r.y - 3, '#f0bd90')
+      g.px(hx + (side === 'L' ? -2 : 1), r.y - 2, '#f0bd90')
     }
     // Falling flowers.
     for (const n of this.chart) {
@@ -278,10 +282,11 @@ export class RamwongScene extends JobScene {
       const k = 1 - dt / RAMWONG_LEAD
       const r = this.ring(n.side)
       const sx = this.cx + (n.side === 'L' ? -12 : 12)
-      const sy = this.top + 28
+      const sy = this.top + 34
       const x = sx + (r.x - sx) * k
       const y = sy + (r.y - sy) * Math.pow(Math.max(0, k), 1.15)
       const s = 0.6 + Math.min(1, k) * 0.6
+      if (!n.grade && Math.floor(this.t * 20 + n.i) % 3 === 0) g.px(Math.round(x + (n.side === 'L' ? 3 : -3)), Math.round(y - 6), '#fff3a6')
       this.drawFlower(g, x, y, s, n.side, n.grade === 'miss')
     }
     // You, dancing.
@@ -305,7 +310,7 @@ export class RamwongScene extends JobScene {
     const c = side === 'L' ? '#ff9fc0' : '#ffc83a'
     const X = Math.round(x)
     const Y = Math.round(y)
-    const r = Math.max(2, Math.round(3.4 * s))
+    const r = Math.max(2, Math.round(4.6 * s))
     if (dim) g.alpha(0.4)
     for (let i = 0; i < 5; i++) {
       const a = (i / 5) * Math.PI * 2 - Math.PI / 2

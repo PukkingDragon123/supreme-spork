@@ -53,8 +53,14 @@ export class FireworkSky {
   flashes: Flash[] = []
   /** Called when a shell bursts (sound, camera flash…). */
   onBurst?: (x: number, y: number, kind: BurstKind, color: string) => void
-  /** Global size factor (the ferris-wheel view draws them bigger). */
-  constructor(public scale = 1) {}
+  /**
+   * `scale`: global size factor; `thick`: young sparks are drawn 2×2 with a
+   * brighter flash (the world view, where 1 px would be too faint).
+   */
+  constructor(
+    public scale = 1,
+    public thick = false,
+  ) {}
 
   /** Launch a rocket from (x0, y0) that bursts at (x, y). */
   launch(x0: number, y0: number, x: number, y: number, kind: BurstKind, color: string, size = 1) {
@@ -115,7 +121,7 @@ export class FireworkSky {
         add(Math.cos(a) * v, Math.sin(a) * v, { color: '#fffaf0', twinkle: true, g: 10, life: rnd(0.8, 1.3), max: 1.3, delay: rnd(0.3, 0.6) })
       }
     }
-    this.flashes.push({ x, y, life: 0.35, color, r: Math.round(18 * s) })
+    this.flashes.push({ x, y, life: 0.35, color, r: Math.max(8, Math.round(((this.thick ? 26 : 18) * s) / 8) * 8) })
     this.onBurst?.(x, y, kind, color)
   }
 
@@ -161,7 +167,7 @@ export class FireworkSky {
     ctx.save()
     ctx.globalCompositeOperation = 'lighter'
     for (const f of this.flashes) {
-      ctx.globalAlpha = Math.min(1, f.life / 0.35) * 0.55
+      ctx.globalAlpha = Math.min(1, f.life / 0.35) * (this.thick ? 0.8 : 0.55)
       const c = glowSprite(f.r, f.color)
       ctx.drawImage(c, Math.round(f.x - f.r - g.ox), Math.round(f.y - f.r - g.oy))
     }
@@ -177,7 +183,8 @@ export class FireworkSky {
       if (s.twinkle && Math.floor((t + s.max * 7) * 18 + s.x) % 3 === 0) continue
       g.alpha(Math.min(1, a * 1.6))
       if (a > 0.45) g.px(s.px, s.py, s.color)
-      g.px(s.x, s.y, a > 0.7 ? '#ffffff' : s.color)
+      if (this.thick && a > 0.4) g.rect(Math.round(s.x) - 1, Math.round(s.y) - 1, 2, 2, a > 0.75 ? '#ffffff' : s.color)
+      else g.px(s.x, s.y, a > 0.7 ? '#ffffff' : s.color)
       g.alpha(1)
     }
   }

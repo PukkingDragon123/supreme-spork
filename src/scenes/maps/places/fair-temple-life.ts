@@ -835,7 +835,8 @@ export class ClawRow implements Life {
 // every device), plus a burst wherever you tap the night sky.
 
 export class FireworkShow implements Life {
-  private sky = new FireworkSky(1)
+  private sky = new FireworkSky(1.7, true)
+  private twins: { at: number; b: Burst }[] = []
   private show = -1
   private plan: Burst[] = []
   private idx = 0
@@ -851,13 +852,15 @@ export class FireworkShow implements Life {
       if (!this.s.onScreen(x, y, 40)) return
       fairSfx.boom(kind === 'heart' ? 1.3 : 1)
       if (kind === 'crackle') fairSfx.crackle()
+      // A drift of smoke where the shell burst.
+      for (let i = 0; i < 4; i++) this.s.particles.add({ kind: 'smoke', x: x + rand(-8, 8), y: y + rand(-6, 6), vx: rand(-3, 3), vy: rand(-4, 2), max: rand(2, 3.2), color: '#8a86a8', size: 2 })
     }
   }
   /** Launch one shell over the current view. */
   fire(b: { x: number; y: number; kind: Burst['kind']; color: string; size: number }) {
     const s = this.s
     const x = s.camX + b.x * s.vw
-    const y = s.camY + 10 + b.y * s.vh * 0.36
+    const y = s.camY + s.vh * 0.14 + b.y * s.vh * 0.3
     this.sky.launch(x + rand(-6, 6), s.camY + s.vh * 0.6, x, y, b.kind, b.color, b.size)
   }
   update(dt: number) {
@@ -866,10 +869,17 @@ export class FireworkShow implements Life {
       if (this.show !== st.show) {
         this.show = st.show
         this.plan = showPlan(st.show)
+        this.twins = []
         this.idx = this.plan.findIndex((b) => b.t >= st.t - 0.2)
         if (this.idx < 0) this.idx = this.plan.length
       }
-      while (this.idx < this.plan.length && this.plan[this.idx].t <= st.t) this.fire(this.plan[this.idx++])
+      while (this.idx < this.plan.length && this.plan[this.idx].t <= st.t) {
+        const b = this.plan[this.idx++]
+        this.fire(b)
+        // Past the opening, shells go up in pairs (mirrored across the sky).
+        if (b.t > 4) this.twins.push({ at: st.t + 0.35, b: { ...b, x: 1 - b.x, y: Math.min(0.9, b.y + 0.08), color: b.color } })
+      }
+      while (this.twins.length && this.twins[0].at <= st.t) this.fire(this.twins.shift()!.b)
       if (live(this.s)) {
         if (this.watchedShow !== st.show) {
           this.watchedShow = st.show
@@ -881,12 +891,12 @@ export class FireworkShow implements Life {
       if (this.watchedShow === st.show - 1 && this.watched >= 15 && live(this.s)) {
         this.watched = 0
         if (ownedCount('fair_firework_pin') === 0) grantCollectible('fair_firework_pin')
-        this.s.say('ขอบคุณที่มาชมพลุครับ! รอบหน้าอีกสามนาที', this.s.camX + this.s.vw / 2, this.s.camY + 40, 2.4)
+        this.s.say('ขอบคุณที่มาชมพลุครับ! รอบหน้าอีกสามนาที', this.s.camX + this.s.vw / 2, this.s.camY + this.s.vh * 0.3, 2.4)
       }
       if (st.next <= 10 && this.called !== st.show) {
         this.called = st.show
         if (this.s.onScreen(this.mc.x, this.mc.y, 0)) this.s.say('อีกสิบวินาที พลุจะขึ้นแล้วคร้าบบ!', this.mc.x, this.mc.y - 34, 2.6)
-        else this.s.say('📢 อีกสิบวินาทีพลุขึ้น! มองฟ้าเลย~', this.s.camX + this.s.vw / 2, this.s.camY + 30, 2.6)
+        else this.s.say('📢 อีกสิบวินาทีพลุขึ้น! มองฟ้าเลย~', this.s.camX + this.s.vw / 2, this.s.camY + this.s.vh * 0.3, 2.6)
       }
     }
     this.sky.update(dt)

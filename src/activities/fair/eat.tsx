@@ -185,10 +185,10 @@ class EatScene implements Scene {
     g.rect(0, h - 12, w, 12, '#5a4a48')
     g.rect(0, h - 12, w, 2, '#6a5a58')
     // The vendor behind the cart, a bare bulb over it.
-    const cx = Math.round(w * 0.7)
+    const cx = Math.round(w * 0.64)
     const cy = h - 6
-    const vs = avatarSprite(this.vendor, 'front', Math.floor(t * 1.2) % 4 === 0 ? 'happy' : 'stand')
-    g.draw(vs.canvas, cx - Math.round(vs.w / 2) - 2, cy - 16 - vs.h + (Math.floor(t * 1.2) % 4 === 0 ? -1 : 0))
+    const vs = avatarSprite(this.vendor, 'front', Math.floor(t * 1.2) % 4 === 0 || this.eating ? 'happy' : 'stand')
+    g.draw(vs.canvas, cx + 22 - Math.round(vs.w / 2), cy - vs.h + (Math.floor(t * 1.2) % 4 === 0 ? -1 : 0))
     const c = this.cart.base
     g.draw(c.canvas, cx - c.ax, cy - c.ay)
     g.ctx.save()
@@ -219,11 +219,13 @@ class EatScene implements Scene {
 export function EatSheet({ shopId }: { shopId: string }) {
   const shop = PLACE_SHOPS[shopId]
   const snacks = (shop?.snacks ?? []).map((id) => SNACK_BY_ID[id]).filter((s): s is Snack => !!s)
-  const { host, scene } = useStage(() => new EatScene(shopId), { targetWidth: 150 })
+  const { host, scene, stage } = useStage(() => new EatScene(shopId), { targetWidth: 150 })
   const [, bump] = useState(0)
   const [last, setLast] = useState<Snack | null>(null)
   const busy = useRef(false)
   useEffect(() => {
+    // The window pops in with a scale animation; refit once it has settled.
+    const fits = [120, 400, 800].map((ms) => window.setTimeout(() => stage.current?.fit(), ms))
     const iv = window.setInterval(() => {
       const sc = scene.current
       if (busy.current && sc && !sc.eating) {
@@ -231,7 +233,10 @@ export function EatSheet({ shopId }: { shopId: string }) {
         bump((n) => n + 1)
       }
     }, 150)
-    return () => clearInterval(iv)
+    return () => {
+      clearInterval(iv)
+      for (const f of fits) clearTimeout(f)
+    }
   }, [])
   const buy = (sn: Snack) => {
     if (busy.current) return
