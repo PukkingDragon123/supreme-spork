@@ -1062,7 +1062,7 @@ const enlighten: ScenePainter = {
       },
     })
     c.addFx(firefliesFx([c.X(-96), c.Y(420), c.X(96), c.Y(4)], 18, 59, true))
-    c.addFx(cloudFx(30, c.Y(410), 30, 2, c.g.w, true))
+    c.addFx(cloudFx(30, c.Y(372), 30, 2, c.g.w, true))
   },
 }
 
