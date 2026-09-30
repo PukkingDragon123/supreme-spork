@@ -6464,7 +6464,9 @@ function compose(look: AvatarLook, pose: DollPose, view: DollView, blink: boolea
     drawBackBow(b, r, 'behind')
     return b
   }
-  const pd = poseDef(pose, view)
+  let pd = poseDef(pose, view)
+  // boys cheer with fists pumped instead of open jazz hands
+  if (r.g === 'm' && pose === 'happy') pd = { ...pd, L: pd.L && { ...pd.L, hand: 'fist' }, R: pd.R && { ...pd.R, hand: 'fist' } }
   const dy = pd.dy
   b.plan = bodyPlan(r, dy, pd.legs)
   const hair = HAIR[r.hair] ?? HAIR.bob

@@ -429,8 +429,7 @@
   left: 0;
   top: 0;
   z-index: 3;
-  width: 34px;
-  height: 52px;
+  /* size set inline: the walker box (AV_BOX_*) at MAP_SCALE */
   image-rendering: pixelated;
   pointer-events: none;
   filter: drop-shadow(0 2px 0 rgba(20, 10, 6, 0.35));

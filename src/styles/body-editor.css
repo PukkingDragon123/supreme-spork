@@ -1,0 +1,57 @@
+/* Body & face options in dress-up (ui/BodyEditor.tsx). */
+
+.be-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.be-grid {
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px 4px;
+}
+
+.be-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.be-img {
+  image-rendering: pixelated;
+  max-width: 94%;
+  max-height: 94%;
+}
+
+.be-body {
+  width: auto;
+  height: 56px;
+}
+
+.be-head {
+  width: 54px;
+  height: auto;
+}
+
+.be-eyes {
+  width: 56px;
+  height: auto;
+}
+
+.be-cap {
+  font-size: 10px;
+  line-height: 1.15;
+  text-align: center;
+  color: #6b4a2e;
+  max-width: 64px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.be-opt.on .be-cap {
+  color: #3b2616;
+  font-weight: 700;
+}

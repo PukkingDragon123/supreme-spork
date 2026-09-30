@@ -26,7 +26,7 @@ export function CreateView() {
     <div class="create">
       <div class="create-head">
         <PT text="แต่งตัวไปวัดกัน!" size={15} weight={600} color="#fff6dc" shadow="#3b2616" />
-        <span class="small create-sub">เลือกรูปร่าง ทรงผม และชุดที่ชอบ แตะตัวละครเพื่อหมุนดูด้านหลัง</span>
+        <span class="small create-sub">เลือกรูปร่าง ส่วนสูง หน้าตา ทรงผม และชุดที่ชอบ แตะตัวละครเพื่อหมุนดูด้านหลัง</span>
       </div>
       <DressUp creating onDone={() => (sfx.open(), setNaming(true))} />
       {picking && <ProvincePicker onClose={() => setPicking(false)} />}

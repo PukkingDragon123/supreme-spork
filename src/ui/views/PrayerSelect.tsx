@@ -25,8 +25,8 @@ import { StageChips } from '../components/StageChips'
 import { chantBookFocus } from '../chantPrefs'
 import { sfx } from '../../engine/audio'
 import { currentPhase } from '../../scenes/sky'
-import { dollSprite, DOLL_H, DOLL_W, type DollPose } from '../../art/doll'
-import '../../art/buddhaJourneyPoses'
+import { avatarSprite, type Pose, type View } from '../../art/avatar'
+import { petSprite, type PetFacing } from '../../art/pets'
 import { drawJourneyFx, journeyArt, journeyNight, type JourneyArt } from '../../art/buddhaJourney'
 import { avatarStage, bandAt, chapterOfStage, gatePoint, JOURNEY, JOURNEY_BY_ID, JOURNEY_STAGES, MAP_SCALE, templeGates, thaiNum, walkFrom, walkPoint, type JourneyChapterId, type JourneyLayout, type NodeSpot } from '../../art/buddhaJourneyStory'
 import { bossSprite, cartouche, lacquerTile, muralFrame, nodeSprite, parchTile, stupaSprite, type NodeLook } from '../../art/buddhaJourneyUi'
@@ -44,6 +44,17 @@ export function MatChip({ id, n }: { id: MaterialId; n: number }) {
 }
 
 const S = MAP_SCALE
+/** The walker's box in map pixels (avatar + pet), feet near the bottom centre. */
+const AV_BOX_W = 52
+const AV_BOX_H = 40
+/** Same step cycle the world maps use (scenes/world.ts), 8 frames a second. */
+const WALK_CYCLE: Pose[] = ['walk1', 'pass', 'walk2', 'pass']
+
+function shadow(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number) {
+  ctx.fillStyle = 'rgba(40, 20, 10, 0.28)'
+  ctx.fillRect(Math.round(x - rx + 1), Math.round(y), rx * 2 - 2, 1)
+  ctx.fillRect(Math.round(x - rx + 2), Math.round(y + 1), rx * 2 - 4, 1)
+}
 const AVATAR_KEY = 'boondee.bj.avatar'
 
 function readAvatar(): string | null {
@@ -191,13 +202,40 @@ function JourneyMap({
     }
   }, [art])
 
-  const drawAvatar = (pose: DollPose, v: 'front' | 'back') => {
+  // The walker is the same animated sprite that walks the world maps, drawn in
+  // map pixels (so it scales crisply with the art) into a small box that also
+  // holds the pet trotting behind.
+  const facing = useRef({ view: 'front' as View, flip: false, last: null as { x: number; y: number } | null })
+  const drawAvatar = (pose: Pose, view: View, flip: boolean, t: number, moving: boolean, petSide: 1 | -1) => {
     const c = avEl.current
     if (!c) return
-    const spr = dollSprite(game.value.player.look, pose, { view: v })
     const ctx = c.getContext('2d')!
     ctx.clearRect(0, 0, c.width, c.height)
-    ctx.drawImage(spr.canvas, 0, 0)
+    const look = game.value.player.look
+    const fx = AV_BOX_W / 2
+    const fy = AV_BOX_H - 2
+    const pet = game.value.pet
+    const petAt = (): [number, number] => {
+      // behind the walker while walking, beside them when standing
+      if (!moving) return [fx + 12 * petSide, fy + 1]
+      if (view === 'side') return [fx + (flip ? 13 : -13), fy]
+      return view === 'back' ? [fx + 9, fy + 3] : [fx - 9, fy - 3]
+    }
+    const drawPet = () => {
+      if (!pet) return
+      const [px, py] = petAt()
+      const pf: PetFacing = view === 'side' ? 'side' : view === 'back' ? 'up' : 'down'
+      const ps = petSprite(pet, moving ? pf : 'down', moving ? 'walk' : 'idle', Math.floor(t * (moving ? 8 : 2)), { flip: view === 'side' && flip })
+      shadow(ctx, px, py, 5)
+      ctx.drawImage(ps.canvas, Math.round(px - ps.w / 2), Math.round(py - ps.h + 1))
+    }
+    // the pet walks behind: paint it first when it's further up the road
+    const petBehind = !moving || view === 'back'
+    if (petBehind) drawPet()
+    const s = avatarSprite(look, view, pose, { flip })
+    shadow(ctx, fx, fy, 6)
+    ctx.drawImage(s.canvas, Math.round(fx - s.w / 2), Math.round(fy - s.h + 1))
+    if (!petBehind) drawPet()
   }
 
   const avatarFeet = () => {
@@ -206,11 +244,11 @@ function JourneyMap({
     return walkPoint(L.road, av.a, av.b, L.cx, av.k)
   }
 
-  const placeAvatar = (bob = 0) => {
+  const placeAvatar = () => {
     const c = avEl.current
     if (!c || !L) return
     const p = avatarFeet()
-    c.style.transform = `translate(${Math.round(p.x * S - DOLL_W / 2)}px, ${Math.round(p.y * S - DOLL_H + 2 - bob)}px)`
+    c.style.transform = `translate(${Math.round((p.x - AV_BOX_W / 2) * S)}px, ${Math.round((p.y - AV_BOX_H + 2) * S)}px)`
   }
 
   // The fx loop: animated sprites on the visible band, and the walking avatar.
@@ -220,9 +258,10 @@ function JourneyMap({
     if (!art || !c || !el) return
     const g = new Surface(art.layout.w, art.layout.h, c)
     const av = avatar.current
+    const face = facing.current
     let raf = 0
     let last: [number, number] | null = null
-    let lastPose = ''
+    let lastKey = ''
     const t0 = performance.now()
     const frame = () => {
       const now = performance.now()
@@ -234,37 +273,55 @@ function JourneyMap({
       g.ctx.clearRect(0, y0, art.layout.w, y1 - y0)
       last = [y0, y1]
       drawJourneyFx(g, art, still ? 2 : t, y0, y1, { night, viewMid: top + el.clientHeight / S / 2, still })
-      // Walking.
-      let pose: DollPose = 'stand'
-      let v: 'front' | 'back' = 'front'
-      let bob = 0
+      // Walking: the world walk cycle, facing the way the road goes.
+      let pose: Pose = 'stand'
+      let moving = false
       if (av.walking && av.a && av.b) {
         const k = Math.min(1, (now - av.t0) / av.dur)
         av.k = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2
         const d = avatarFeet()
-        v = d.dy > 0.15 ? 'front' : 'back'
-        const step = Math.floor((now - av.t0) / 150)
-        pose = step % 2 ? 'act_bj_walk1' : 'act_bj_walk2'
-        bob = Math.abs(Math.sin(((now - av.t0) / 150) * Math.PI)) * 3
+        if (face.last) {
+          const dx = d.x - face.last.x
+          const dy = d.y - face.last.y
+          if (Math.hypot(dx, dy) > 0.05) {
+            if (Math.abs(dx) > Math.abs(dy) * 1.2) {
+              face.view = 'side'
+              face.flip = dx < 0
+            } else {
+              face.view = dy > 0 ? 'front' : 'back'
+              face.flip = false
+            }
+          }
+        }
+        face.last = { x: d.x, y: d.y }
+        moving = true
+        pose = WALK_CYCLE[Math.floor(((now - av.t0) / 1000) * 8) % 4]
         // Keep the walker in view.
         const py = d.y * S - el.scrollTop
         if (py < el.clientHeight * 0.3) el.scrollTop -= Math.min(6, el.clientHeight * 0.3 - py)
         if (k >= 1) {
           av.walking = false
           av.arrivedAt = now
+          face.view = 'front'
+          face.flip = false
           sfx.chime()
         }
       } else if (av.arrivedAt && now - av.arrivedAt < 1600 && av.b) {
+        // at the stage: turn to the viewer and wai
         pose = 'wai'
+        face.view = 'front'
+        face.flip = false
         drawArrivalBurst(g, av.b, (now - av.arrivedAt) / 1600)
       }
       if (av.a && av.b && av.a !== av.b && av.k > 0) drawTrail(g, art.layout.road, av.a.s, av.a.s + (av.b.s - av.a.s) * av.k)
-      const key = `${pose}:${v}`
-      if (key !== lastPose) {
-        drawAvatar(pose, v)
-        lastPose = key
+      // idle pets blink/breathe at 2 fps; walking redraws every step
+      const key = `${pose}:${face.view}:${face.flip}:${moving ? Math.floor(t * 8) : Math.floor(t * 2)}`
+      if (key !== lastKey) {
+        const f = avatarFeet()
+        drawAvatar(pose, face.view, face.flip, t, moving, av.b && f.x < av.b.x ? -1 : 1)
+        lastKey = key
       }
-      placeAvatar(bob)
+      placeAvatar()
       if (!still || av.walking) raf = requestAnimationFrame(loop)
     }
     const loop = () => {
@@ -404,7 +461,7 @@ function JourneyMap({
                 </button>
               )
             })}
-            <canvas ref={avEl} class="bj-avatar" width={DOLL_W} height={DOLL_H} aria-hidden="true" />
+            <canvas ref={avEl} class="bj-avatar" width={AV_BOX_W} height={AV_BOX_H} style={{ width: `${AV_BOX_W * S}px`, height: `${AV_BOX_H * S}px` }} aria-hidden="true" />
           </div>
         )}
       </div>

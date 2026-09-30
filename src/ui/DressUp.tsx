@@ -5,16 +5,16 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import type { Scene } from '../engine/stage'
 import { bake, createCanvas, type Surface } from '../engine/pixel'
-import { spriteDataUrl, type Sprite } from '../engine/sprite'
+import { spriteDataUrl } from '../engine/sprite'
 import { Particles } from '../engine/particles'
 import { game, level } from '../game/state'
 import { OUTFITS, type OutfitItem, type Slot } from '../game/data/outfits'
-import { DAY_COLORS, HAIR_COLORS, SKIN_TONES } from '../art/palette'
+import { DAY_COLORS } from '../art/palette'
 import { lookKey, type AvatarLook } from '../art/avatar'
-import { DOLL_H, FACE_STYLES, dollSprite, type DollPose } from '../art/doll'
+import { dollSprite, type DollPose } from '../art/doll'
 import { drawRoomStill } from '../scenes/house'
 import { petSprite } from '../art/pets'
-import { buyHairColor, buyOutfit, equip, luckyColorActive, ownsOutfit, setLook } from '../game/actions'
+import { buyOutfit, equip, luckyColorActive, ownsOutfit } from '../game/actions'
 import { currentPhase } from '../scenes/sky'
 import { toast } from '../game/events'
 import { sfx } from '../engine/audio'
@@ -22,6 +22,7 @@ import { useStage } from '../activities/kit'
 import { Coin, Icon } from './components/common'
 import { PBtn, Slot as SlotBtn, Tabs } from './components/kit'
 import { PT, TONE_TEXT } from './pixeltext'
+import { BodyEditor } from './BodyEditor'
 
 type Cat = 'body' | 'hair' | 'top' | 'bottom' | 'shoes' | 'acc' | 'suit'
 type Style = 'all' | 'school' | 'thai' | 'modern' | 'temple' | 'fun' | 'work'
@@ -218,7 +219,7 @@ export function DressUp({ creating, onDone }: { creating?: boolean; onDone: () =
       <div class="dress-panel win">
         <Tabs compact tabs={CATS} value={cat} onChange={(c) => (setCat(c), setTrying(null))} />
         <div class="ptab-body dress-body scroll">
-          {cat === 'body' && <BodyEditor look={look} onChange={celebrate} />}
+          {cat === 'body' && <BodyEditor look={look} onChange={celebrate} creating={creating} />}
           {(cat === 'top' || cat === 'bottom') && (
             <div class="row dress-styles">
               {STYLES.map((x) => (
@@ -294,82 +295,6 @@ function ItemSlot({ item, look, worn, trying, owned, locked, onClick }: { item: 
     <SlotBtn size={64} active={worn || trying} locked={locked} onClick={onClick} title={item.name} class="item-slot" badge={!owned && !locked ? <span class="price-tag num">{item.price}</span> : undefined}>
       <img class="px slot-img" src={url} alt="" draggable={false} />
       {item.top?.dayColor !== undefined && <span class="swatch day" style={{ background: DAY_COLORS[item.top.dayColor].hex }} />}
-    </SlotBtn>
-  )
-}
-
-function BodyEditor({ look, onChange }: { look: AvatarLook; onChange: () => void }) {
-  const s = game.value
-  const set = (p: Partial<AvatarLook>) => {
-    sfx.tap()
-    setLook(p)
-    onChange()
-  }
-  return (
-    <div class="col body-editor">
-      <div class="row">
-        <PT text="รูปร่าง" size={13} weight={600} {...TONE_TEXT.ink} />
-        <span class="grow" />
-        <PBtn tone={look.gender === 'm' ? 'blue' : 'paper'} size="small" onClick={() => set({ gender: 'm' })}>
-          ผู้ชาย
-        </PBtn>
-        <PBtn tone={look.gender === 'f' ? 'pink' : 'paper'} size="small" onClick={() => set({ gender: 'f' })}>
-          ผู้หญิง
-        </PBtn>
-      </div>
-      <div class="row wrap">
-        <PT text="สีผิว" size={13} weight={600} {...TONE_TEXT.ink} />
-        <span class="grow" />
-        {SKIN_TONES.map((t, i) => (
-          <button key={t.id} class={`swatch-btn ${look.skin === i ? 'on' : ''}`} style={{ background: t.b }} onClick={() => set({ skin: i })} aria-label={t.name} title={t.name} />
-        ))}
-      </div>
-      <div>
-        <PT text="ดวงตา" size={13} weight={600} {...TONE_TEXT.ink} />
-        <div class="slot-grid" style={{ marginTop: '4px' }}>
-          {FACE_STYLES.map((f, i) => (
-            <FaceSlot key={i} look={look} face={f.id} name={f.name} on={(look.face ?? 0) === f.id} onClick={() => set({ face: f.id })} />
-          ))}
-        </div>
-      </div>
-      <div class="row wrap">
-        <PT text="สีผม" size={13} weight={600} {...TONE_TEXT.ink} />
-        <span class="grow" />
-        {HAIR_COLORS.map((c, i) => {
-          const premium = i >= 4
-          const key = `haircolor_${c.id}`
-          const owned = !premium || s.outfits.includes(key)
-          return (
-            <button
-              key={c.id}
-              class={`swatch-btn ${look.hairColor === i ? 'on' : ''} ${owned ? '' : 'locked'}`}
-              style={{ background: c.b }}
-              title={owned ? c.name : `${c.name} · 30 บุญคอยน์`}
-              aria-label={c.name}
-              onClick={() => {
-                if (owned) set({ hairColor: i })
-                else if (buyHairColor(key, 30)) set({ hairColor: i })
-              }}
-            />
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function FaceSlot({ look, face, name, on, onClick }: { look: AvatarLook; face: number; name: string; on: boolean; onClick: () => void }) {
-  const url = useMemo(() => {
-    const s: Sprite = dollSprite({ ...look, face }, 'stand')
-    const h = Math.round(Math.min(s.h, DOLL_H) * 0.48)
-    const side = Math.max(h, s.w)
-    const c = createCanvas(side, side)
-    c.getContext('2d')!.drawImage(s.canvas, 0, 0, s.w, h, Math.round((side - s.w) / 2), Math.round((side - h) / 2), s.w, h)
-    return spriteDataUrl({ canvas: c, w: side, h: side }, 2)
-  }, [lookKey(look), face])
-  return (
-    <SlotBtn size={64} active={on} onClick={onClick} title={name}>
-      <img class="px slot-img" src={url} alt="" draggable={false} />
     </SlotBtn>
   )
 }
