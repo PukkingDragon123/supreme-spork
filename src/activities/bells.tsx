@@ -23,7 +23,7 @@ import { ActivityFrame, useStage } from './kit'
 import { Btn } from '../ui/components/common'
 import { sfx, haptic } from '../engine/audio'
 import { drawSky, currentPhase } from '../scenes/sky'
-import { ComboBadge, PraiseLayer, StatusPill, TempleResult, banner, praise, type TempleResultData } from './temple-ui'
+import { ChargeFill, ComboBadge, PraiseLayer, StatusPill, TempleResult, banner, praise, type TempleResultData } from './temple-ui'
 
 const BEAT = 0.62
 const SMALL_H = 18
@@ -481,13 +481,14 @@ export function BellsActivity({ req }: { req: ActivityRequest }) {
                 <div class="subtitle">ดึงซุงตีระฆังไปด้านหลัง แล้วปล่อย</div>
                 <div class="small muted">กดค้างเพื่อดึง ยิ่งดึงสุด เสียงยิ่งดัง · +{merit} บุญ</div>
                 <button
-                  class="btn big green block hold-btn"
+                  class="btn big green block hold-btn tg-hold"
                   style={{ ['--charge' as string]: `${charge * 100}%` }}
                   onPointerDown={startCharge}
                   onPointerUp={release}
                   onPointerLeave={release}
                   onPointerCancel={release}
                 >
+                  <ChargeFill p={charge} />
                   <span>{charge > 0.85 ? 'สุดแรง! ปล่อยเลย' : 'กดค้าง แล้วปล่อย'}</span>
                 </button>
               </>

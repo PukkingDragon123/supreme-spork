@@ -25,7 +25,7 @@ import { QuickBuy } from './quickbuy'
 import { Btn, Icon } from '../ui/components/common'
 import { toast } from '../game/events'
 import { sfx, haptic } from '../engine/audio'
-import { PraiseLayer, StatusPill, TempleResult, banner, praise, type TempleResultData } from './temple-ui'
+import { ChargeFill, PraiseLayer, StatusPill, TempleResult, banner, praise, type TempleResultData } from './temple-ui'
 
 const OFFER_IDS = ITEMS.filter((i) => i.category === 'offering' && i.id !== 'gold_leaf').map((i) => i.id).concat(['lotus', 'dessert', 'egg'])
 
@@ -431,13 +431,14 @@ export function DeityActivity({ req }: { req: ActivityRequest }) {
                   <div class="small muted">ตั้งนะโม ๓ จบ แล้วตั้งจิตอธิษฐานขอพร</div>
                 )}
                 <button
-                  class="btn big green block hold-btn"
+                  class="btn big green block hold-btn tg-hold"
                   style={{ ['--charge' as string]: `${charge * 100}%` }}
                   onPointerDown={start}
                   onPointerUp={stop}
                   onPointerLeave={stop}
                   onPointerCancel={stop}
                 >
+                  <ChargeFill p={charge} />
                   <Icon name="wai" size={22} />
                   <span>กดค้างเพื่ออธิษฐาน</span>
                 </button>

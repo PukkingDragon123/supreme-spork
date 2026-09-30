@@ -19,7 +19,7 @@ import { closeActivity, type ActivityRequest } from '../ui/store'
 import { ActivityFrame, useStage } from './kit'
 import { Btn, Coin, Icon, Modal } from '../ui/components/common'
 import { sfx, haptic } from '../engine/audio'
-import { PraiseLayer, banner } from './temple-ui'
+import { ChargeFill, PraiseLayer, banner } from './temple-ui'
 
 const PRICE_EXTRA = 5
 const S = 2
@@ -312,13 +312,14 @@ export function SiamsiActivity({ req }: { req: ActivityRequest }) {
                 <span style={{ width: `${progress * 100}%` }} />
               </div>
               <button
-                class={`btn big block hold-btn ${shaking ? 'green' : ''}`}
+                class={`btn big block hold-btn tg-hold ${shaking ? 'green' : ''}`}
                 style={{ ['--charge' as string]: `${progress * 100}%` }}
                 onPointerDown={start}
                 onPointerUp={stop}
                 onPointerLeave={stop}
                 onPointerCancel={stop}
               >
+                <ChargeFill p={progress} />
                 <span>{progress > 0.7 ? 'อีกนิด! เขย่า ๆ ๆ' : 'เขย่า ๆ ๆ'}</span>
               </button>
             </div>

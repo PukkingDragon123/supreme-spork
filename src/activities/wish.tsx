@@ -22,7 +22,7 @@ import { ActivityFrame, useStage } from './kit'
 import { Btn, Icon } from '../ui/components/common'
 import { sfx, haptic } from '../engine/audio'
 import { SKY } from '../scenes/sky'
-import { PraiseLayer, StatusPill, TempleResult, banner, praise, type TempleResultData } from './temple-ui'
+import { ChargeFill, PraiseLayer, StatusPill, TempleResult, banner, praise, type TempleResultData } from './temple-ui'
 
 const CATS = ['การงาน', 'การเงิน', 'ความรัก', 'สุขภาพ', 'การเรียน', 'ครอบครัว', 'โชคลาภ']
 const OFFERINGS = ['lotus', 'garland', 'rose', 'incense', 'fruit']
@@ -452,13 +452,14 @@ export function WishActivity({ req }: { req: ActivityRequest }) {
               <div class="subtitle">ยกธูปพนมมือ ตั้งจิตให้มั่น</div>
               <div class="small muted">กดค้างไว้จนแสงเต็ม แล้วปักธูปลงกระถาง</div>
               <button
-                class="btn big green block hold-btn"
+                class="btn big green block hold-btn tg-hold"
                 style={{ ['--charge' as string]: `${charge * 100}%` }}
                 onPointerDown={startHold}
                 onPointerUp={endHold}
                 onPointerLeave={endHold}
                 onPointerCancel={endHold}
               >
+                <ChargeFill p={charge} />
                 <Icon name="wai" size={22} />
                 <span>อธิษฐาน</span>
               </button>

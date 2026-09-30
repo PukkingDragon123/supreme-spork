@@ -41,6 +41,9 @@ const STYLE = `
 .tg-meter.in .z { animation: tg-glow 0.4s steps(2) infinite; }
 .tg-meter.over .f { background: linear-gradient(#ff8a7a, #b8343f); }
 @keyframes tg-glow { 50% { filter: brightness(1.4); } }
+.btn > .tg-charge { position: absolute; left: -2px; top: -2px; bottom: -4px; z-index: 0; pointer-events: none; background: linear-gradient(#fff3a6, #ffd54f 60%, #e9a53a); opacity: 0.85; box-shadow: 2px 0 0 #fffaf0; transition: width 60ms linear; }
+.btn > .tg-charge.full { animation: tg-glow 0.3s steps(2) infinite; }
+.btn.tg-hold > :not(.tg-charge) { z-index: 1; }
 .tg-result { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 4px; }
 .tg-hero { position: relative; width: 160px; height: 150px; margin: -4px auto -6px; display: grid; place-items: end center; }
 .tg-burst { position: absolute; left: 50%; top: 50%; width: 170px; height: 170px; margin: -85px 0 0 -85px; border-radius: 50%; background: radial-gradient(circle, rgba(255,243,166,0.95) 0 22%, rgba(255,213,79,0.5) 36%, transparent 62%), repeating-conic-gradient(rgba(255,233,168,0.9) 0 9deg, transparent 9deg 22deg); -webkit-mask: radial-gradient(circle, #000 40%, transparent 71%); mask: radial-gradient(circle, #000 40%, transparent 71%); animation: tg-spin 14s linear infinite; }
@@ -139,6 +142,12 @@ export function StatusPill({ text, dots, on }: { text: string; dots?: number; on
       ) : null}
     </div>
   )
+}
+
+/** Gold fill inside a press-and-hold button (add class tg-hold to the button). */
+export function ChargeFill({ p }: { p: number }) {
+  if (p <= 0) return null
+  return <span class={`tg-charge ${p >= 1 ? 'full' : ''}`} style={{ width: `calc(${Math.min(1, p) * 100}% + 4px)` }} />
 }
 
 /** Hold-to-fill meter with a gold target zone. */
