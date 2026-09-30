@@ -358,6 +358,8 @@ export class WorldScene implements Scene {
   private markerFn: MarkerFn | null = null
   /** Optional pose override for the player (online emotes); null = walk/stand. */
   playerPose: (() => Pose | null) | null = null
+  /** Companions that ride along with the player (e.g. Bot Noi, ui/botnoi/botWorld.ts). Taps reach them first. */
+  followers: Life[] = []
 
   constructor(
     readonly map: MapDef,
@@ -678,6 +680,12 @@ export class WorldScene implements Scene {
 
   /** Handle a tap at a world position (exposed for tests/dev tools). */
   tap(wx: number, wy: number) {
+    for (const f of this.followers) {
+      if (f.tap?.(wx, wy)) {
+        this.tapFx = { x: wx, y: wy, t: 0.4, walk: false }
+        return
+      }
+    }
     // Dogs first (they sit on top of the scene).
     for (const d of this.dogs) {
       if (Math.abs(wx - d.w.x) < 11 && wy > d.w.y - 16 && wy < d.w.y + 4) {
@@ -901,6 +909,7 @@ export class WorldScene implements Scene {
     }
     if (arrived && this.target) this.arrive()
     this.updatePet(dt)
+    for (const f of this.followers) f.update?.(dt, t)
     this.updateRemotes(dt)
     // Walking over a pickup collects it.
     for (const q of this.pickups) {
@@ -1279,6 +1288,7 @@ export class WorldScene implements Scene {
     }
     add(this.player.y + 0.1, () => drawWalker(this.player, this.look, this.playerPose?.() ?? undefined))
     if (this.pet) add(this.petPos.y, () => this.drawPet(g, t))
+    for (const f of this.followers) f.sorted?.(add, t)
     for (const r of this.remotes) {
       if (!this.onScreen(r.w.x, r.w.y, 30)) continue
       add(r.w.y, () => drawWalker(r.w, r.p.look, r.pose ?? undefined))
@@ -1301,6 +1311,7 @@ export class WorldScene implements Scene {
     }
     m.overlay?.(g, t, this)
     for (const l of this.life) l.over?.(g, t)
+    for (const f of this.followers) f.over?.(g, t)
     this.particles.render(g)
 
     // Lighting.
@@ -1310,6 +1321,7 @@ export class WorldScene implements Scene {
     const light = m.indoor ? (m.indoorLight ?? 0.8) : SKY[this.phase].lights
     if (light > 0) for (const l of m.lights) if (this.onScreen(l.x, l.y, l.r)) drawGlow(g, l.x, l.y, l.r, light, l.color)
     for (const l of this.life) l.glow?.(g, t, light)
+    for (const f of this.followers) f.glow?.(g, t, light)
     if (night) {
       // Fireflies stay bright after the tint.
       for (const p of this.particles.list) if (p.kind === 'firefly') drawGlow(g, p.x, p.y, 3, 0.6, '#fff3a6')
@@ -1446,6 +1458,11 @@ export class WorldScene implements Scene {
   dogScreenPos(id: string): [number, number] | null {
     const d = this.dogs.find((x) => x.id === id)
     return d ? [d.w.x - this.camX, d.w.y - this.camY] : null
+  }
+
+  /** World position of the walking pet (null without one). */
+  petWorldPos(): { x: number; y: number } | null {
+    return this.pet ? { x: this.petPos.x, y: this.petPos.y } : null
   }
 
   playerScreenPos(): [number, number] {

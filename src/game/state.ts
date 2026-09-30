@@ -17,6 +17,7 @@ import { emptyCollection, normalizeCollection, type CollectionState } from './co
 import { emptyNpcQuests, normalizeNpcQuests, type NpcQuestsState } from './npcQuestState'
 import { defaultHubs, normalizeHubs, type HubsState } from './hubState'
 import { defaultOnline, normalizeOnline, type OnlineState } from '../services/netState'
+import { defaultBotnoi, normalizeBotnoi, type BotnoiState } from './botnoiState'
 
 export const SAVE_KEY = 'boondee.save.v1'
 export const SAVE_VERSION = 2
@@ -190,6 +191,8 @@ export interface GameState {
   npcQuests: NpcQuestsState
   /** Online play with real players: daily gift/trade caps, friends met online, privacy (services/netState.ts). */
   online: OnlineState
+  /** บอทน้อย: the interactive tutorial, feature tips and the robot helper (game/botnoiState.ts). */
+  botnoi: BotnoiState
 }
 
 export function makeFriendCode(): string {
@@ -266,6 +269,7 @@ export function defaultState(): GameState {
     shop: defaultShop(),
     npcQuests: emptyNpcQuests(),
     online: defaultOnline(),
+    botnoi: defaultBotnoi(),
   }
 }
 
@@ -300,6 +304,7 @@ export function migrate(raw: unknown): GameState {
     npcQuests: normalizeNpcQuests(s.npcQuests),
     hubs: normalizeHubs(s.hubs),
     online: normalizeOnline(s.online),
+    botnoi: normalizeBotnoi(s.botnoi, { onboarded: s.onboarded }),
     v: SAVE_VERSION,
   }
   // v1 called the main temple 'home'; it is 'wat' now that players have a house.
