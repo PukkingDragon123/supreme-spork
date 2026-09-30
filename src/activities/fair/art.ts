@@ -30,6 +30,31 @@ export function boothBackdrop(w: number, h: number, top: number, color: Color, b
       const v = (i * 2654435761) >>> 0
       g.px(10 + (v % (w - 20)), top + 2 + ((v >>> 9) % Math.max(1, h - top - 44)), mix(board, INK, 0.12))
     }
+    // Prizes hanging in the top corners (a pink bear, a hippo), on strings.
+    for (const [x, kind] of [
+      [16, 'bear'],
+      [w - 16, 'hippo'],
+    ] as const) {
+      g.vline(x, vy + 12, top + 6, '#fffaf0')
+      const y = top + 10
+      if (kind === 'bear') {
+        g.circle(x, y + 5, 4, '#e8709e')
+        g.circle(x, y + 4.5, 3.4, '#ff9fc0')
+        g.circle(x, y - 1, 3, '#ff9fc0')
+        g.px(x - 2, y - 4, '#ff9fc0')
+        g.px(x + 2, y - 4, '#ff9fc0')
+        g.px(x - 1, y - 1, INK)
+        g.px(x + 1, y - 1, INK)
+        g.px(x, y + 1, '#e8514a')
+      } else {
+        g.ellipse(x, y + 3, 5, 4, '#6a6078')
+        g.ellipse(x, y + 2.6, 4.4, 3.4, '#8a8098')
+        g.ellipse(x + 2, y + 4, 2.4, 1.6, '#b4a8c8')
+        g.px(x - 1, y + 1, INK)
+        g.px(x + 3, y + 1, INK)
+        g.px(x - 3, y + 4, '#ff9fc0')
+      }
+    }
     // Counter at the bottom.
     g.rect(0, h - 40, w, 6, '#fff1d6')
     g.hline(0, w - 1, h - 40, '#ffffff')

@@ -17,6 +17,7 @@ import { fmtTime, type Bubble, type JobScene, type JobSummary } from '../jobs/ba
 import type { JobStars } from '../../game/jobs'
 import { ticketSprite } from './art'
 import { fairSfx } from './sound'
+import { liveScores, sendFairScore, setDoing } from './live'
 
 export type FairScene = JobScene & { score: number }
 
@@ -96,6 +97,26 @@ export function FairGoalCard({ def, onStart, onClose, again }: { def: FairGameDe
   )
 }
 
+/** Other real players' latest scores at this booth (hidden when nobody is around). */
+export function LiveBoard({ game: id }: { game: string }) {
+  const list = liveScores.value.filter((x) => x.game === id).slice(0, 3)
+  if (!list.length) return null
+  return (
+    <div class="fairx-live-list" style={{ margin: '6px 0' }}>
+      <div class="small">
+        <span class="fairx-dot" /> คะแนนสดจากเพื่อนในงานตอนนี้
+      </div>
+      {list.map((x) => (
+        <div class="fairx-live-row" key={x.from + x.at}>
+          <b>{x.name}</b>
+          <span class="grow">{'★'.repeat(x.stars) || '☆'}</span>
+          <span>{x.score} แต้ม</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function FairResult({
   def,
   stars,
@@ -143,6 +164,7 @@ function FairResult({
             {l}
           </div>
         ))}
+        <LiveBoard game={def.id} />
         {res.best && score > 0 && (
           <div>
             <span class="fairx-newbest small">สถิติใหม่! {score} คะแนน</span>
@@ -205,6 +227,7 @@ export function FairRun({ def, make, onAgain, paid, tw = 190 }: { def: FairGameD
         else {
           sfx.chime()
           scene.current?.start()
+          setDoing(`กำลังเล่น${def.name}`)
         }
       }),
     )
@@ -215,6 +238,8 @@ export function FairRun({ def, make, onAgain, paid, tw = 190 }: { def: FairGameD
     const sc = scene.current
     const score = sc?.score ?? 0
     const res = finishFairRound(def.id, stars, score)
+    // Real players at the fair see it on their live scoreboard (no-op offline).
+    sendFairScore({ game: def.id, score, stars })
     haptic(30)
     setReveal({ stars, shown: 0 })
     for (let i = 1; i <= 3; i++)
@@ -247,6 +272,7 @@ export function FairRun({ def, make, onAgain, paid, tw = 190 }: { def: FairGameD
     return () => {
       clearInterval(iv)
       for (const t of timers.current) clearTimeout(t)
+      setDoing(null)
     }
   }, [])
 
@@ -297,8 +323,12 @@ export function FairRun({ def, make, onAgain, paid, tw = 190 }: { def: FairGameD
       </div>
       {hud?.bubbles.map((b) => {
         const [x, y] = stage.current?.toCss(b.x, b.y) ?? [0, 0]
+        // Keep long lines on screen (the bubble is centred on x).
+        const hw = host.current?.clientWidth ?? 390
+        const bw = Math.min(hw - 8, b.text.length * 7 + 16)
+        const left = Math.max(bw / 2 + 4, Math.min(hw - bw / 2 - 4, x))
         return (
-          <div key={b.id} class={`fairx-bubble ${b.tone}`} style={{ left: `${x}px`, top: `${y}px` }}>
+          <div key={b.id} class={`fairx-bubble ${b.tone}`} style={{ left: `${left}px`, top: `${y}px` }}>
             <PT text={b.text} size={11} weight={600} color={b.tone === 'warn' ? '#8e2a2a' : '#3b2616'} />
           </div>
         )

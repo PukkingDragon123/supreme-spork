@@ -53,7 +53,39 @@
 .fairx-note { font-size: 11px; opacity: 0.7; text-align: center; padding: 2px 8px 4px; }
 .fairx-train { font-size: 14px; font-weight: 600; color: #b8343f; }
 
+/* Rides and shows (ride.tsx). */
+.fairx-actrow { display: flex; justify-content: flex-end; margin: 0 4px 6px; }
+.fairx-actrow .btn { min-width: 120px; }
+.fairx-hot { animation: fairx-nudge 0.35s ease-in-out infinite alternate, fairx-pulse 0.5s steps(2) infinite; box-shadow: 0 0 0 3px #fff3a6, 0 0 16px 4px rgba(255, 220, 120, 0.7) !important; }
+.fairx-souvenir { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; background: #fffaf0; border-radius: 4px; box-shadow: 0 0 0 2px #3a2838; text-align: left; }
+.fairx-souvenir img { image-rendering: pixelated; }
+.fairx-souvenir-name { font-weight: 600; font-size: 13px; line-height: 1.25; margin-bottom: 2px; }
+.fairx-souvenir.big .fairx-souvenir-name { font-size: 15px; }
+.fairx-got { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 6px 0; animation: fairx-wiggle 0.6s ease-out; }
+.fairx-polaroid { margin: 6px auto 8px; padding: 6px 6px 4px; width: 172px; background: #fffaf0; box-shadow: 0 0 0 2px #3a2838, 0 4px 0 2px rgba(58, 40, 56, 0.3); transform: rotate(-3deg); animation: fairx-wiggle 0.6s ease-out; }
+.fairx-polaroid img { display: block; width: 100%; height: 150px; object-fit: cover; object-position: 50% 30%; image-rendering: pixelated; background: #1a1f50; }
+.fairx-polaroid .small { margin-top: 3px; text-align: center; }
+
+/* Food carts (eat.tsx). */
+.fairx-eat-stage { position: relative; height: 200px; margin: -2px -2px 6px; border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 2px #3a2838; background: #1a1a40; }
+.fairx-menu { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+.fairx-menu-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; }
+.fairx-menu-item img { image-rendering: pixelated; flex: none; }
+.fairx-menu-item .grow { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+.fairx-menu-item .fairx-name { font-weight: 600; font-size: 14px; }
+.fairx-buffs { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 4px; }
+
+/* Live scoreboard and the fireworks countdown (board.tsx, result card). */
+.fairx-fw { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.fairx-fw.live { color: #b8343f; animation: fairx-pulse 0.6s steps(2) infinite; }
+.fairx-live-list { display: flex; flex-direction: column; gap: 4px; }
+.fairx-live-row { display: flex; align-items: center; gap: 6px; font-size: 13px; padding: 3px 8px; background: rgba(255, 250, 240, 0.7); border-radius: 3px; }
+.fairx-live-row b { font-weight: 600; }
+.fairx-live-row .grow { flex: 1; min-width: 0; }
+.fairx-live-empty { font-size: 12px; opacity: 0.75; text-align: center; padding: 4px; }
+
 @keyframes fairx-pop { from { transform: translate(-50%, -80%) scale(0.6); } to { transform: translate(-50%, -100%) scale(1); } }
 @keyframes fairx-zoom { from { transform: scale(1.8); opacity: 0; } 40% { opacity: 1; } to { transform: scale(1); } }
 @keyframes fairx-pulse { 50% { filter: brightness(1.35); } }
 @keyframes fairx-wiggle { 0% { transform: scale(0.6) rotate(-6deg); } 50% { transform: scale(1.12) rotate(3deg); } 100% { transform: scale(1) rotate(0); } }
+@keyframes fairx-nudge { from { transform: rotate(-2deg) scale(1.02); } to { transform: rotate(2deg) scale(1.06); } }

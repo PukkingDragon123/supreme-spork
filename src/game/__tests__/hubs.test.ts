@@ -143,7 +143,7 @@ describe('hub data', () => {
       if (p.kind === 'outfit') expect(OUTFITS.some((o) => o.id === p.ref), p.id).toBe(true)
       if (p.kind === 'coins') expect(p.amount).toBeGreaterThan(0)
     }
-    expect(FAIR_GAME_IDS.sort()).toEqual(['cork', 'darts', 'rings'])
+    expect([...FAIR_GAME_IDS].sort()).toEqual(['bumper', 'cork', 'darts', 'ramwong', 'rings', 'scoop'])
     for (const g of FAIR_GAME_IDS) expect(FAIR_GAMES[g].steps).toHaveLength(3)
   })
 })

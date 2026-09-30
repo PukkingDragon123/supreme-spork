@@ -42,6 +42,12 @@ export const HUB_SNACKS: Snack[] = [
   { id: 'hub_sai_mai', name: 'สายไหมสีชมพู', desc: 'ปั่นเป็นก้อนเมฆฟูเท่าหัว ละลายในปากทันที', icon: 'dessert', price: 15, buff: { kind: 'merit', mult: 1.1, minutes: 20 } },
   { id: 'hub_lookchin_tod', name: 'ลูกชิ้นทอดไม้ใหญ่', desc: 'ลูกชิ้นทอดพองราดน้ำจิ้มหวานเผ็ด ไม้ละสิบบาท', icon: 'curry', price: 20, buff: { kind: 'animal', mult: 1.15, minutes: 15 } },
   { id: 'hub_popcorn', name: 'ข้าวโพดคั่วคาราเมล', desc: 'คั่วกันสด ๆ เสียงป๊อก ๆ หอมไปทั้งงาน', icon: 'dessert', price: 20, buff: { kind: 'coin', mult: 1.15, minutes: 15 } },
+  { id: 'fair_quail_egg', name: 'ไข่นกกระทาทอด', desc: 'ไข่นกกระทาในกระทะหลุม กรอบนอกนุ่มใน จิ้มซอสพริก', icon: 'boiledegg', price: 15, buff: { kind: 'animal', mult: 1.15, minutes: 15 } },
+  { id: 'fair_squid_grill', name: 'หมึกย่างตัวใหญ่', desc: 'หมึกย่างเตาถ่าน หอมควันลอยทั่วงาน ราดน้ำจิ้มซีฟู้ด', icon: 'curry', price: 30, buff: { kind: 'merit', mult: 1.2, minutes: 15 } },
+  { id: 'fair_khanom_tokyo', name: 'ขนมโตเกียวไส้ครีม', desc: 'แป้งบางม้วนไส้ครีมใบเตยกับไส้กรอก เลือกได้สองไส้', icon: 'dessert', price: 15, buff: { kind: 'coin', mult: 1.1, minutes: 20 } },
+  { id: 'fair_red_soda_bag', name: 'น้ำแดงถุงใส่น้ำแข็ง', desc: 'น้ำแดงมะลิถุงผูกหนังยาง ดูดจนหลอดสั่น ชื่นใจสุด', icon: 'redsoda', price: 10, buff: { kind: 'animal', mult: 1.1, minutes: 20 } },
+  { id: 'fair_squid_pressed', name: 'ปลาหมึกบด', desc: 'หมึกแห้งย่างแล้วเข้าเครื่องบดสองรอบจนแบนเป็นแผ่น เคี้ยวเพลินทั้งคืน', icon: 'curry', price: 25, buff: { kind: 'coin', mult: 1.2, minutes: 15 } },
+  { id: 'fair_takoyaki', name: 'ทาโกะยากิลูกโต', desc: 'ลูกกลมร้อน ๆ ราดซอส โรยปลาโอแห้งที่เต้นระบำบนหน้า', icon: 'curry', price: 25, buff: { kind: 'merit', mult: 1.15, minutes: 15 } },
 ]
 
 const shop = (id: string, place: string, name: string, npc: string, greeting: string, snacks: string[]): [string, PlaceShop] => [id, { id, name, npc, greeting, place, snacks }]
@@ -84,4 +90,10 @@ export const HUB_SHOPS: Record<string, PlaceShop> = Object.fromEntries([
   shop('fair_temple_saimai', 'fair_temple', 'สายไหมป้าจุก', 'ป้าจุก', 'สายไหมฟู ๆ เท่าหัวหนู! ชมพูหรือฟ้าจ๊ะ', ['hub_sai_mai']),
   shop('fair_temple_lookchin', 'fair_temple', 'ลูกชิ้นทอดพี่หนุ่ม', 'พี่หนุ่ม', 'ลูกชิ้นทอดพอง ๆ น้ำจิ้มสูตรเด็ด เผ็ดน้อยเผ็ดมาก?', ['hub_lookchin_tod']),
   shop('fair_temple_popcorn', 'fair_temple', 'ข้าวโพดคั่ว', 'เฮียป๊อก', 'ป๊อก ๆ ๆ หอมไหม! คาราเมลหรือเนย?', ['hub_popcorn', 'chayen']),
+  shop('fair_temple_quail', 'fair_temple', 'ไข่นกกระทาป้าไข่', 'ป้าไข่', 'ไข่นกกระทากระทะหลุม ห้าลูกสิบบาท~ ร้อน ๆ ระวังลวกปากนะ', ['fair_quail_egg']),
+  shop('fair_temple_squid', 'fair_temple', 'หมึกย่างลุงหนวด', 'ลุงหนวด', 'หมึกย่างตัวโต ๆ ย่างใหม่ทุกไม้! เอาน้ำจิ้มเผ็ดไหม', ['fair_squid_grill']),
+  shop('fair_temple_tokyo', 'fair_temple', 'ขนมโตเกียวน้องแพร', 'น้องแพร', 'ไส้ครีม ไส้กรอก ไส้หมูหยอง เลือกเลยค่า~', ['fair_khanom_tokyo']),
+  shop('fair_temple_redsoda', 'fair_temple', 'น้ำแดงถุงเจ๊นิด', 'เจ๊นิด', 'น้ำแดงถุงจ้า! เย็นเจี๊ยบ ใส่น้ำแข็งเต็มถุง', ['fair_red_soda_bag', 'chayen']),
+  shop('fair_temple_pressed', 'fair_temple', 'ปลาหมึกบดลุงเครื่อง', 'ลุงเครื่อง', 'หมุน ๆ ๆ บดสองรอบ แบนแต๊ดแต๋! เคี้ยวเพลินทั้งคืน', ['fair_squid_pressed']),
+  shop('fair_temple_takoyaki', 'fair_temple', 'ทาโกะยากิพี่โอ๊ต', 'พี่โอ๊ต', 'ทาโกะยากิลูกโต ปลาโอแห้งเต้นได้ ร้อนมากเป่าก่อนนะ!', ['fair_takoyaki']),
 ])

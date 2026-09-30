@@ -11,6 +11,7 @@ import { JobScene, type JobSummary } from '../jobs/base'
 import { BALLOON_COLORS, boothBackdrop, drawBalloon, drawBulbs, drawDart, type BalloonKind } from './art'
 import { fairSfx } from './sound'
 import { balloonPoints, DART_TARGET } from './rules'
+import { drawPlayer, placePlayer } from './player'
 
 const DARTS = 12
 const FLIGHT = 0.22
@@ -54,6 +55,8 @@ export class DartsScene extends JobScene {
   stuck: { x: number; y: number; ang: number }[] = []
   hippo: { x: number; y: number; dir: 1 | -1; alive: boolean } | null = null
   private hippoT = 5
+  /** Seconds left of the follow-through pose after a throw. */
+  private throwT = 0
   private bg: HTMLCanvasElement | null = null
   private boardTop = 60
   private boardBot = 260
@@ -126,11 +129,15 @@ export class DartsScene extends JobScene {
     if (e.type !== 'down' || this.darts <= 0) return
     if (e.y > this.boardBot + 10 || e.y < this.boardTop - 6) return
     this.darts--
-    this.flying.push({ x0: this.cx, y0: this.bottom - 22, x1: e.x, y1: e.y, t: 0 })
+    // The dart leaves your raised hand.
+    const h = placePlayer('act_f_throw', this.cx + 14, this.bottom).hand
+    this.flying.push({ x0: h.x, y0: h.y, x1: e.x, y1: e.y, t: 0 })
+    this.throwT = 0.25
     fairSfx.tick()
   }
 
   protected tick(dt: number) {
+    this.throwT = Math.max(0, this.throwT - dt)
     const width = this.boardX1 - this.boardX0
     for (const r of this.rows) {
       r.offset += r.dir * r.speed * dt * (this.playing ? 1 : 0.4)
@@ -250,12 +257,10 @@ export class DartsScene extends JobScene {
       const ny = f.y0 + (f.y1 - f.y0) * Math.min(1, k + 0.05) - Math.sin(Math.min(1, k + 0.05) * Math.PI) * 10
       drawDart(g, x, y, Math.atan2(ny - y, nx - x), 10)
     }
-    // The thrower's hand with the next dart, and the darts left.
-    const hx = this.cx
-    const hy = this.bottom - 14
-    if (this.darts > 0) drawDart(g, hx + 2, hy - 14, -Math.PI / 2 - 0.15, 12)
-    g.circle(hx, hy, 5, '#f0bd90')
-    g.circle(hx + 2, hy - 3, 2.5, '#f0bd90')
+    // You, from behind: dart cocked by your ear, then the follow-through.
+    const pose = this.throwT > 0 ? 'act_f_throw' : this.darts > 0 ? 'act_f_ready' : this.hits >= 6 ? 'act_f_cheer' : 'act_f_oops'
+    const me = drawPlayer(g, pose, this.cx + 14, this.bottom, { dy: this.throwT > 0.15 ? -1 : 0 })
+    if (this.darts > 0 && this.throwT <= 0) drawDart(g, me.hand.x, me.hand.y - 9, -Math.PI / 2 - 0.25, 10)
     for (let i = 0; i < this.darts; i++) {
       const x = 10 + i * 6
       drawDart(g, x, this.bottom - 30, -Math.PI / 2, 8)

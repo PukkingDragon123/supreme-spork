@@ -11,6 +11,7 @@ import { JobScene, type JobSummary } from '../jobs/base'
 import { boothBackdrop, drawBottle, drawBulbs, drawCorkPrize, drawRing, type CorkPrizeKind } from './art'
 import { fairSfx } from './sound'
 import { RING_TARGET, ROW_DEPTH, ROW_POINTS, ROW_SCALE, ringCatches, ringLanding } from './rules'
+import { drawPlayer, placePlayer } from './player'
 
 const RINGS = 8
 const FLIGHT = 0.6
@@ -49,6 +50,8 @@ export class RingsScene extends JobScene {
   private bg: HTMLCanvasElement | null = null
   private tableTop = 150
   private tableFront = 250
+  /** Seconds left of the toss follow-through. */
+  private tossT = 0
 
   progress() {
     return Math.min(1, this.score / RING_TARGET)
@@ -119,12 +122,15 @@ export class RingsScene extends JobScene {
       const { lx, depth } = ringLanding(dx, dy)
       const wob = rand(-2, 2) * (0.6 + depth * 0.4)
       this.rings--
-      this.throws.push({ sx: this.cx, sy: this.bottom - 20, lx: this.cx + lx + wob, depth: depth + rand(-0.06, 0.06), t: 0, state: 'fly', mx: 0, my: 0, vx: 0, vy: 0, life: 0 })
+      const h = placePlayer('act_f_toss_b', this.cx + 10, this.bottom).hand
+      this.tossT = 0.35
+      this.throws.push({ sx: h.x, sy: h.y, lx: this.cx + lx + wob, depth: depth + rand(-0.06, 0.06), t: 0, state: 'fly', mx: 0, my: 0, vx: 0, vy: 0, life: 0 })
       fairSfx.tick()
     } else if (e.type === 'cancel') this.drag = null
   }
 
   protected tick(dt: number) {
+    this.tossT = Math.max(0, this.tossT - dt)
     for (const th of this.throws) {
       if (th.state === 'fly') {
         th.t += dt / FLIGHT
@@ -235,8 +241,9 @@ export class RingsScene extends JobScene {
       const { lx, depth } = ringLanding(dx, dy)
       const ex = this.cx + lx
       const ey = this.rowY(Math.min(2.6, depth))
-      const sx = this.cx
-      const sy = this.bottom - 20
+      const from = placePlayer('act_f_toss_a', this.cx + 10, this.bottom).hand
+      const sx = from.x
+      const sy = from.y
       for (let i = 1; i < 10; i++) {
         const k = i / 10
         const x = sx + (ex - sx) * k
@@ -249,8 +256,11 @@ export class RingsScene extends JobScene {
     }
     // Rings left (stacked on a peg by the counter).
     for (let i = 0; i < this.rings; i++) drawRing(g, 20, this.bottom - 10 - i * 3, 0.9, i % 2 ? '#ffd23f' : '#ff9fc0', 0.3)
+    // You, from behind: swing back while you drag, toss on release.
+    const pose = this.tossT > 0 ? 'act_f_toss_b' : d ? 'act_f_toss_a' : this.rings > 0 ? 'stand' : this.ringed >= 4 ? 'act_f_cheer' : 'act_f_oops'
+    const me = drawPlayer(g, pose, this.cx + 10, this.bottom)
+    if (this.rings > 0 && this.tossT <= 0) drawRing(g, me.hand.x, me.hand.y + 1, 0.8, '#ffd23f', 0.9)
     if (this.rings > 0 && !d) {
-      drawRing(g, this.cx, this.bottom - 20, 1.3, '#ffd23f', 0.4)
       if (this.playing && this.throws.length === 0) {
         // Swipe-up hint.
         const k = (this.t * 1.5) % 1

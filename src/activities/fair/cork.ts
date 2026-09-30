@@ -8,9 +8,10 @@ import type { Surface } from '../../engine/pixel'
 import { rand, pick } from '../../engine/rng'
 import { haptic } from '../../engine/audio'
 import { JobScene, type JobSummary } from '../jobs/base'
-import { boothBackdrop, drawBulbs, drawCorkGun, drawCorkPrize, drawCrosshair, type CorkPrizeKind } from './art'
+import { boothBackdrop, drawBulbs, drawCorkPrize, drawCrosshair, type CorkPrizeKind } from './art'
 import { fairSfx } from './sound'
 import { CORK_PRIZES, CORK_TARGET, corkDamage } from './rules'
+import { drawHeldGun, drawPlayer, placePlayer } from './player'
 
 const CORKS = 10
 const FLIGHT = 0.12
@@ -121,6 +122,18 @@ export class CorkScene extends JobScene {
     return { kind: 'duck', x, y: -1, hp: 1, color: '#ffd23f', lean: 0, falling: 0, fvx: 0, fvy: 0, dy: 0, gone: false }
   }
 
+  /** Where the gun is held (between your hands) and where its muzzle points. */
+  private grip() {
+    // Shouldered on the right, beside your cheek.
+    const p = placePlayer('act_f_aim', this.cx, this.bottom)
+    return { x: p.x + 27, y: p.y + 24 }
+  }
+  private muzzle(s: { x: number; y: number }) {
+    const b = this.grip()
+    const a = Math.atan2(s.y - b.y, s.x - b.x)
+    return { x: b.x + Math.cos(a) * 24, y: b.y + Math.sin(a) * 24 }
+  }
+
   private baseY(p: Prize) {
     return p.kind === 'duck' ? this.rail : this.shelves[p.y]
   }
@@ -141,7 +154,8 @@ export class CorkScene extends JobScene {
       const s = this.sight()
       this.corks--
       this.recoil = 1
-      this.shots.push({ x0: this.cx, y0: this.bottom - 30, x1: s.x, y1: s.y, t: 0 })
+      const m = this.muzzle(s)
+      this.shots.push({ x0: m.x, y0: m.y, x1: s.x, y1: s.y, t: 0 })
       fairSfx.cork()
       this.shake(0.08, 1)
     } else if (e.type === 'cancel') this.aiming = false
@@ -230,7 +244,13 @@ export class CorkScene extends JobScene {
     }
     const sight = this.sight()
     if (this.playing) drawCrosshair(g, sight.x, sight.y, this.t, this.aiming)
-    drawCorkGun(g, this.cx, this.bottom - 12, sight.x, sight.y, this.recoil)
+    // You, from behind, the cork gun shouldered and kicking back on each shot.
+    const done = this.corks <= 0 && this.shots.length === 0
+    drawPlayer(g, done ? (this.hits >= 5 ? 'act_f_cheer' : 'act_f_oops') : 'act_f_aim', this.cx, this.bottom, { dy: Math.round(this.recoil * 2) })
+    if (!done) {
+      const b = this.grip()
+      drawHeldGun(g, b.x, b.y + Math.round(this.recoil * 2), sight.x, sight.y, this.recoil)
+    }
     for (let i = 0; i < this.corks; i++) {
       g.circle(10 + i * 5, this.bottom - 8, 1.8, '#c8a878')
       g.px(10 + i * 5, this.bottom - 9, '#e8d8b8')
