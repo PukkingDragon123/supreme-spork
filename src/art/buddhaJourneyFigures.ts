@@ -376,6 +376,64 @@ export function babyBuddha(s: number): Sculpted {
   )
 }
 
+const PALE_RAMP = ['#3a1e14', '#6a3a24', '#94583a', '#b87650', '#d49468', '#e8b086', '#f4c8a0', '#fcdcbc', '#fff0dc'] as const
+const GREEN_RAMP = ['#0e2418', '#163a26', '#1f5234', '#2a6a42', '#3a8452', '#4e9c62', '#6ab478', '#8ccc94', '#b8e4b8'] as const
+const HAIR_RAMP = ['#08060a', '#100c12', '#18121a', '#221a24', '#2c222e', '#382c3a', '#463846', '#564654', '#685866'] as const
+
+/**
+ * Mae Thorani (พระแม่ธรณี), the Earth goddess, standing and wringing the
+ * water from her long hair, which she draws forward over her right
+ * shoulder. Origin = between the feet; the hair's end (where the water
+ * pours) is returned as `tip` in local units.
+ */
+export function thoraniSculpt(s: number): Sculpted & { tip: [number, number] } {
+  const q = Math.round(s * 40) / 40
+  const r = sculptOnce(`thorani:${q}`, () =>
+    sculpt({
+      prims: [
+        // 0 skin, 1 green sarong and sabai, 2 gold ornaments, 3 hair
+        ...M(0, E(-4.5, 1.5, 4, 3.6, 2, 3, 12), E(4.5, 1.5, 4, 3.6, 2, 3, 12)),
+        ...M(1, E(0, 6, 0, 15, 6, 9, 1, 0), C([0, 6, 0], [0, 44, 0.5], 13.5, 9, 1, 0, 0.75)),
+        ...M(2, C([-9.6, 44, 1], [9.6, 44, 1], 1.7, 1.7, 13)),
+        ...M(0, C([0, 45, 0.5], [0, 60, 0.5], 8, 9.6, 2, undefined, 0.7)),
+        ...M(1, E(0, 57.5, 1.5, 10.2, 3.8, 7.4, 14)),
+        ...M(0, C([-10, 63, 0], [10, 63, 0], 3.4, 3.4, 2, undefined, 0.9), C([0, 63, 0.5], [0, 69, 1], 2.6, 2.4, 2)),
+        ...M(2, C([-5.4, 64.5, 3], [5.4, 64.5, 3], 1.5, 1.5, 15)),
+        ...M(3, E(0, 76, -2, 7, 7.6, 5, 16)),
+        ...M(0, E(0, 75, 1.5, 6.2, 7.2, 6, 3)),
+        ...M(2, E(0, 81.5, 1, 6.6, 2.2, 5.6, 17), C([0, 82, 1], [0, 102, 1], 5, 0.5, 17), E(-6.6, 73, 1.5, 1.3, 2.6, 1.3, 18), E(6.6, 73, 1.5, 1.3, 2.6, 1.3, 18)),
+        // Both hands grip the hair out at her right side.
+        ...M(0, C([-10.4, 63, 0], [-17, 56, 3], 3, 2.5, 4), C([-17, 56, 3], [-14, 51, 8.5], 2.5, 2, 4), E(-13.5, 50.5, 9, 2.4, 2.2, 2.2, 6)),
+        ...M(0, C([10.4, 63, 0], [6, 53, 7], 3, 2.5, 5), C([6, 53, 7], [-8.5, 57.5, 10], 2.5, 2, 5), E(-9.5, 57.5, 10.5, 2.4, 2.2, 2.2, 7)),
+        // The long hair, twisted into a rope and wrung out.
+        ...M(3, C([-4, 73, -1], [-10.5, 67, 4], 2.6, 2.6, 19), C([-10.5, 67, 4], [-12.5, 58, 9], 2.6, 2.4, 19), C([-12.5, 58, 9], [-13.5, 50, 9], 2.4, 2.2, 19), C([-13.5, 50, 9], [-17, 37, 8], 2.2, 1.2, 19)),
+      ],
+      s: q,
+      x0: -24,
+      x1: 22,
+      y0: -1,
+      y1: 104,
+      ramps: [PALE_RAMP, GREEN_RAMP, GOLD_RAMP, HAIR_RAMP],
+      rim: 0.36,
+      ambient: 0.16,
+      spec: [14, 0.4],
+      gloss: [0.5, 0.5, 1.3, 0.8],
+      detail: (d) => {
+        d.curve(-4.4, -1.4, (x) => 75.8 - 0.1 * (x + 2.9) * (x + 2.9), -3)
+        d.curve(1.4, 4.4, (x) => 75.8 - 0.1 * (x - 2.9) * (x - 2.9), -3)
+        d.line(-1.2, 71.4, 1.2, 71.4, -2)
+        // Twists in the hair rope; a gold hem on the sarong.
+        d.each((i, j, lx, ly, part) => {
+          if (part === 19 && (i + j * 2) % 4 === 0) d.add(i, j, 2)
+          if (part === 1 && Math.abs(ly - 8) < 0.9) d.paint(i, j, 2, 6)
+          if (part === 1 && Math.abs(lx - (ly - 20) * 0.08) < 0.6 && ly > 10 && ly < 42) d.add(i, j, -1)
+        })
+      },
+    }),
+  )
+  return Object.assign(r, { tip: [-17, 36.5] as [number, number] })
+}
+
 /** Draw a sculpted figure with its origin at (x, y). */
 export function drawSculpt(g: Surface, f: Sculpted, x: number, y: number) {
   g.draw(f.canvas, Math.round(x) - f.ox, Math.round(y) - f.oy)

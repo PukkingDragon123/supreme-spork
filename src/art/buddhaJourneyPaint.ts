@@ -549,6 +549,53 @@ export function paintWater(g: Surface, pts: [number, number][], seed: number, ni
   }
 }
 
+/**
+ * Water in the grand mural manner: rows of curling fish-scale waves with
+ * white crests (for the flood from Mae Thorani's hair).
+ */
+export function muralWaves(g: Surface, pts: [number, number][], night = false) {
+  const D = night ? '#163a6a' : J.waterD
+  const B = night ? '#24548a' : J.water
+  const L = night ? '#4a86c0' : J.waterL
+  const F = night ? '#cfeaff' : J.foam
+  for (const [ox, oy] of [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+  ])
+    g.poly(
+      pts.map(([x, y]) => [x + ox, y + oy] as [number, number]),
+      J.ink,
+    )
+  g.poly(pts, D)
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+  for (const [x, y] of pts) {
+    minX = Math.min(minX, x)
+    maxX = Math.max(maxX, x)
+    minY = Math.min(minY, y)
+    maxY = Math.max(maxY, y)
+  }
+  let row = 0
+  for (let y = Math.floor(minY) + 3; y <= maxY; y += 4, row++) {
+    for (let x = Math.floor(minX) + (row % 2) * 3; x <= maxX; x += 6) {
+      if (!pointIn(pts, x + 0.5, y + 0.5) || !pointIn(pts, x + 5.5, y + 0.5) || !pointIn(pts, x + 3, y - 2.5)) continue
+      // One scallop: a rounded wave with a white curl on its crest.
+      g.px(x, y, B)
+      g.px(x + 1, y - 1, L)
+      g.px(x + 2, y - 2, L)
+      g.px(x + 3, y - 2, F)
+      g.px(x + 4, y - 1, L)
+      g.px(x + 5, y, B)
+      g.px(x + 3, y - 1, B)
+      g.px(x + 2, y - 1, F)
+    }
+  }
+}
+
 export function pointIn(poly: [number, number][], x: number, y: number): boolean {
   let c = false
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -797,10 +844,21 @@ export function chedi(g: Surface, x: number, y: number, s: number) {
 export function wallRun(g: Surface, x0: number, x1: number, y: number, h: number, night = false) {
   const c = night ? '#7a7a92' : J.wall
   const d = night ? '#54546a' : J.wallD
+  // Merlons (ใบเสมา) along the top.
+  for (let xx = x0 + 1; xx + 3 <= x1; xx += 6) {
+    g.rect(xx - 1, y - h - 4, 5, 4, J.ink)
+    g.rect(xx, y - h - 3, 3, 3, c)
+    g.px(xx + 1, y - h - 4, J.ink)
+  }
   g.rect(x0 - 1, y - h - 1, x1 - x0 + 2, h + 2, J.ink)
   g.rect(x0, y - h, x1 - x0, h, c)
-  for (let yy = y - h + 3; yy < y; yy += 3) g.hline(x0, x1 - 1, yy, d)
-  for (let xx = x0; xx < x1; xx += 5) g.px(xx, y - h, J.gold)
+  // Brick courses, offset every other row.
+  let row = 0
+  for (let yy = y - h + 3; yy < y; yy += 3, row++) {
+    g.hline(x0, x1 - 1, yy, d)
+    for (let xx = x0 + (row % 2) * 3; xx < x1; xx += 6) g.px(xx, yy - 1, d)
+  }
+  g.hline(x0, x1 - 1, y - h, night ? '#9a9ab0' : '#fffaf0')
 }
 
 /** Ray-traced-looking halo/aureole: a leaf-shaped flame nimbus behind a holy figure. */

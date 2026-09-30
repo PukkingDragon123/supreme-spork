@@ -121,21 +121,35 @@ export function bossSprite(look: NodeLook): string {
       const outerL = locked ? '#cfc6ba' : gold ? '#ffe58a' : '#fcd2e0'
       const inner = locked ? '#c2b8ac' : gold ? '#ffe58a' : '#f9b7cc'
       const innerL = locked ? '#e0d8ce' : gold ? '#fff6c8' : '#ffe6ee'
+      if (locked) {
+        // A big carved stone lotus, still closed.
+        g.circle(cx, cy + 1, 14.5, J.ink)
+        g.circle(cx, cy, 14.5, J.ink)
+        g.circle(cx, cy, 13.5, back)
+        g.circle(cx - 0.5, cy - 0.5, 12.6, outer)
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2 - Math.PI / 2
+          g.line(Math.round(cx + Math.cos(a) * 7.5), Math.round(cy + Math.sin(a) * 7.5), Math.round(cx + Math.cos(a) * 12), Math.round(cy + Math.sin(a) * 12), back)
+        }
+        g.circle(cx - 1, cy - 1, 7.5, outerL)
+        g.circle(cx - 0.5, cy - 0.5, 6.6, inner)
+        g.px(cx - 8, cy - 7, innerL)
+        g.px(cx - 7, cy - 8, innerL)
+        return
+      }
       petalRing(g, cx, cy, 10, 9, 16, 4, back, outer, -Math.PI / 2 + Math.PI / 10)
       petalRing(g, cx, cy, 10, 8, 14.5, 3.8, outer, outerL, -Math.PI / 2)
       petalRing(g, cx, cy, 8, 6, 11, 3.2, inner, innerL, -Math.PI / 2 + Math.PI / 8)
-      const p = NODE_PAL[look === 'locked' ? 'locked' : look === 'open' ? 'open' : look]
       g.circle(cx, cy, 7, J.ink)
-      g.circle(cx, cy, 6.2, locked ? p.rim : J.goldD)
-      g.circle(cx, cy, 5.4, locked ? p.faceD : J.goldM)
-      g.circle(cx - 0.5, cy - 0.5, 4.8, locked ? p.face : J.goldL)
+      g.circle(cx, cy, 6.2, J.goldD)
+      g.circle(cx, cy, 5.4, J.goldM)
+      g.circle(cx - 0.5, cy - 0.5, 4.8, J.goldL)
       g.px(cx - 3, cy - 3, '#ffffff')
       g.px(cx - 2, cy - 4, '#ffffff')
-      if (!locked)
-        for (let i = 0; i < 8; i++) {
-          const a = (i / 8) * Math.PI * 2
-          g.px(Math.round(cx + Math.cos(a) * 4.2), Math.round(cy + Math.sin(a) * 4.2), J.goldD)
-        }
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2
+        g.px(Math.round(cx + Math.cos(a) * 4.2), Math.round(cy + Math.sin(a) * 4.2), J.goldD)
+      }
     }),
   )
 }

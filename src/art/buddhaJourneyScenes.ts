@@ -23,6 +23,7 @@ import {
   lotusFlower,
   muralCloud,
   muralTree,
+  muralWaves,
   paintGround,
   paintWater,
   palmTree,
@@ -75,7 +76,7 @@ import {
   sotthiyaSprite,
   standingBuddha,
   sujataSprite,
-  thoraniBigSprite,
+  thoraniSculpt,
   traySprite,
 } from './buddhaJourneyFigures'
 
@@ -221,8 +222,8 @@ function holy(c: PaintCtx, f: Sculpted, dx: number, up: number, halo: [number, n
   const [hw, hh, hup] = halo
   c.both((g) => aureole(g, x, y - hup, hw, hh))
   c.both((g) => drawSculpt(g, f, x, y))
-  c.light(dx, up + hup, hh * 0.9, '#ffd98a', 0.55 * glow)
-  c.addFx(glowFx(x, y - hup, hh * 0.75, 0.22 * glow, '#ffe6a0', 1.1, 2.2))
+  c.light(dx, up + hup, hh * 0.9, '#ffd98a', 0.32 * glow)
+  c.addFx(glowFx(x, y - hup, hh * 0.75, 0.22 * glow, '#ffe6a0', 1.1, 1.4))
 }
 
 /** A sculpted figure (gold, so it also shines at night). */
@@ -855,9 +856,9 @@ const enlighten: ScenePainter = {
   objects(c) {
     const g = c.g
     stars(c, [-96, 4, 96, 428], 110, 53)
-    moon(c, -62, 404, 11)
+    moon(c, 70, 410, 10)
     tufts(c, 52, 50)
-    fill(c, 54, ['tree', 'palm', 'bush', 'tier', 'bush'], { density: 0.55, avoid: [[-40, 60, 96, 390]] })
+    fill(c, 54, ['tree', 'palm', 'bush', 'tier', 'bush'], { density: 0.55, avoid: [[-40, 60, 96, 390], [50, 392, 96, 428]] })
 
     // --- Sotthiya brings eight handfuls of kusa grass.
     shadow(c, -58, 24, 6)
@@ -883,7 +884,20 @@ const enlighten: ScenePainter = {
       g.thickLine(c.X(tx), c.Y(ty + 50), c.X(ex), c.Y(eu), 5, J.ink)
       g.thickLine(c.X(tx), c.Y(ty + 50), c.X(ex), c.Y(eu), 3, bodhi.trunk)
     }
-    canopy(g, c.X(tx), c.Y(334), 64, 46, bodhi, 55, 16, '#e8d86a')
+    // The crown in mural clusters, the lowest ones lit gold by the Buddha's radiance.
+    const lit: TreeStyle = { dark: '#24502e', mid: '#3f7c3a', light: '#7cae46', hi: '#e2dc6a', trunk: bodhi.trunk, trunkD: bodhi.trunkD }
+    const clusters: [number, number, number, number, TreeStyle][] = [
+      [-2, 364, 30, 16, bodhi],
+      [-36, 348, 26, 18, bodhi],
+      [40, 350, 26, 18, bodhi],
+      [0, 338, 34, 20, bodhi],
+      [-46, 318, 20, 14, bodhi],
+      [50, 320, 20, 14, bodhi],
+      [-22, 312, 24, 14, lit],
+      [26, 312, 24, 14, lit],
+      [2, 316, 22, 12, lit],
+    ]
+    clusters.forEach(([dx, up, rx, ry, st], i) => canopy(g, c.X(tx + dx), c.Y(up), rx, ry, st, 55 + i * 13, 8, '#e8d86a'))
     // Heart-shaped Bodhi leaves with long drip tips hang from the crown.
     const leafRows = ['x.x', 'xxx', 'xxx', '.x.', '.x.']
     for (let i = 0; i < 22; i++) {
@@ -964,63 +978,91 @@ const enlighten: ScenePainter = {
     // Māra's weapons turn into flowers and fall at the Buddha's seat.
     c.addFx(petalsFx([c.X(tx - 40), c.Y(sy + 70), c.X(tx + 40), c.Y(sy - 4)], 12, 58, [J.goldL, '#fff4d8', J.pinkL, '#ffd0e0']))
 
-    // --- Mae Thorani rises before the throne and wrings her hair.
-    const mx = 4
-    const my = 168
-    g.ditherCircle(c.X(mx), c.Y(my), 16, '#4a5a8a', 0.8, 0.4)
-    c.both((gg) => aureole(gg, c.X(mx), c.Y(my + 16), 22, 36))
-    sprite(c, thoraniBigSprite(), mx, my, false, true)
-    c.light(mx, my + 16, 24, '#c8f0ff', 0.6)
-    c.addFx(glowFx(c.X(mx), c.Y(my + 16), 16, 0.2, '#d8f4ff', 1.4, 2))
-    // The flood: from her hair down to Māra's army.
-    const flood: [number, number][] = [
-      [c.X(mx + 9), c.Y(my + 8)],
-      [c.X(mx + 16), c.Y(my - 8)],
-      [c.X(40), c.Y(120)],
-      [c.X(70), c.Y(96)],
-      [c.X(108), c.Y(84)],
+    // --- Mae Thorani rises from the earth before the throne and wrings her hair.
+    const mx = 2
+    const my = 166
+    const th = thoraniSculpt(0.42)
+    // The mound of earth she rises from, and her soft radiance.
+    g.ellipse(c.X(mx), c.Y(my) + 2, 17, 5, J.ink)
+    g.ellipse(c.X(mx), c.Y(my) + 1, 16, 4, '#5a4a3a')
+    g.ellipse(c.X(mx - 3), c.Y(my), 10, 2.5, '#7a6448')
+    softGlow(g, c.X(mx), c.Y(my + 22), 30, 0.4, '#bfe8ff')
+    c.light(mx, my + 18, 30, '#c8f0ff', 0.4)
+    // The flood: from the end of her hair, down and out across Māra's army.
+    const tip: [number, number] = [c.X(mx + th.tip[0] * 0.42), c.Y(my + th.tip[1] * 0.42)]
+    const lake: [number, number][] = [
+      [tip[0] - 2, tip[1] + 2],
+      [tip[0] + 4, tip[1] + 6],
+      [c.X(14), c.Y(my - 22)],
+      [c.X(40), c.Y(140)],
+      [c.X(62), c.Y(146)],
+      [c.X(84), c.Y(150)],
+      [c.X(104), c.Y(146)],
+      [c.X(104), c.Y(64)],
+      [c.X(70), c.Y(58)],
+      [c.X(44), c.Y(68)],
+      [c.X(26), c.Y(90)],
+      [c.X(8), c.Y(118)],
+      [tip[0] - 6, tip[1] + 14],
     ]
-    const fpoly = riverPoly(flood, (i) => [1.5, 4, 12, 20, 24][i])
-    paintWater(g, fpoly, 58, true)
-    c.water.push(fpoly)
+    muralWaves(g, lake, true)
+    c.water.push(lake)
+    // Māra on Girimekhala and his soldiers, tumbling in the waves.
+    sprite(c, maraSprite(), 66, 100)
+    const soldiers: [number, number, number, boolean][] = [
+      [36, 112, 0, false],
+      [50, 88, 1, true],
+      [84, 80, 0, true],
+      [92, 124, 1, false],
+      [44, 132, 1, false],
+      [74, 70, 0, false],
+      [22, 104, 0, true],
+    ]
+    for (const [dx, up, k, f] of soldiers) sprite(c, soldierSprite(k), dx, up, f)
+    // Waves over their legs: they are sinking into the flood.
+    const over: [number, number][] = [...soldiers.map(([dx, up]) => [dx, up] as [number, number]), [66, 100], [58, 100], [74, 100]]
+    for (const [dx, up] of over) {
+      const x = c.X(dx)
+      const y = c.Y(up)
+      g.rect(x - 7, y - 3, 14, 4, '#163a6a')
+      for (let k = -6; k < 6; k += 4) {
+        g.px(x + k, y - 3, '#4a86c0')
+        g.px(x + k + 1, y - 4, '#cfeaff')
+        g.px(x + k + 2, y - 4, '#4a86c0')
+      }
+    }
+    figure(c, th, mx, my)
+    c.addFx(glowFx(c.X(mx), c.Y(my + 18), 18, 0.2, '#d8f4ff', 1.4, 2))
     c.addFx({
-      box: [c.X(mx + 4), c.Y(my + 12), c.X(97), c.Y(60)],
+      box: [tip[0] - 10, c.Y(my + 20), c.X(97), c.Y(56)],
       z: 20,
-      draw: (gg, t) => {
-        // Streaming drops from the hair.
-        for (let i = 0; i < 18; i++) {
-          const k = (t * 0.7 + i / 18) % 1
-          const seg = k * (flood.length - 1)
-          const si = Math.min(flood.length - 2, Math.floor(seg))
-          const u = seg - si
-          const x = flood[si][0] + (flood[si + 1][0] - flood[si][0]) * u + Math.sin(i * 3.1) * (2 + seg * 3)
-          const y = flood[si][1] + (flood[si + 1][1] - flood[si][1]) * u + Math.cos(i * 2.3) * (1 + seg * 2)
-          gg.px(Math.round(x), Math.round(y), i % 3 ? '#cfefff' : '#ffffff')
+      draw: (gg, t, env) => {
+        // A braided stream pouring from her hair to the ground.
+        const run = 18
+        for (let i = 0; i < run; i++) {
+          const k = (t * 1.3 + i / run) % 1
+          const x = tip[0] + Math.sin(k * 6 + i) * (0.5 + k * 3) + k * 6
+          const y = tip[1] + k * 20
+          gg.px(Math.round(x), Math.round(y), i % 3 ? '#cfeaff' : '#ffffff')
           if (i % 2) gg.px(Math.round(x) + 1, Math.round(y), '#8cc8f0')
         }
-        // Curling waves.
-        for (let i = 0; i < 8; i++) {
-          const ph = (t * 0.5 + i / 8) % 1
-          const x = c.X(40 + i * 7) + Math.sin(t + i) * 3
-          const y = c.Y(122 - i * 4) + ph * 4
+        // Surf rolling outwards across the flood.
+        for (let i = 0; i < 16; i++) {
+          const ph = ((env.still ? 0.5 : t * 0.35) + i / 16) % 1
+          const ang = -0.9 + (i % 5) * 0.28
+          const d = 10 + ph * 70
+          const x = tip[0] + 6 + Math.cos(ang) * d
+          const y = tip[1] + 18 + Math.sin(ang) * d * 0.35 + ph * 6
+          if (!pointIn(lake, x, y)) continue
           gg.alpha(Math.sin(ph * Math.PI))
           gg.px(Math.round(x), Math.round(y), '#ffffff')
           gg.px(Math.round(x) + 1, Math.round(y) - 1, '#ffffff')
-          gg.px(Math.round(x) + 2, Math.round(y) - 1, '#cfefff')
+          gg.px(Math.round(x) + 2, Math.round(y) - 1, '#cfeaff')
           gg.px(Math.round(x) + 3, Math.round(y), '#8cc8f0')
           gg.reset()
         }
       },
     })
-    // Māra on Girimekhala and his soldiers, swept away.
-    sprite(c, maraSprite(), 70, 110)
-    for (const [dx, up, k] of [
-      [48, 108, 0],
-      [84, 88, 1],
-      [60, 84, 0],
-      [92, 110, 1],
-    ])
-      sprite(c, soldierSprite(k), dx, up, k === 1)
     c.addFx(firefliesFx([c.X(-96), c.Y(420), c.X(96), c.Y(4)], 18, 59, true))
     c.addFx(cloudFx(30, c.Y(410), 30, 2, c.g.w, true))
   },
