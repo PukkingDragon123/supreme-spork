@@ -629,6 +629,7 @@ function summarize() {
 }
 
 let goneSince: number | null = null
+let sweeps = 0
 const deniedSeen = new Set<NetTopic>()
 let installed = false
 
@@ -658,6 +659,12 @@ export function installOnline() {
     if (tradeActive(trade.value)) tradeDo({ kind: 'tick' })
     for (const [k, b] of bubbles) if (now() > b.until) bubbles.delete(k)
     for (const [k, e] of emotes) if (now() > e.until) emotes.delete(k)
+    // Forget stale rate-limit and cooldown entries (peers come and go).
+    if (++sweeps % 60 === 0) {
+      for (const [k, list] of rate) if (!list.some((t) => now() - t < 60_000)) rate.delete(k)
+      for (const [k, t] of cool) if (t < now()) cool.delete(k)
+      if (seenGifts.size > 500) seenGifts.clear()
+    }
     summarize()
   }, 1000)
   // Going to another map clears the chat of the old one.

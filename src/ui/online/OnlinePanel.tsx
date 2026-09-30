@@ -49,7 +49,14 @@ function Row({ p, here }: { p: NetPlayer; here: boolean }) {
         }}
         aria-label={here ? `ดูการ์ดของ${p.name}` : p.name}
       >
-        <Portrait look={p.look} size={36} />
+        {/* Looks travel only inside a map's room: others get a neutral badge, not a made-up face. */}
+        {here ? (
+          <Portrait look={p.look} size={36} />
+        ) : (
+          <span class="portrait ol-noface" style={{ width: '36px', height: '36px' }}>
+            <NIcon name="online" size={22} />
+          </span>
+        )}
         <span class="col ol-row-text">
           <b>
             {p.name} <span class="ol-lv num">Lv.{p.level}</span>

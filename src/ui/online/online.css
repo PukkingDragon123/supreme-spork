@@ -860,3 +860,15 @@
   margin: 0;
   font-size: 10px;
 }
+
+.ol-noface {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #dff2cf;
+}
+
+.ol-noface img {
+  position: static;
+  transform: none;
+}
