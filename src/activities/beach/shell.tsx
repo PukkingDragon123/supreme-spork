@@ -230,7 +230,7 @@ export function BeachRun({ id, make, onAgain, tw = 190 }: { id: BeachGameId; mak
         </div>
         <button class="hud2-coins" onClick={() => (coinStoreOpen.value = true)} aria-label="เติมบุญคอยน์">
           <Icon name="coin" size={18} />
-          <PT text={game.value.coins.toLocaleString('en-US')} size={13} weight={600} {...TONE_TEXT.wood} />
+          <PT text={game.value.coins.toLocaleString('en-US')} size={14} weight={600} {...TONE_TEXT.wood} />
         </button>
       </div>
       {hud?.bubbles.map((b) => {
