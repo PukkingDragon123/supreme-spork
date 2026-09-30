@@ -4,6 +4,7 @@
 
 import { DAY_COLORS } from '../../art/palette'
 import { V4_OUTFITS } from './cosmetics'
+import { BEACH_OUTFITS } from './beachOutfits'
 
 /**
  * `back` = worn on the back (wings, backpacks, auras, flags).
@@ -331,7 +332,7 @@ export function suitGarments(s: SuitArt): { top: TopArt; bottom: BottomArt; shoe
 }
 
 /** Head accessories that still show with a hooded suit (glasses, face paint). */
-export const SUIT_FACE_ACCS: ReadonlySet<string> = new Set(['glasses', 'sunglasses', 'heartshades', 'nerdglasses', 'dinsor', 'mirrorshades'])
+export const SUIT_FACE_ACCS: ReadonlySet<string> = new Set(['glasses', 'sunglasses', 'heartshades', 'nerdglasses', 'dinsor', 'mirrorshades', 'sunsetshades'])
 
 const W = '#fffaf0'
 const WS = '#e6dccb'
@@ -2055,6 +2056,8 @@ export const OUTFITS: OutfitItem[] = [
   ...SUITS,
   ...SOUVENIRS,
   ...V4_OUTFITS,
+  // Beach-only souvenirs (beachOutfits.ts)
+  ...BEACH_OUTFITS,
 ]
 
 export const OUTFIT_BY_ID: Record<string, OutfitItem> = Object.fromEntries(OUTFITS.map((o) => [o.id, o]))

@@ -11,6 +11,7 @@ import { bakeCloud, glint, softGlow } from '../art/cinematic'
 import { cityPoints, ICON_BASE, ICON_H, ICON_W, mapData, mapLabels, MC, placeIconArt, seededRand, smoothPath, thaiMapArt } from '../art/thaimap'
 import { ALL_PLACES, BANGKOK, INSET, MAP, PLACE_BY_ID, proj, type Place } from '../game/data/places'
 import { hubCrowd } from '../game/hubs'
+import { drawBeachBadge } from '../art/thaimap-beaches'
 
 export interface ThaiMapCallbacks {
   /** A pin was tapped (also fires when re-tapping the selected pin). */
@@ -694,7 +695,10 @@ export class ThaiMapScene implements Scene {
         ring(s, p.x, p.y + 1.5, r + 1, r * 0.34 + 0.4, '#e9a53a')
       } else if (p.id === cur) ring(s, p.x, p.y + 0.5, 10, 3, '#ff9fc0')
       s.draw(icon.canvas, x0, y0)
-      if (p.kind && open) {
+      if (p.kind === 'beach' && open) {
+        // Beaches: a little sun badge on the selected / current one.
+        if (sel || p.id === cur) drawBeachBadge(s, p.x, y0, t)
+      } else if (p.kind && open) {
         // Social hubs: a small "online" dot; the selected one shows how many are there.
         if (sel || p.id === cur) drawHubBadge(s, p, y0, t)
         else onlineDot(s, x0 + ICON_W - 5, y0 + 4, t + p.x)

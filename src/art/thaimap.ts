@@ -7,6 +7,7 @@
 
 import { bake, createCanvas, ditherOn, mix, Surface, type Color } from '../engine/pixel'
 import { HUB_ICON_DRAW } from './thaimap-hubs'
+import { BEACH_ICON_DRAW } from './thaimap-beaches'
 import { outlineCanvas, cached, type Sprite } from '../engine/sprite'
 import { BANGKOK, INSET, MAP, proj, unproj, type Region } from '../game/data/places'
 
@@ -2108,6 +2109,8 @@ const ICON_DRAW: Record<string, (g: Surface) => void> = {
   },
   // --- Hub markets and the temple fair (thaimap-hubs.ts) ---
   ...HUB_ICON_DRAW,
+  // --- Beaches (thaimap-beaches.ts) ---
+  ...BEACH_ICON_DRAW,
 }
 
 export const ICON_W = 24

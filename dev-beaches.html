@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Boondee beaches (dev)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      html, body { margin: 0; background: #2b2340; color: #fff1d6; font: 12px sans-serif; }
+      #root { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; padding: 8px; }
+      .card { display: flex; flex-direction: column; gap: 4px; }
+      .card b { font-size: 13px; }
+      .card .checks { max-width: 640px; white-space: pre-wrap; font: 11px monospace; color: #ffd6e0; }
+      .card .ok { color: #b4e486; }
+      canvas { image-rendering: pixelated; display: block; background: #15163a; }
+      #nav { padding: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+      #nav a { color: #ffe27a; }
+    </style>
+  </head>
+  <body>
+    <div id="nav"></div>
+    <div id="root"></div>
+    <script type="module" src="/src/dev/beaches.ts"></script>
+  </body>
+</html>

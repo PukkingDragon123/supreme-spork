@@ -11,6 +11,7 @@ import { POP_GROUP } from './pop'
 import { SEASONAL_GROUP } from './seasonal'
 import { RANK_COLLECTIBLES } from './ranks'
 import { HUB_COLLECTIBLES, FAIR_PRIZE_COLLECTIBLES } from './hubs'
+import { BEACH_GROUP } from './beach'
 
 /** Rare temple-rank souvenirs: quest rewards only, never in shop stock. */
 const RANK_GROUP: CollectibleGroup = {
@@ -26,7 +27,7 @@ const HUB_GROUP: CollectibleGroup = {
 }
 const FAIR_GROUP: CollectibleGroup = { id: 'fair', items: FAIR_PRIZE_COLLECTIBLES.map((c) => ({ ...c, source: 'reward' as const })) }
 
-const GROUPS: CollectibleGroup[] = [REGION_GROUP, POP_GROUP, SEASONAL_GROUP, RANK_GROUP, HUB_GROUP, FAIR_GROUP]
+const GROUPS: CollectibleGroup[] = [REGION_GROUP, POP_GROUP, SEASONAL_GROUP, RANK_GROUP, HUB_GROUP, FAIR_GROUP, BEACH_GROUP]
 
 export const COLLECTIBLE_GROUPS: CollectibleGroup[] = []
 export const COLLECTIBLES: CollectibleDef[] = []

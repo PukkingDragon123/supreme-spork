@@ -134,6 +134,15 @@ export function registerPlaceShops(shops: PlaceShop[]) {
   for (const sh of shops) PLACE_SHOPS[sh.id] = sh
 }
 
+/** Add snacks sold by stalls from other systems (e.g. the beaches); existing ids are kept. */
+export function registerSnacks(list: Snack[]) {
+  for (const sn of list) {
+    if (SNACK_BY_ID[sn.id]) continue
+    SNACKS.push(sn)
+    SNACK_BY_ID[sn.id] = sn
+  }
+}
+
 /** Best-effort stall for any `shop:<placeId>_<slug>` hotspot. */
 export function shopFor(id: string): PlaceShop {
   const known = PLACE_SHOPS[id]

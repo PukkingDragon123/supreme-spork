@@ -46,6 +46,8 @@ function ramp(pal: [string, string, string]): MP {
 }
 
 export type Motif = (g: Surface, p: MP) => void
+/** Colour ramp handed to motif painters: main / accent / detail with light and dark shades. */
+export type MotifRamp = MP
 
 // Small helpers ---------------------------------------------------------------
 
@@ -1281,6 +1283,11 @@ export const MOTIF_NAMES = Object.keys(MOTIFS)
 /** Add motifs from other systems (e.g. the temple fair's goldfish and teddy). Existing names win. */
 export function registerMotifs(extra: Record<string, Motif>) {
   for (const [k, fn] of Object.entries(extra)) if (!MOTIFS[k]) MOTIFS[k] = fn
+}
+
+/** Add one motif (e.g. the beach shells, src/art/beachMotifs.ts). Existing names are kept. */
+export function registerMotif(name: string, fn: Motif) {
+  registerMotifs({ [name]: fn })
 }
 
 export function hasMotif(m: string): boolean {

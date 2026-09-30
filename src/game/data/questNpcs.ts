@@ -10,6 +10,7 @@
 
 import type { AvatarLook } from '../../art/avatar'
 import { HUB_QUEST_NPCS } from './hubQuestNpcs'
+import { BEACH_QUEST_NPCS } from './beachQuestNpcs'
 
 export type QuestNpcSprite = 'person' | 'monk' | 'novice'
 
@@ -301,6 +302,8 @@ export function registerQuestNpcs(list: QuestNpc[]) {
 
 // Hub-market and temple-fair givers (drawn by their own maps).
 registerQuestNpcs(HUB_QUEST_NPCS)
+// Beach givers (drawn by the quest layer).
+registerQuestNpcs(BEACH_QUEST_NPCS)
 
 export function allQuestNpcs(): QuestNpc[] {
   return extra.length ? [...QUEST_NPCS, ...extra] : QUEST_NPCS

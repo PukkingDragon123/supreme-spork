@@ -81,6 +81,8 @@ export function MapModal() {
     st.start()
     stage.current = st
     scene.current = sc
+    // Dev hook so e2e tests can find a pin on screen and tap it for real.
+    if (import.meta.env.DEV) (window as unknown as Record<string, unknown>).__thaimap = sc
     return () => {
       st.destroy()
       scene.current = null
@@ -212,7 +214,7 @@ export function MapModal() {
               คุณอยู่ที่นี่แล้ว
             </PBtn>
           ) : open ? (
-            <PBtn tone="green" block size="big" icon={p.kind ? 'market' : 'temple'} onClick={() => go(p)}>
+            <PBtn tone="green" block size="big" icon={p.kind === 'beach' ? 'sun' : p.kind ? 'market' : 'temple'} onClick={() => go(p)}>
               ออกเดินทาง
             </PBtn>
           ) : acc?.rankLocked ? (
