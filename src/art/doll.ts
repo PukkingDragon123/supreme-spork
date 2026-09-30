@@ -14,7 +14,13 @@ import { HAIR_COLORS, P, SKIN_TONES } from './palette'
 import { OUTFIT_BY_ID, SUIT_FACE_ACCS, suitGarments, type BottomArt, type Pattern, type ShoeArt, type SuitArt, type SuitKind, type TopArt } from '../game/data/outfits'
 import { lookKey, type AvatarLook } from './avatar'
 
-export type DollPose = 'stand' | 'wave' | 'wai' | 'happy' | 'think' | 'kneel' | 'kneelWai' | 'bow' | 'sit'
+export type BaseDollPose = 'stand' | 'wave' | 'wai' | 'happy' | 'think' | 'kneel' | 'kneelWai' | 'bow' | 'sit'
+/**
+ * Built-in poses plus action poses registered by other modules with
+ * `registerDollPose('act_<name>', …)` (e.g. mini-games showing the player
+ * tossing food, striking a bell, sweeping).
+ */
+export type DollPose = BaseDollPose | `act_${string}`
 export type DollView = 'front' | 'back'
 
 const IW = 32
@@ -421,7 +427,7 @@ const EYE_CLOSED: EyeMap = { rows: ['....', '....', 'k..k', '.kk.'], oy: 2 }
 const EYE_HAPPY: EyeMap = { rows: ['....', '.kk.', 'k..k', '....'], oy: 1 }
 const EYE_BLINK: EyeMap = { rows: ['....', '....', '....', 'kkkk'], oy: 1 }
 
-type Expr = 'smile' | 'open' | 'serene' | 'happy' | 'think'
+export type Expr = 'smile' | 'open' | 'serene' | 'happy' | 'think'
 
 function drawEye(b: Buf, e: EyeMap, left: boolean, dy: number, g: 'm' | 'f', lashOk: boolean, lid: string) {
   const w = e.rows[0].length
@@ -1442,10 +1448,10 @@ function drawHairParts(b: Buf, r: Res, parts: HairPart[] | undefined, dy: number
 // ---------------------------------------------------------------------------
 // Bodies
 
-type Pt = [number, number]
-type Hand = 'rest' | 'open' | 'fist' | 'chin' | 'none'
+export type Pt = [number, number]
+export type Hand = 'rest' | 'open' | 'fist' | 'chin' | 'none'
 
-interface ArmDef {
+export interface ArmDef {
   s: Pt
   e: Pt
   w: Pt
@@ -1455,9 +1461,9 @@ interface ArmDef {
   z: 'back' | 'front' | 'top'
 }
 
-type LegsKind = 'stand' | 'kneelF' | 'kneelB' | 'sitF' | 'sitB' | 'bow'
+export type LegsKind = 'stand' | 'kneelF' | 'kneelB' | 'sitF' | 'sitB' | 'bow'
 
-interface PoseDef {
+export interface PoseDef {
   dy: number
   L: ArmDef | null
   R: ArmDef | null
@@ -1472,7 +1478,25 @@ const armStand = (dy: number, side: 1 | -1, z: ArmDef['z'] = 'back', hand: Hand 
   return { s: [cx, 25 + dy], e: [cx - 0.2 * side, 29.5 + dy], w: [cx - 0.4 * side, 32 + dy], hand, z }
 }
 
+/**
+ * Extra poses. A registered pose gets a joint layout per view (return null to
+ * fall back to standing for that view). Coordinates are in the 32-px-wide doll
+ * space used by the built-in poses below; `armStand` shows the resting arms.
+ */
+const EXTRA_POSES = new Map<string, (view: DollView) => PoseDef | null>()
+
+export function registerDollPose(name: `act_${string}`, def: (view: DollView) => PoseDef | null) {
+  EXTRA_POSES.set(name, def)
+}
+
+/** Resting arm helper for pose authors (side 1 = screen-left arm). */
+export function restingArm(dy: number, side: 1 | -1, z: ArmDef['z'] = 'back', hand: Hand = 'rest'): ArmDef {
+  return armStand(dy, side, z, hand)
+}
+
 function poseDef(pose: DollPose, view: DollView): PoseDef {
+  const extra = EXTRA_POSES.get(pose)?.(view)
+  if (extra) return extra
   if (view === 'back') {
     switch (pose) {
       case 'kneel':
