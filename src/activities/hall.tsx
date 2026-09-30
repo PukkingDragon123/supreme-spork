@@ -7,16 +7,20 @@ import type { Scene } from '../engine/stage'
 import { bake, type Surface } from '../engine/pixel'
 import { Particles } from '../engine/particles'
 import { rand } from '../engine/rng'
-import { avatarSprite, type AvatarLook, type Pose } from '../art/avatar'
+import type { AvatarLook } from '../art/avatar'
+import type { BaseDollPose } from '../art/doll'
+import { drawPlayer, godRays, Juice, lightPool, motes, softGlow, vignette } from '../art/minigames/temple'
+import { Critters, Crowd } from '../art/minigames/scenery'
+import { tsfx } from '../art/minigames/sfx'
 import { drawAltar, drawArch, drawBuddha, drawCandleStand, drawHallInterior, drawLightBeams, drawVase } from '../art/interior'
 import { game, level } from '../game/state'
 import { addMerit, track } from '../game/actions'
 import { CHANTS, type Chant } from '../game/data/chants'
 import { closeActivity, openActivity, type ActivityRequest } from '../ui/store'
-import { ActivityFrame, ResultCard, useStage, type ResultData } from './kit'
+import { ActivityFrame, useStage, type ResultData } from './kit'
 import { Btn, Icon, Bar } from '../ui/components/common'
 import { sfx, haptic } from '../engine/audio'
-import { drawGlow } from '../scenes/sky'
+import { PraiseLayer, TempleResult, praise, type TempleResultData } from './temple-ui'
 
 type Mode = 'idle' | 'chant' | 'meditate' | 'bow'
 
@@ -26,18 +30,28 @@ export class HallScene implements Scene {
   t = 0
   mode: Mode = 'idle'
   particles = new Particles()
+  juice = new Juice()
   private bg: HTMLCanvasElement | null = null
+  critters = new Critters()
+  crowd = new Crowd()
+  private lifeInit = false
   private bowT = -1
   private bowCount = 0
+  private bowDone = 0
+  private bowTotal = 0
   onBowDone?: () => void
+  /** Called as each prostration touches the floor (1-based). */
+  onBowTouch?: (n: number) => void
   calm = 0
   breath = 0
+  /** Short pulse each time a word is chanted. */
+  chantPulse = 0
   npcs: AvatarLook[] = []
 
   constructor(public look: AvatarLook) {
     this.npcs = [
-      { gender: 'f', face: 1, skin: 2, hairColor: 0, hair: 'hair_long', top: 'top_white', bottom: 'bot_sarong' },
-      { gender: 'm', face: 0, skin: 0, hairColor: 1, hair: 'hair_short', top: 'top_white', bottom: 'bot_black' },
+      { gender: 'f', face: 1, skin: 2, hairColor: 0, hair: 'hair_long', top: 'top_white', bottom: 'bot_sarong', shoes: null, head: null, neck: null, hand: null, back: null },
+      { gender: 'm', face: 0, skin: 0, hairColor: 1, hair: 'hair_short', top: 'top_white', bottom: 'bot_black', shoes: null, head: null, neck: null, hand: null, back: null },
     ]
   }
 
@@ -45,6 +59,11 @@ export class HallScene implements Scene {
     this.w = w
     this.h = h
     this.bg = null
+    if (!this.lifeInit) {
+      this.lifeInit = true
+      this.crowd.add({ monk: 'monk', x: w - 18, y: this.floorY + 16 })
+      this.critters.cat(16, this.floorY + 24, '#f5a55a', 'sleep')
+    }
   }
 
   get floorY() {
@@ -53,6 +72,10 @@ export class HallScene implements Scene {
 
   get buddhaBase() {
     return this.floorY - 40
+  }
+
+  get footY() {
+    return Math.round(this.h * 0.8)
   }
 
   private background() {
@@ -73,17 +96,35 @@ export class HallScene implements Scene {
 
   bow(times = 1, done?: () => void) {
     this.bowCount = times
+    this.bowTotal = times
+    this.bowDone = 0
     this.bowT = 0
     this.onBowDone = done
   }
 
-  update(dt: number) {
+  pulse() {
+    this.chantPulse = 1
+  }
+
+  update(rawDt: number) {
+    const dt = this.juice.step(rawDt)
     this.t += dt
+    this.chantPulse = Math.max(0, this.chantPulse - dt * 3)
     if (this.bowT >= 0) {
+      const before = this.bowT
       this.bowT += dt
+      // forehead, palms and knees touch the floor (เบญจางคประดิษฐ์)
+      if (before < 0.5 && this.bowT >= 0.5) {
+        this.bowDone++
+        sfx.click()
+        tsfx.pat()
+        this.juice.shake(0.06)
+        const [x, y] = [this.w / 2, this.footY - 10]
+        this.particles.sparkles(x, y - 10, 6, '#fff3a6')
+        if (this.bowTotal > 1) this.onBowTouch?.(this.bowDone)
+      }
       if (this.bowT > 1.3) {
         this.bowCount--
-        sfx.click()
         if (this.bowCount > 0) this.bowT = 0
         else {
           this.bowT = -1
@@ -98,52 +139,61 @@ export class HallScene implements Scene {
       this.calm = Math.min(1, this.calm + dt * 0.25)
       if (Math.random() < dt * 4) this.particles.add({ kind: 'firefly', x: rand(0, this.w), y: rand(this.h * 0.3, this.h), vx: rand(-2, 2), vy: rand(-6, -2), max: rand(3, 5), color: '#fff3a6' })
     } else this.calm = Math.max(0, this.calm - dt)
+    motes(this.particles, dt, this.w, this.floorY, 2.5, '#fff3a6')
+    this.critters.update(dt, this.w)
+    this.crowd.update(dt)
     this.particles.update(dt)
   }
 
-  private pose(): Pose {
+  private pose(): BaseDollPose {
     if (this.bowT >= 0) {
       const p = this.bowT
-      return p > 0.35 && p < 0.95 ? 'bow' : 'kneel'
+      return p > 0.28 && p < 0.95 ? 'bow' : 'kneelWai'
     }
     if (this.mode === 'meditate') return 'sit'
-    if (this.mode === 'chant') return 'kneel'
+    if (this.mode === 'chant') return 'kneelWai'
     return 'kneel'
   }
 
   render(g: Surface) {
     const { w, h } = this
+    this.juice.begin(g)
     g.draw(this.background(), 0, 0)
     const cx = Math.round(w / 2)
     const fy = this.floorY
+    godRays(g, cx, this.buddhaBase - 40, h * 0.6, this.t, '#fff3c4', 0.05 + this.calm * 0.08 + this.chantPulse * 0.05, 10)
     drawCandleStand(g, cx - 50, fy + 4, this.t)
     drawCandleStand(g, cx + 50, fy + 4, this.t)
-    drawGlow(g, cx - 50, fy - 44, 12, 0.8, '#ffcf7a')
-    drawGlow(g, cx + 50, fy - 44, 12, 0.8, '#ffcf7a')
-    drawGlow(g, cx, this.buddhaBase - 40, 40, 0.35 + this.calm * 0.6, '#fff3a6')
+    softGlow(g, cx - 50, fy - 34, 12, 0.8, '#ffcf7a')
+    softGlow(g, cx + 50, fy - 34, 12, 0.8, '#ffcf7a')
+    softGlow(g, cx, this.buddhaBase - 40, 44, 0.35 + this.calm * 0.6 + this.chantPulse * 0.3, '#fff3a6')
     drawLightBeams(g, w, h, this.t)
-    // Fellow worshippers.
-    const npcY = Math.round(fy + (h - fy) * 0.35)
+    // Fellow worshippers kneeling further back.
+    const npcY = Math.round(fy + (h - fy) * 0.3)
     this.npcs.forEach((look, i) => {
-      const s = avatarSprite(look, 'back', this.mode === 'meditate' ? 'sit' : Math.sin(this.t * 0.4 + i * 2) > 0.7 ? 'wai' : 'kneel', { barefoot: true })
-      g.draw(s.canvas, i === 0 ? cx - 50 : cx + 32, npcY - s.h)
+      const pose: BaseDollPose = this.mode === 'meditate' ? 'sit' : this.bowT >= 0 && i === 0 ? this.pose() : Math.sin(this.t * 0.4 + i * 2) > 0.7 ? 'kneelWai' : 'kneel'
+      drawPlayer(g, look, pose, 'back', i === 0 ? cx - 44 : cx + 44, npcY, { barefoot: true })
     })
-    // The player, drawn at 2x for presence.
-    const s = avatarSprite(this.look, 'back', this.pose(), { barefoot: true })
-    const px = Math.round(cx - s.w)
-    const py = Math.round(h - 14 - s.h * 2)
-    g.drawScaled(s.canvas, px, py, 2)
+    lightPool(g, cx, this.footY, 50, '#ffe7a0', 0.7 + this.calm)
+    // The player, close to the camera.
+    const breathe = this.mode === 'meditate' ? Math.round(this.breath) : 0
+    const bob = this.chantPulse > 0.6 ? -1 : 0
+    this.critters.render(g)
+    this.crowd.render(g)
+    drawPlayer(g, this.look, this.pose(), 'back', cx, this.footY, { scale: 2, barefoot: true, bob: bob - breathe })
     if (this.calm > 0) {
       g.ctx.save()
       g.ctx.globalAlpha = this.calm * 0.35
       g.ctx.fillStyle = '#1b1530'
       g.ctx.fillRect(0, 0, w, h)
       g.ctx.restore()
-      drawGlow(g, cx, this.buddhaBase - 40, 46, this.calm, '#ffe7a0')
-      const r = 18 + this.breath * 10
-      drawGlow(g, cx, py + s.h, r, this.calm * 0.8, '#fff3c4')
+      softGlow(g, cx, this.buddhaBase - 40, 50, this.calm, '#ffe7a0')
+      const r = 22 + this.breath * 14
+      softGlow(g, cx, this.footY - 40, r, this.calm * 0.9, '#fff3c4')
     }
     this.particles.render(g)
+    vignette(g, '#1b0a14', 0.45)
+    this.juice.end(g)
   }
 }
 
@@ -153,10 +203,10 @@ type View = 'menu' | 'chantList' | 'chanting' | 'meditateSetup' | 'meditating' |
 
 export function HallActivity({ req }: { req: ActivityRequest }) {
   const look = game.value.player.look
-  const { host, scene } = useStage(() => new HallScene(look), { targetWidth: 160 })
+  const { host, scene, stage } = useStage(() => new HallScene(look), { targetWidth: 160 })
   const [view, setView] = useState<View>(req.id === 'meditate' ? 'meditateSetup' : req.id === 'chant' ? 'chantList' : 'menu')
   const [chant, setChant] = useState<Chant | null>(null)
-  const [result, setResult] = useState<ResultData | null>(null)
+  const [result, setResult] = useState<TempleResultData | null>(null)
   const [minutes, setMinutes] = useState(1)
   useEffect(() => {
     if (scene.current) scene.current.look = look
@@ -187,10 +237,16 @@ export function HallActivity({ req }: { req: ActivityRequest }) {
                 onClick={() => {
                   setView('bowing')
                   setMode('idle')
-                  scene.current?.bow(3, () => {
+                  const sc = scene.current
+                  if (!sc) return
+                  sc.onBowTouch = (n) => {
+                    praise(stage.current, sc.w / 2, sc.footY - 70, ['กราบพระพุทธ', 'กราบพระธรรม', 'กราบพระสงฆ์'][n - 1] ?? 'สาธุ', 'gold')
+                    sfx.bell(n + 1)
+                  }
+                  sc.bow(3, () => {
                     const m = addMerit(3, { key: 'bow', free: 1 })
                     haptic(20)
-                    setResult({ title: 'กราบพระรัตนตรัย ๓ ครั้ง', merit: m, icon: 'wai', lines: ['กราบพระพุทธ พระธรรม พระสงฆ์ ด้วยใจเคารพ'], doubleable: false })
+                    setTimeout(() => setResult({ title: 'กราบพระรัตนตรัย ๓ ครั้ง', merit: m, icon: 'wai', pose: 'wai', lines: ['กราบพระพุทธ พระธรรม พระสงฆ์ ด้วยใจเคารพ'], doubleable: false }), 400)
                   })
                 }}
               />
@@ -221,7 +277,7 @@ export function HallActivity({ req }: { req: ActivityRequest }) {
           scene={scene.current}
           onDone={(r) => {
             setMode('idle')
-            setResult(r)
+            setResult({ ...r, pose: 'kneelWai' })
           }}
         />
       )}
@@ -257,12 +313,13 @@ export function HallActivity({ req }: { req: ActivityRequest }) {
           scene={scene.current}
           onDone={(r) => {
             setMode('idle')
-            setResult(r)
+            setResult({ ...r, pose: 'sit' })
           }}
         />
       )}
+      <PraiseLayer />
       {result && (
-        <ResultCard
+        <TempleResult
           r={result}
           onDone={() => {
             setResult(null)
@@ -340,6 +397,7 @@ function Chanting({ chant, scene, onDone }: { chant: Chant; scene: HallScene | n
     const tk = tokens[i]
     sfx.hum(i)
     haptic(6)
+    scene?.pulse()
     scene?.particles.sparkles((scene.w ?? 160) / 2 + rand(-20, 20), (scene.h ?? 300) * 0.3 + rand(-20, 20), 1, '#fff3a6')
     const next = i + 1
     if (tk.bow) {

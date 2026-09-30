@@ -4,7 +4,10 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { game } from '../../game/state'
-import { FAIR_FULL_ROUNDS, fairPlayCost, fairPlaysToday, finishFairRound, startFairRound, ticketsFor, type FairGameDef, type FairRoundResult } from '../../game/hubs'
+import { FAIR_FULL_ROUNDS, FAIR_PLAY_COST, fairPlaysToday, finishFairRound, ticketsFor, type FairGameDef, type FairRoundResult } from '../../game/hubs'
+import { nextQuote, payRound } from './deals'
+import { gameBooth } from './vendors'
+import { BriefCard } from './brief'
 import { closeActivity, coinStoreOpen, openActivity } from '../../ui/store'
 import { useStage } from '../kit'
 import { PBtn, Window } from '../../ui/components/kit'
@@ -17,6 +20,7 @@ import { fmtTime, type Bubble, type JobScene, type JobSummary } from '../jobs/ba
 import type { JobStars } from '../../game/jobs'
 import { ticketSprite } from './art'
 import { fairSfx } from './sound'
+import { liveScores, sendFairScore, setDoing } from './live'
 
 export type FairScene = JobScene & { score: number }
 
@@ -48,7 +52,7 @@ interface Hud {
 
 function CostLine({ def }: { def: FairGameDef }) {
   const plays = fairPlaysToday(def.id)
-  const cost = fairPlayCost(plays)
+  const cost = nextQuote(def.id, FAIR_PLAY_COST).cost
   return (
     <div class="fairx-cost small">
       {cost === 0 ? <span class="chip green small">รอบแรกของวันเล่นฟรี!</span> : <span class="chip small">ค่าเล่นรอบละ <Coin n={cost} size={14} /></span>}
@@ -61,7 +65,7 @@ function CostLine({ def }: { def: FairGameDef }) {
 
 /** How-to card for a fair game (goal, three steps, price and best score). */
 export function FairGoalCard({ def, onStart, onClose, again }: { def: FairGameDef; onStart: () => void; onClose: () => void; again?: boolean }) {
-  const cost = fairPlayCost(fairPlaysToday(def.id))
+  const cost = nextQuote(def.id, FAIR_PLAY_COST).cost
   const best = game.value.hubs.best[def.id] ?? 0
   return (
     <Window
@@ -92,7 +96,28 @@ export function FairGoalCard({ def, onStart, onClose, again }: { def: FairGameDe
       <div class="fairx-best small muted">
         สถิติสูงสุด {best} คะแนน · มีตั๋ว <TicketIcon size={11} /> {game.value.hubs.tickets} ใบ
       </div>
+      <LiveBoard game={def.id} />
     </Window>
+  )
+}
+
+/** Other real players' latest scores at this booth (hidden when nobody is around). */
+export function LiveBoard({ game: id }: { game: string }) {
+  const list = liveScores.value.filter((x) => x.game === id).slice(0, 3)
+  if (!list.length) return null
+  return (
+    <div class="fairx-live-list" style={{ margin: '6px 0' }}>
+      <div class="small">
+        <span class="fairx-dot" /> คะแนนสดจากเพื่อนในงานตอนนี้
+      </div>
+      {list.map((x) => (
+        <div class="fairx-live-row" key={x.from + x.at}>
+          <b>{x.name}</b>
+          <span class="grow">{'★'.repeat(x.stars) || '☆'}</span>
+          <span>{x.score} แต้ม</span>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -114,7 +139,7 @@ function FairResult({
   useEffect(() => {
     fairSfx.tada()
   }, [])
-  const cost = fairPlayCost(fairPlaysToday(def.id))
+  const cost = nextQuote(def.id, FAIR_PLAY_COST).cost
   return (
     <div class="modal-backdrop celebrate">
       <FxCanvas mode="sparkle" />
@@ -143,6 +168,7 @@ function FairResult({
             {l}
           </div>
         ))}
+        <LiveBoard game={def.id} />
         {res.best && score > 0 && (
           <div>
             <span class="fairx-newbest small">สถิติใหม่! {score} คะแนน</span>
@@ -205,6 +231,7 @@ export function FairRun({ def, make, onAgain, paid, tw = 190 }: { def: FairGameD
         else {
           sfx.chime()
           scene.current?.start()
+          setDoing(`กำลังเล่น${def.name}`)
         }
       }),
     )
@@ -215,6 +242,8 @@ export function FairRun({ def, make, onAgain, paid, tw = 190 }: { def: FairGameD
     const sc = scene.current
     const score = sc?.score ?? 0
     const res = finishFairRound(def.id, stars, score)
+    // Real players at the fair see it on their live scoreboard (no-op offline).
+    sendFairScore({ game: def.id, score, stars })
     haptic(30)
     setReveal({ stars, shown: 0 })
     for (let i = 1; i <= 3; i++)
@@ -247,6 +276,7 @@ export function FairRun({ def, make, onAgain, paid, tw = 190 }: { def: FairGameD
     return () => {
       clearInterval(iv)
       for (const t of timers.current) clearTimeout(t)
+      setDoing(null)
     }
   }, [])
 
@@ -255,7 +285,7 @@ export function FairRun({ def, make, onAgain, paid, tw = 190 }: { def: FairGameD
   }, [intro, help, quit, scene.current])
 
   const start = () => {
-    if (!startFairRound(def.id)) return
+    if (!payRound(def.id, FAIR_PLAY_COST).ok) return
     sfx.coin()
     setIntro(false)
     countdown()
@@ -269,7 +299,7 @@ export function FairRun({ def, make, onAgain, paid, tw = 190 }: { def: FairGameD
   }
 
   const again = () => {
-    if (!startFairRound(def.id)) return
+    if (!payRound(def.id, FAIR_PLAY_COST).ok) return
     sfx.coin()
     onAgain()
   }
@@ -297,8 +327,12 @@ export function FairRun({ def, make, onAgain, paid, tw = 190 }: { def: FairGameD
       </div>
       {hud?.bubbles.map((b) => {
         const [x, y] = stage.current?.toCss(b.x, b.y) ?? [0, 0]
+        // Keep long lines on screen (the bubble is centred on x).
+        const hw = host.current?.clientWidth ?? 390
+        const bw = Math.min(hw - 8, b.text.length * 7 + 16)
+        const left = Math.max(bw / 2 + 4, Math.min(hw - bw / 2 - 4, x))
         return (
-          <div key={b.id} class={`fairx-bubble ${b.tone}`} style={{ left: `${x}px`, top: `${y}px` }}>
+          <div key={b.id} class={`fairx-bubble ${b.tone}`} style={{ left: `${left}px`, top: `${y}px` }}>
             <PT text={b.text} size={11} weight={600} color={b.tone === 'warn' ? '#8e2a2a' : '#3b2616'} />
           </div>
         )
@@ -345,7 +379,8 @@ export function FairRun({ def, make, onAgain, paid, tw = 190 }: { def: FairGameD
           </div>
         </div>
       )}
-      {(intro || help) && !result && <FairGoalCard def={def} again={help} onStart={help ? () => setHelp(false) : start} onClose={intro ? closeActivity : () => setHelp(false)} />}
+      {intro && !help && !result && <BriefCard b={gameBooth(def.id)} onPlay={start} onClose={closeActivity} onHowTo={() => setHelp(true)} />}
+      {help && !result && <FairGoalCard def={def} again onStart={() => setHelp(false)} onClose={() => setHelp(false)} />}
       {quit && (
         <Window
           title="ออกจากเกมนี้?"

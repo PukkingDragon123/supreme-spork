@@ -1,13 +1,21 @@
 // ตักบาตร – monks walk by on their alms round (or paddle up by boat at the
-// riverside temple) and you place food in their bowls.
+// riverside temple). You stand barefoot on the mat, lift each offering from
+// your chest and place it in the monk's bowl, then kneel with your hands in a
+// wai while the monks chant the blessing.
 
 import { useEffect, useRef, useState } from 'preact/hooks'
 import type { Scene } from '../engine/stage'
 import { bake, type Surface } from '../engine/pixel'
 import { Particles } from '../engine/particles'
 import { rand } from '../engine/rng'
-import { avatarSprite, type AvatarLook } from '../art/avatar'
-import { monkSprite } from '../art/characters'
+import type { AvatarLook } from '../art/avatar'
+import { hdMonkSprite, hdMonkBowl } from '../art/minigames/monk'
+import { Critters, Crowd, drawFlowerPot, drawStall, drawTree } from '../art/minigames/scenery'
+import { AUNTIE_RICE, WORSHIPPERS } from '../art/minigames/hosts'
+import type { TExpr } from '../art/poses/temple'
+import { drawPlayer, godRays, handAt, impactBurst, Juice, lightPool, motes, softGlow, vignette, type Placed } from '../art/minigames/temple'
+import { starsFrom } from '../art/minigames/rules'
+import { tsfx } from '../art/minigames/sfx'
 import { iconSprite } from '../art/icons'
 import { P } from '../art/palette'
 import { treeLine } from '../scenes/maps/common'
@@ -17,15 +25,21 @@ import { ITEMS, ITEM_BY_ID } from '../game/data/items'
 import { ALMS_BLESSING } from '../game/data/chants'
 import { hourOf, isAlmsMorning } from '../game/time'
 import { closeActivity, type ActivityRequest } from '../ui/store'
-import { ActivityFrame, ResultCard, useStage, type ResultData } from './kit'
+import { ActivityFrame, useStage } from './kit'
 import { QuickBuy } from './quickbuy'
 import { Btn, Icon } from '../ui/components/common'
 import { sfx, haptic } from '../engine/audio'
 import { drawSky } from '../scenes/sky'
+import { Meter, PraiseLayer, StatusPill, TempleResult, praise, type TempleResultData } from './temple-ui'
 
 const BOUGHT_ALMS = ITEMS.filter((i) => i.category === 'alms').map((i) => i.id)
 const DISH_ALMS = ITEMS.filter((i) => (i.category as string) === 'dish').map((i) => i.id)
 const PER_MONK = 3
+const MONKS = 4
+/** Rice scoop meter: 0..SCOOP_MAX, the gold zone is SCOOP_LO..SCOOP_HI. */
+const SCOOP_MAX = 1.2
+const SCOOP_LO = 0.75
+const SCOOP_HI = 1
 
 interface Monk {
   x: number
@@ -35,27 +49,34 @@ interface Monk {
   state: 'walk' | 'wait' | 'receive' | 'leave' | 'bless' | 'gone'
   filled: number
   anim: number
+  /** Little bob when food lands in the bowl. */
+  bump: number
 }
 
-interface Flying {
+interface Giving {
   icon: string
-  x0: number
-  y0: number
-  x1: number
-  y1: number
   t: number
-  done: () => void
+  landed: boolean
+  onLand: () => void
 }
+
+const S = 1 // character scale
 
 class AlmsScene implements Scene {
   w = 170
   h = 320
   t = 0
   monks: Monk[] = []
-  flying: Flying[] = []
   particles = new Particles()
-  offerT = 0
+  juice = new Juice()
+  giving: Giving | null = null
+  scoop: number | null = null
   blessing = false
+  blessT = 0
+  critters = new Critters()
+  crowd = new Crowd()
+  face: TExpr | undefined
+  faceT = 0
   private bg: HTMLCanvasElement | null = null
   onReady?: (i: number) => void
   onAllServed?: () => void
@@ -70,29 +91,45 @@ class AlmsScene implements Scene {
     this.w = w
     this.h = h
     this.bg = null
-    if (!this.monks.length) this.spawn()
+    if (!this.monks.length) {
+      this.spawn()
+      const gy = this.groundY
+      if (!this.boat) {
+        this.critters.cat(Math.round(w * 0.86), Math.round(h * 0.4), '#f5a55a', 'loaf').bird(Math.round(w * 0.55), gy + 16, 'pigeon').bird(Math.round(w * 0.8), gy + 20, 'pigeon')
+        this.crowd.add({ look: WORSHIPPERS[4], x: Math.round(w * 0.64), y: gy - 11, idle: 'stand', reactPose: 'happy' })
+      } else {
+        this.critters.bird(Math.round(w * 0.15), gy - 3, 'sparrow')
+        this.crowd.add({ look: WORSHIPPERS[2], x: 12, y: gy - 1, idle: 'stand', reactPose: 'happy' })
+      }
+    }
+    else this.monks.filter((m) => m.state === 'walk' || m.state === 'wait').forEach((m, i) => (m.target = this.standX + i * 22))
   }
 
   get groundY() {
-    return Math.round(this.h * 0.7)
+    return Math.round(this.h * 0.64)
   }
   get playerX() {
-    return Math.round(this.w * 0.26)
+    return Math.round(this.w * 0.3)
   }
+  /** Where the receiving monk stands (sprite centre). */
   get standX() {
-    return this.playerX + 44
+    return this.playerX + 26
+  }
+  get monkY() {
+    return this.boat ? this.groundY + 6 : this.groundY
   }
 
   private spawn() {
     const skins = [2, 1, 3, 1]
-    this.monks = skins.map((skin, i) => ({
-      x: this.w + 20 + i * 34,
-      target: this.standX + i * 30,
+    this.monks = skins.slice(0, MONKS).map((skin, i) => ({
+      x: this.w + 24 + i * 24,
+      target: this.standX + i * 22,
       skin,
       novice: i === 3,
       state: 'walk',
       filled: 0,
       anim: Math.random(),
+      bump: 0,
     }))
   }
 
@@ -100,26 +137,48 @@ class AlmsScene implements Scene {
     return this.monks.find((m) => m.state === 'receive') ?? null
   }
 
+  private bowlOf(m: Monk): [number, number] {
+    const [bx, by] = hdMonkBowl(m.novice)
+    const bob = this.boat ? Math.round(Math.sin(this.t * 2 + m.x * 0.1)) : 0
+    return [m.x - 16 * S + (bx + 1) * S, this.monkY + bob - 54 * S + 1 + (by + 0.5) * S]
+  }
+
   private background() {
     if (this.bg) return this.bg
     const { w, h } = this
     const gy = this.groundY
     this.bg = bake(w, h, (g) => {
-      g.rect(0, 0, w, h, 'rgba(0,0,0,0)')
       if (this.boat) {
         treeLine(g, Math.round(h * 0.4), w, P.leafD, P.leaf)
-        g.rect(0, Math.round(h * 0.44), w, gy - Math.round(h * 0.44) + 40, P.waterD)
-        for (let y = Math.round(h * 0.46); y < h; y += 5) for (let x = (y * 7) % 11; x < w; x += 13) g.rect(x, y, 5, 1, P.water)
-        // Wooden pier where the player kneels.
-        g.rect(0, gy - 2, this.playerX + 28, 12, '#9a6a45')
-        for (let x = 0; x < this.playerX + 28; x += 7) g.vline(x, gy - 2, gy + 9, '#7a5238')
-        g.rect(0, gy - 2, this.playerX + 28, 2, '#c28e5c')
-        for (const x of [6, this.playerX + 20]) g.rect(x, gy + 8, 3, h - gy, '#6e4a35')
+        // far bank houses on stilts
+        for (let x = 4; x < w; x += 40) {
+          g.rect(x, Math.round(h * 0.38), 22, 12, '#b8844a')
+          g.poly([[x - 3, Math.round(h * 0.38)], [x + 11, Math.round(h * 0.33)], [x + 25, Math.round(h * 0.38)]], '#8e2a3c')
+          g.rect(x + 8, Math.round(h * 0.41), 5, 7, '#6e4a35')
+        }
+        g.gradientV(0, Math.round(h * 0.44), w, h - Math.round(h * 0.44), ['#5fa9c8', '#3f86ad', '#2f6f98'], 6)
+        for (let y = Math.round(h * 0.46); y < h; y += 5) for (let x = (y * 7) % 11; x < w; x += 13) g.rect(x, y, 5, 1, '#8fd0e6')
+        // pier
+        const px = this.playerX + 30
+        g.rect(0, gy - 2, px, 12, '#9a6a45')
+        for (let x = 0; x < px; x += 7) g.vline(x, gy - 2, gy + 9, '#7a5238')
+        g.rect(0, gy - 2, px, 2, '#c28e5c')
+        for (const x of [6, px - 8]) g.rect(x, gy + 8, 3, h - gy, '#6e4a35')
       } else {
-        // Temple wall, trees and sidewalk.
-        treeLine(g, Math.round(h * 0.33), w, P.leafD, P.leaf)
+        treeLine(g, Math.round(h * 0.3), w, P.leafD, P.leaf)
+        drawTree(g, Math.round(w * 0.12), Math.round(h * 0.42), 1.1, P.leaf, 2)
+        drawTree(g, Math.round(w * 0.95), Math.round(h * 0.41), 0.9, '#5ea653', 5)
+        // gate roof peeking over the wall
+        const gx = Math.round(w * 0.7)
         const wy = Math.round(h * 0.4)
-        g.rect(0, wy, w, gy - wy - 8, '#fffaf0')
+        g.poly([[gx - 30, wy - 8], [gx, wy - 30], [gx + 30, wy - 8]], '#c0392b')
+        g.poly([[gx - 22, wy - 14], [gx, wy - 30], [gx + 22, wy - 14]], P.orange)
+        g.line(gx - 30, wy - 8, gx, wy - 30, P.gold)
+        g.line(gx, wy - 30, gx + 30, wy - 8, P.gold)
+        g.rect(gx - 1, wy - 36, 2, 7, P.gold)
+        g.poly([[gx - 44, wy - 2], [gx - 30, wy - 12], [gx + 30, wy - 12], [gx + 44, wy - 2]], '#8e2a3c')
+        // white temple wall
+        g.rect(0, wy, w, gy - wy - 10, '#fffaf0')
         g.rect(0, wy, w, 4, P.redD)
         g.hline(0, w - 1, wy + 4, P.gold)
         for (let x = 6; x < w; x += 14) {
@@ -127,41 +186,40 @@ class AlmsScene implements Scene {
           g.px(x + 2, wy + 13, P.goldD)
           g.px(x + 3, wy + 13, P.goldD)
         }
-        g.rect(0, gy - 8, w, 8, '#e3d8c6')
-        g.rect(0, gy - 1, w, h - gy + 1, '#d9d2cc')
-        for (let y = gy + 4; y < gy + 30; y += 6) g.hline(0, w - 1, y, '#c6bdb8')
-        g.rect(0, gy + 30, w, 3, P.stoneD)
-        g.rect(0, gy + 33, w, h - gy - 33, '#6d6478')
-        // Mat under the player.
-        g.rect(this.playerX - 22, gy - 3, 40, 5, '#e0bb8a')
-        g.hline(this.playerX - 21, this.playerX + 16, gy - 2, P.red)
-        // Little table with rice pot.
-        g.rect(this.playerX - 30, gy - 12, 14, 3, '#9a6a45')
-        g.rect(this.playerX - 29, gy - 9, 2, 8, '#6e4a35')
-        g.rect(this.playerX - 19, gy - 9, 2, 8, '#6e4a35')
-        g.rect(this.playerX - 28, gy - 20, 10, 8, P.stone)
-        g.rect(this.playerX - 28, gy - 20, 10, 2, P.stoneL)
-        g.ellipse(this.playerX - 23, gy - 21, 4, 1.5, '#fffaf0')
+        // gate opening
+        g.rect(gx - 14, wy + 2, 28, gy - wy - 12, '#6e4a35')
+        g.rect(gx - 12, wy + 4, 24, gy - wy - 14, '#3a2838')
+        g.rect(gx - 12, gy - 20, 24, 10, '#5a4a4a')
+        g.rect(gx - 16, wy, 3, gy - wy - 10, P.gold)
+        g.rect(gx + 13, wy, 3, gy - wy - 10, P.gold)
+        // sidewalk tiles and the street
+        g.rect(0, gy - 10, w, 12, '#e3d8c6')
+        for (let x = 0; x < w; x += 9) g.vline(x, gy - 10, gy + 1, '#d2c6b2')
+        g.hline(0, w - 1, gy - 10, '#f3ead9')
+        g.rect(0, gy + 2, w, 3, P.stoneD)
+        g.rect(0, gy + 5, w, h - gy - 5, '#6d6478')
+        for (let x = 4; x < w; x += 22) g.rect(x, gy + 26, 10, 2, '#e4ddd6')
+        for (let i = 0; i < 60; i++) g.px((i * 53) % w, gy + 6 + ((i * 29) % (h - gy - 6)), '#7d7488')
+        // woven mat under the player and a little table with the rice pot
+        const px = this.playerX
+        g.rect(px - 26, gy - 4, 46, 6, '#e0bb8a')
+        for (let x = px - 25; x < px + 20; x += 3) g.vline(x, gy - 3, gy + 1, '#c9a06a')
+        g.hline(px - 25, px + 19, gy - 4, P.red)
+        // flower pots along the wall and the shade of an old tree
+        for (const [fx, c] of [
+          [w * 0.46, P.pink],
+          [w * 0.94, P.yellow],
+        ] as const)
+          drawFlowerPot(g, Math.round(fx), gy - 10, c)
       }
     })
     return this.bg
   }
 
   give(icon: string, onLand: () => void) {
-    const m = this.current()
-    if (!m) return false
-    this.offerT = 0.5
-    const s = 2
-    this.flying.push({
-      icon,
-      x0: this.playerX + 12,
-      y0: this.groundY - 34,
-      x1: m.x - 8,
-      y1: this.groundY - 26 * s + 22,
-      t: 0,
-      done: onLand,
-    })
-    sfx.whoosh()
+    if (!this.current() || this.giving) return false
+    this.giving = { icon, t: 0, landed: false, onLand }
+    tsfx.swish(0.8)
     return true
   }
 
@@ -170,27 +228,32 @@ class AlmsScene implements Scene {
     if (!m) return
     m.state = 'leave'
     const waiting = this.monks.filter((x) => x.state === 'wait' || x.state === 'walk')
-    waiting.forEach((x, i) => (x.target = this.standX + i * 30))
+    waiting.forEach((x, i) => (x.target = this.standX + i * 22))
   }
 
   startBlessing() {
     this.blessing = true
-    const alive = this.monks
-    alive.forEach((m, i) => {
+    this.blessT = 0
+    const n = this.monks.length
+    this.monks.forEach((m, i) => {
       m.state = 'bless'
-      m.x = this.w * 0.42 + i * 26
+      m.x = this.w * 0.44 + (i * (this.w * 0.52)) / Math.max(1, n - 1)
     })
   }
 
-  update(dt: number) {
+  update(rawDt: number) {
+    const dt = this.juice.step(rawDt)
     this.t += dt
-    this.offerT = Math.max(0, this.offerT - dt)
+    if (this.blessing) this.blessT += dt
     for (const m of this.monks) {
       m.anim += dt
+      m.bump = Math.max(0, m.bump - dt * 6)
       if (m.state === 'walk' || m.state === 'wait') {
         if (m.x > m.target + 0.5) {
+          const was = Math.floor(m.anim * 5)
           m.state = 'walk'
-          m.x = Math.max(m.target, m.x - 22 * dt)
+          m.x = Math.max(m.target, m.x - 26 * dt)
+          if (Math.floor((m.anim + dt) * 5) !== was && m.x < this.w + 10) tsfx.step(was)
         } else {
           const first = this.monks.find((x) => x.state === 'walk' || x.state === 'wait')
           if (first === m && !this.current() && !this.blessing) {
@@ -200,73 +263,158 @@ class AlmsScene implements Scene {
           } else m.state = 'wait'
         }
       } else if (m.state === 'leave') {
-        m.x -= 26 * dt
-        if (m.x < -30) m.state = 'gone'
+        m.x -= 30 * dt
+        if (m.x < -40) m.state = 'gone'
       }
     }
     if (!this.blessing && this.monks.every((m) => m.state === 'gone')) {
       this.onAllServed?.()
       this.onAllServed = undefined
     }
-    for (let i = this.flying.length - 1; i >= 0; i--) {
-      const f = this.flying[i]
-      f.t += dt / 0.55
-      if (f.t >= 1) {
-        this.flying.splice(i, 1)
-        this.particles.sparkles(f.x1 + 4, f.y1, 10)
-        f.done()
+    const gv = this.giving
+    if (gv) {
+      gv.t += dt
+      if (!gv.landed && gv.t >= 0.62) {
+        gv.landed = true
+        const m = this.current()
+        if (m) {
+          m.filled++
+          m.bump = 1
+          const [bx, by] = this.bowlOf(m)
+          impactBurst(this.particles, bx, by - 2, '#fff3a6', 12)
+          for (let i = 0; i < 5; i++) this.particles.add({ kind: 'dot', x: bx + rand(-4, 4), y: by - 2, vx: rand(-20, 20), vy: rand(-40, -15), g: 140, max: 0.5, color: '#fffaf0' })
+        }
+        this.juice.shake(0.18)
+        this.crowd.cheer('happy', 1)
+        this.critters.startle(this.standX, this.groundY, 60)
+        this.feel('happy', 0.9)
+        this.juice.hitstop(0.05)
+        sfx.plop()
+        gv.onLand()
       }
+      if (gv.t > 0.95) this.giving = null
     }
-    if (this.blessing && Math.random() < dt * 6) this.particles.sparkles(rand(this.w * 0.35, this.w), rand(this.h * 0.35, this.groundY - 20), 1, '#fff3a6')
+    if (this.blessing) {
+      motes(this.particles, dt, this.w, this.groundY - 30, 8, '#fff3a6')
+      if (Math.random() < dt * 3) this.particles.sparkles(rand(this.w * 0.35, this.w), rand(this.h * 0.3, this.groundY - 40), 1, '#fff3a6')
+    } else motes(this.particles, dt, this.w, this.groundY, 1.5, '#fff8d8')
+    this.critters.update(dt, this.w)
+    this.crowd.update(dt)
+    this.faceT = Math.max(0, this.faceT - dt)
+    if (this.faceT <= 0) this.face = undefined
     this.particles.update(dt)
+  }
+
+  /** Show a face on the player for a moment. */
+  feel(e: TExpr, sec = 0.8) {
+    this.face = e
+    this.faceT = sec
+  }
+
+  private playerPose(): { pose: Parameters<typeof drawPlayer>[2]; hold: 'chest' | 'reach' | 'scoop' | null } {
+    if (this.blessing) return { pose: 'kneelWai', hold: null }
+    if (this.giving) return this.giving.t < 0.3 ? { pose: 'alms_hold', hold: 'chest' } : { pose: 'alms_give', hold: this.giving.landed ? null : 'reach' }
+    if (this.scoop !== null) return { pose: 'alms_scoop', hold: 'scoop' }
+    if (this.current()) return { pose: 'alms_hold', hold: null }
+    return { pose: 'stand', hold: null }
   }
 
   render(g: Surface) {
     const { w, h } = this
+    const gy = this.groundY
+    this.juice.begin(g)
     drawSky(g, 0, 0, w, Math.round(h * 0.45), this.morning ? 'dawn' : 'day', this.t)
     g.draw(this.background(), 0, 0)
-    const gy = this.groundY
-    // Monks (2x), facing left toward the player.
+    if (this.morning) godRays(g, 26, Math.round(h * 0.45) - 10, h * 0.7, this.t, '#ffe7b0', 0.07, 8)
+    lightPool(g, this.playerX + 20, gy, 60, '#ffe7a0', this.morning ? 0.9 : 0.5)
+    this.critters.render(g)
+    if (!this.boat) drawStall(g, 14, gy - 7, 'rice', AUNTIE_RICE, this.t, !this.blessing)
+    this.crowd.render(g)
+    // monks (behind the player)
+    if (this.blessing && this.boat) this.drawBoat(g, w * 0.44 + 6, this.monkY + Math.round(Math.sin(this.t * 2)), w + 6)
     for (const m of this.monks) {
       if (m.state === 'gone') continue
-      let s
-      if (m.state === 'bless') s = monkSprite('front', 'bless', { novice: m.novice, skin: m.skin })
-      else if (m.state === 'receive') s = monkSprite('side', 'receive', { novice: m.novice, skin: m.skin, flip: true })
-      else if (m.state === 'walk' || m.state === 'leave') s = monkSprite('side', Math.floor(m.anim * 4) % 2 ? 'walk1' : 'walk2', { novice: m.novice, skin: m.skin, flip: true })
-      else s = monkSprite('side', 'stand', { novice: m.novice, skin: m.skin, flip: true })
-      const by = this.boat && m.state !== 'bless' ? gy + 6 + Math.round(Math.sin(this.t * 2 + m.x) * 1) : gy
-      if (this.boat && m.state !== 'bless') this.drawBoat(g, m.x, by)
-      g.drawScaled(s.canvas, Math.round(m.x - s.w), Math.round(by - s.h * 2 + 2), 2)
+      if (m.state === 'bless') {
+        const chant = Math.floor(this.blessT * 2.4 + m.x) % 2 === 0
+        const s = hdMonkSprite('front', chant ? 'chant' : 'bless', { novice: m.novice, skin: m.skin })
+        const by = this.boat ? this.monkY - 2 + Math.round(Math.sin(this.t * 2)) : gy - 9
+        g.ellipse(m.x, by - 1, 9, 2, 'rgba(30,14,30,0.25)')
+        g.draw(s.canvas, Math.round(m.x - s.w / 2), Math.round(by - s.h + 1))
+        continue
+      }
+      const frame = m.state === 'receive' ? 'receive' : m.state === 'walk' || m.state === 'leave' ? (Math.floor(m.anim * 5) % 2 ? 'walk1' : 'walk2') : 'stand'
+      const s = hdMonkSprite('side', frame, { novice: m.novice, skin: m.skin, fill: m.filled })
+      const bob = this.boat ? Math.round(Math.sin(this.t * 2 + m.x * 0.1)) : 0
+      const by = this.monkY + bob - Math.round(m.bump * 2)
+      if (this.boat) this.drawBoat(g, m.x, this.monkY + bob)
+      else g.ellipse(m.x, by - 1, 10, 2, 'rgba(30,14,30,0.22)')
+      g.drawScaled(s.canvas, Math.round(m.x - (s.w * S) / 2), Math.round(by - s.h * S + 1), S)
+      if (m.state === 'receive' && !this.giving) {
+        const [bx, bby] = this.bowlOf(m)
+        softGlow(g, bx, bby, 6, 0.5 + Math.sin(this.t * 5) * 0.3, '#fff3a6')
+      }
     }
-    // Player.
-    const pose = this.blessing ? 'wai' : this.offerT > 0 ? 'offer' : 'stand'
-    const view = this.blessing ? 'front' : 'side'
-    const ps = avatarSprite(this.look, view, pose, { barefoot: true })
-    g.drawScaled(ps.canvas, Math.round(this.playerX - ps.w), Math.round(gy - ps.h * 2 + 2), 2)
-    // Flying items.
-    for (const f of this.flying) {
-      const t = f.t
-      const x = f.x0 + (f.x1 - f.x0) * t
-      const y = f.y0 + (f.y1 - f.y0) * t - Math.sin(t * Math.PI) * 26
-      const ic = iconSprite(f.icon)
-      g.draw(ic.canvas, Math.round(x - 8), Math.round(y - 8))
-    }
+    // the player
+    const { pose, hold } = this.playerPose()
+    const bob = pose === 'stand' ? 0 : pose === 'alms_hold' && !this.giving ? Math.round(Math.sin(this.t * 3) * 0.6) : 0
+    const expr = this.face ?? (pose === 'alms_scoop' ? 'think' : undefined)
+    const pl = drawPlayer(g, this.look, pose, 'front', this.playerX, gy, { scale: S, t: this.t, barefoot: true, bob, expr })
+    this.drawHeld(g, pl, hold)
     this.particles.render(g)
-    void h
+    if (this.blessing) godRays(g, w * 0.7, gy - 60, h * 0.6, this.t, '#fff3c4', 0.06 * Math.min(1, this.blessT), 10)
+    vignette(g, '#1b1026', 0.45)
+    this.juice.end(g)
   }
 
-  private drawBoat(g: Surface, x: number, y: number) {
+  private drawHeld(g: Surface, pl: Placed, hold: 'chest' | 'reach' | 'scoop' | null) {
+    const gv = this.giving
+    if (hold === 'chest' && gv) {
+      const [lx, ly] = handAt(pl, 1)
+      const [rx, ry] = handAt(pl, -1)
+      const ic = iconSprite(gv.icon)
+      const lift = Math.min(1, gv.t / 0.3) * 3
+      g.draw(ic.canvas, Math.round((lx + rx) / 2 - 8), Math.round((ly + ry) / 2 - 13 - lift))
+    } else if (hold === 'reach' && gv) {
+      const m = this.current()
+      const [hx, hy] = handAt(pl, -1)
+      const [bx, by] = m ? this.bowlOf(m) : [hx + 10, hy]
+      const u = Math.min(1, Math.max(0, (gv.t - 0.3) / 0.32))
+      const e = u * u * (3 - 2 * u)
+      const x = hx + (bx - hx) * e
+      const y = hy - 10 + (by - 6 - (hy - 10)) * e - Math.sin(e * Math.PI) * 10
+      const ic = iconSprite(gv.icon)
+      g.draw(ic.canvas, Math.round(x - 8), Math.round(y - 8))
+      if (u > 0.2) this.particles.add({ kind: 'sparkle', x: x + rand(-3, 3), y: y + rand(-3, 3), max: 0.3, color: '#fff3a6' })
+    } else if (hold === 'scoop' && this.scoop !== null) {
+      // brass ladle (ทัพพี) with rice heaped by the scoop amount
+      const [hx, hy] = handAt(pl, -1)
+      const tx = hx + 7
+      const ty = hy - 10
+      g.thickLine(hx, hy, tx, ty, 2, '#b8742a')
+      g.line(hx, hy - 1, tx, ty - 1, P.gold)
+      g.ellipse(tx + 2, ty - 1, 5, 3, P.goldD)
+      const f = Math.min(1.2, this.scoop)
+      if (f > 0.05) g.ellipse(tx + 2, ty - 2 - f * 2, 4 * Math.min(1, f + 0.3), 1.5 + f * 2.4, '#fffaf0')
+      if (f > SCOOP_HI) for (let i = 0; i < 2; i++) this.particles.add({ kind: 'dot', x: tx + rand(-3, 6), y: ty - 3, vy: rand(10, 30), g: 120, max: 0.6, color: '#fffaf0' })
+      if (f >= SCOOP_LO && f <= SCOOP_HI) softGlow(g, tx + 2, ty - 3, 8, 0.8, '#fff3a6')
+    }
+  }
+
+  private drawBoat(g: Surface, x: number, y: number, x1 = x + 16) {
+    const x0 = x - 18
     g.poly(
       [
-        [x - 44, y - 8],
-        [x + 20, y - 8],
-        [x + 14, y + 2],
-        [x - 38, y + 2],
+        [x0 - 4, y - 5],
+        [x1 + 4, y - 5],
+        [x1, y + 2],
+        [x0, y + 2],
       ],
       '#8a5a32',
     )
-    g.hline(x - 44, x + 20, y - 8, '#c28e5c')
-    g.line(x + 10, y - 30, x + 26, y + 6, '#6e4a35')
+    g.hline(x0 - 4, x1 + 4, y - 5, '#c28e5c')
+    g.hline(x0 - 2, x1 + 2, y - 3, '#6e4a35')
+    g.line(x1 - 2, y - 26, x1 + 8, y + 3, '#6e4a35')
+    for (let i = 0; i < 3; i++) g.rect(x0 + i * ((x1 - x0) / 2) + ((this.t * 8) % 6), y + 3, 5, 1, '#bfe6f2')
   }
 }
 
@@ -274,18 +422,19 @@ export function AlmsActivity({ req }: { req: ActivityRequest }) {
   const boat = !!req.params?.boat
   const morning = isAlmsMorning(hourOf())
   const look = game.value.player.look
-  const { host, scene } = useStage(() => new AlmsScene(look, boat, morning), { targetWidth: 170 })
+  const { host, scene, stage } = useStage(() => new AlmsScene(look, boat, morning), { targetWidth: 130 })
   const [ready, setReady] = useState(false)
   const [monkIdx, setMonkIdx] = useState(0)
   const [given, setGiven] = useState(0)
   const [total, setTotal] = useState(0)
   const [phase, setPhase] = useState<'serve' | 'bless' | 'done'>('serve')
-  const [result, setResult] = useState<ResultData | null>(null)
+  const [result, setResult] = useState<TempleResultData | null>(null)
   const [buy, setBuy] = useState(false)
   const [scoop, setScoop] = useState<null | { fill: number; holding: boolean }>(null)
   const scoopTimer = useRef<number | null>(null)
   const meritRef = useRef(0)
   const itemsRef = useRef(0)
+  const perfectRef = useRef(0)
   // Home-cooked dishes you own come first: they are worth far more merit.
   const ALMS_ITEMS = [...DISH_ALMS.filter((id) => count(id) > 0), ...BOUGHT_ALMS]
   const noItems = ALMS_ITEMS.every((id) => count(id) <= 0)
@@ -306,8 +455,11 @@ export function AlmsActivity({ req }: { req: ActivityRequest }) {
     if (!sc) return
     setPhase('bless')
     sc.startBlessing()
+    sc.crowd.cheer('wai', 99)
     sfx.hum(0)
+    ;[1, 2, 3, 4].forEach((i) => setTimeout(() => sfx.hum(i), i * 900))
     setTimeout(() => sfx.bell(1), 800)
+    setTimeout(() => praise(stage.current, sc.w * 0.7, sc.groundY - 60, 'ยถา วาริวหา...', 'gold'), 600)
     setTimeout(() => {
       const bonus = itemsRef.current > 0 ? addMerit(10, { key: 'alms', free: 2, morning: true, area: boat ? 'river' : 'wat' }) : 0
       if (itemsRef.current > 0) {
@@ -320,45 +472,52 @@ export function AlmsActivity({ req }: { req: ActivityRequest }) {
         title: itemsRef.current > 0 ? 'ตักบาตรเสร็จแล้ว' : 'พระให้พรแล้ว',
         merit: meritRef.current,
         icon: 'bowl',
+        stars: itemsRef.current > 0 ? starsFrom(itemsRef.current + perfectRef.current, [1, 5, 10]) : 0,
+        pose: 'kneelWai',
         lines: [
-          `ถวายภัตตาหาร ${itemsRef.current} อย่าง`,
+          `ถวายภัตตาหาร ${itemsRef.current} อย่าง${perfectRef.current ? ` · ตักข้าวพอดี ${perfectRef.current} ครั้ง` : ''}`,
           morning ? 'ตักบาตรยามเช้า ได้บุญ x2' : 'ตักบาตรช่วง 05:00-09:00 ได้บุญ x2',
           'พระสงฆ์อนุโมทนา: ' + ALMS_BLESSING.split(' ').slice(0, 4).join(' ') + '...',
         ],
       })
-    }, 5200)
+    }, 5600)
   }
 
   const giveItem = (id: string, bonus = 0) => {
     const sc = scene.current
     const it = ITEM_BY_ID[id]
-    if (!sc || !it || !ready) return
+    if (!sc || !it || !ready || sc.giving) return
     if (!useItem(id)) {
       setBuy(true)
       return
     }
+    const n = given + 1
     const ok = sc.give(it.icon, () => {
       const m = addMerit(it.merit + bonus, { key: 'alms_item', free: 12, morning: true, area: boat ? 'river' : 'wat' })
       meritRef.current += m
       itemsRef.current += 1
       if (it.category === 'dish') track('dish_alms')
       setTotal(meritRef.current)
-      sc.particles.popText(sc.standX - 8, sc.groundY - 70, `+${m}`)
+      sc.particles.popText(sc.standX - 8, sc.groundY - 50, `+${m}`)
       sfx.merit()
-      haptic(10)
+      haptic(12)
+      if (n >= PER_MONK) {
+        praise(stage.current, sc.standX - 10, sc.groundY - 66, 'ครบ ๓ อย่าง สาธุ!', 'gold')
+        tsfx.praise()
+      } else if (it.category === 'dish') praise(stage.current, sc.standX - 10, sc.groundY - 66, 'ฝีมือทำเอง!', 'pink')
     })
     if (!ok) return
-    const n = given + 1
     setGiven(n)
     if (n >= PER_MONK) {
       setReady(false)
-      setTimeout(() => sc.next(), 700)
+      setTimeout(() => sc.next(), 1100)
     }
   }
 
   const pick = (id: string) => {
     if (id === 'rice') {
       setScoop({ fill: 0, holding: false })
+      if (scene.current) scene.current.scoop = 0
       return
     }
     giveItem(id)
@@ -368,7 +527,12 @@ export function AlmsActivity({ req }: { req: ActivityRequest }) {
     if (scoopTimer.current) return
     setScoop((s) => (s ? { ...s, holding: true } : s))
     scoopTimer.current = window.setInterval(() => {
-      setScoop((s) => (s ? { ...s, fill: Math.min(1.2, s.fill + 0.03) } : s))
+      setScoop((s) => {
+        if (!s) return s
+        const fill = Math.min(SCOOP_MAX, s.fill + 0.03)
+        if (scene.current) scene.current.scoop = fill
+        return { ...s, fill }
+      })
     }, 40)
   }
   const scoopEnd = () => {
@@ -376,97 +540,113 @@ export function AlmsActivity({ req }: { req: ActivityRequest }) {
     scoopTimer.current = null
     setScoop((s) => {
       if (!s || !s.holding) return s
-      const perfect = s.fill >= 0.75 && s.fill <= 1
+      const perfect = s.fill >= SCOOP_LO && s.fill <= SCOOP_HI
+      if (scene.current) scene.current.scoop = null
       if (s.fill > 0.15) {
         giveItem('rice', perfect ? 2 : 0)
-        if (perfect) scene.current?.particles.popText(scene.current.playerX + 10, scene.current.groundY - 64, 'x1.5!', '#ffe45e')
+        const sc = scene.current
+        if (perfect && sc) {
+          perfectRef.current++
+          sc.feel('open', 0.7)
+          praise(stage.current, sc.playerX + 20, sc.groundY - 66, 'ตักพอดีเป๊ะ!', 'gold')
+          tsfx.praise()
+        } else if (s.fill > SCOOP_HI && sc) praise(stage.current, sc.playerX + 20, sc.groundY - 66, 'ล้นทัพพี!', 'pink')
       }
       return null
     })
   }
+  const cancelScoop = () => {
+    if (scoopTimer.current) clearInterval(scoopTimer.current)
+    scoopTimer.current = null
+    if (scene.current) scene.current.scoop = null
+    setScoop(null)
+  }
 
+  const who = monkIdx === 3 ? 'สามเณร' : `พระรูปที่ ${monkIdx + 1}`
   return (
     <div class="activity">
       <div class="stage-host" ref={host} />
       <ActivityFrame title={boat ? 'ตักบาตรทางเรือ' : 'ตักบาตรหน้าวัด'} onClose={closeActivity} />
+      <PraiseLayer />
+      {phase === 'serve' && <StatusPill text={ready ? `${who} · ${given}/${PER_MONK}` : 'รอพระบิณฑบาต'} dots={MONKS} on={monkIdx + (ready ? 0 : 0)} />}
       {phase === 'serve' && (
         <div class="act-bottom">
           <div class="panel act-tip">
-            {noItems ? (
+            {scoop ? (
               <>
-                <div class="subtitle">ยังไม่มีของใส่บาตร</div>
-                <Btn tone="green" block onClick={() => setBuy(true)}>
-                  <Icon name="shop" size={18} /> ซื้อของใส่บาตร
-                </Btn>
-              </>
-            ) : ready ? (
-              <>
-                <div class="subtitle">
-                  ถวายแด่{monkIdx === 3 ? 'สามเณร' : `พระรูปที่ ${monkIdx + 1}`} ({given}/{PER_MONK})
+                <div class="subtitle">ตักข้าวสวยใส่ทัพพี</div>
+                <div class="small muted">กดค้างเพื่อตัก ปล่อยเมื่อข้าวอยู่ในช่องสีทอง</div>
+                <Meter fill={scoop.fill} max={SCOOP_MAX} lo={SCOOP_LO} hi={SCOOP_HI} tone="rice" />
+                <div class="row">
+                  <Btn tone="paper" onClick={cancelScoop}>
+                    ยกเลิก
+                  </Btn>
+                  <button class="btn big green grow" onPointerDown={scoopStart} onPointerUp={scoopEnd} onPointerLeave={scoopEnd} onPointerCancel={scoopEnd} style={{ touchAction: 'none' }}>
+                    {scoop.fill > SCOOP_HI ? 'ล้นแล้ว!' : 'กดค้าง ตักข้าว'}
+                  </button>
                 </div>
-                <div class="small muted">{morning ? 'ตักบาตรยามเช้า บุญ x2' : 'แตะของที่ต้องการถวาย'} · ได้บุญแล้ว {total}</div>
               </>
             ) : (
-              <div class="subtitle">พระสงฆ์กำลังเดินบิณฑบาตมา...</div>
+              <>
+                {noItems ? (
+                  <>
+                    <div class="subtitle">ยังไม่มีของใส่บาตร</div>
+                    <Btn tone="green" block onClick={() => setBuy(true)}>
+                      <Icon name="shop" size={18} /> ซื้อของใส่บาตร
+                    </Btn>
+                  </>
+                ) : ready ? (
+                  <>
+                    <div class="subtitle">แตะของเพื่อยกใส่บาตร{who}</div>
+                    <div class="small muted">{morning ? 'ตักบาตรยามเช้า บุญ x2' : 'ช่วง 5–9 โมงเช้าได้บุญ x2'} · ได้บุญแล้ว {total}</div>
+                  </>
+                ) : (
+                  <div class="subtitle">พระสงฆ์กำลังเดินบิณฑบาตมา...</div>
+                )}
+                <div class="tray">
+                  {ALMS_ITEMS.map((id) => {
+                    const it = ITEM_BY_ID[id]
+                    const n = count(id)
+                    return (
+                      <button key={id} class="panel tray-item" disabled={n <= 0 || !ready} onClick={() => (sfx.tap(), pick(id))}>
+                        <Icon name={it.icon} size={30} />
+                        <span>{it.name}</span>
+                        <span class="qty num">x{n}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div class="row">
+                  <Btn tone="paper" class="grow" onClick={() => setBuy(true)}>
+                    ซื้อเพิ่ม
+                  </Btn>
+                  <Btn
+                    tone="green"
+                    class="grow"
+                    disabled={!ready || given === 0}
+                    onClick={() => {
+                      setReady(false)
+                      scene.current?.next()
+                    }}
+                  >
+                    นิมนต์รูปถัดไป
+                  </Btn>
+                </div>
+              </>
             )}
-            <div class="tray">
-              {ALMS_ITEMS.map((id) => {
-                const it = ITEM_BY_ID[id]
-                const n = count(id)
-                return (
-                  <button key={id} class="panel tray-item" disabled={n <= 0 || !ready} onClick={() => (sfx.tap(), pick(id))}>
-                    <Icon name={it.icon} size={30} />
-                    <span>{it.name}</span>
-                    <span class="qty num">x{n}</span>
-                  </button>
-                )
-              })}
-            </div>
-            <div class="row">
-              <Btn tone="paper" class="grow" onClick={() => setBuy(true)}>
-                ซื้อเพิ่ม
-              </Btn>
-              <Btn
-                tone="green"
-                class="grow"
-                disabled={!ready || given === 0}
-                onClick={() => {
-                  setReady(false)
-                  scene.current?.next()
-                }}
-              >
-                นิมนต์รูปถัดไป
-              </Btn>
-            </div>
           </div>
         </div>
       )}
       {phase === 'bless' && (
         <div class="act-bottom">
           <div class="panel act-tip blessing">
-            <div class="small muted">พระสงฆ์ให้พร · ผู้ใส่บาตรพนมมือรับพร</div>
+            <div class="small muted">พระสงฆ์ให้พร · คุกเข่าพนมมือรับพร</div>
             <div class="bless-text">{ALMS_BLESSING}</div>
           </div>
         </div>
       )}
-      {scoop && (
-        <div class="modal-backdrop" onPointerUp={scoopEnd}>
-          <div class="panel modal center">
-            <div class="subtitle">ตักข้าวใส่บาตร</div>
-            <div class="small muted">กดค้างเพื่อตัก ปล่อยเมื่อข้าวเต็มทัพพี (ช่องสีทอง)</div>
-            <div class="scoop-meter">
-              <span class="scoop-zone" />
-              <span class="scoop-fill" style={{ height: `${Math.min(100, (scoop.fill / 1.2) * 100)}%` }} />
-            </div>
-            <button class="btn big green block" onPointerDown={scoopStart} onPointerUp={scoopEnd} onPointerLeave={scoopEnd} style={{ touchAction: 'none' }}>
-              {scoop.fill > 1 ? 'ล้นแล้ว!' : 'กดค้าง ตักข้าว'}
-            </button>
-          </div>
-        </div>
-      )}
       {buy && <QuickBuy ids={BOUGHT_ALMS} title="ร้านของใส่บาตร" onClose={() => setBuy(false)} />}
-      {result && <ResultCard r={result} onDone={closeActivity} />}
+      {result && <TempleResult r={result} onDone={closeActivity} />}
     </div>
   )
 }
-

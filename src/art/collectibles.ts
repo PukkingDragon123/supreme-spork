@@ -17,7 +17,7 @@ const W = '#fffaf0'
 const SKIN = '#f0bd90'
 const SKIN_D = '#d6966c'
 
-interface MP {
+export interface MP {
   m: Color
   mL: Color
   mD: Color
@@ -44,7 +44,7 @@ function ramp(pal: [string, string, string]): MP {
   }
 }
 
-type Motif = (g: Surface, p: MP) => void
+export type Motif = (g: Surface, p: MP) => void
 /** Colour ramp handed to motif painters: main / accent / detail with light and dark shades. */
 export type MotifRamp = MP
 
@@ -1279,9 +1279,14 @@ const ALIAS: Record<string, string> = { lotus: 'flower', fish: 'betta', temple: 
 
 export const MOTIF_NAMES = Object.keys(MOTIFS)
 
-/** Add motifs from other modules (e.g. the beach shells, src/art/beachMotifs.ts). Existing names are kept. */
-export function registerMotif(name: string, fn: (g: Surface, p: MotifRamp) => void) {
-  if (!MOTIFS[name]) MOTIFS[name] = fn
+/** Add motifs from other systems (e.g. the temple fair's goldfish and teddy). Existing names win. */
+export function registerMotifs(extra: Record<string, Motif>) {
+  for (const [k, fn] of Object.entries(extra)) if (!MOTIFS[k]) MOTIFS[k] = fn
+}
+
+/** Add one motif (e.g. the beach shells, src/art/beachMotifs.ts). Existing names are kept. */
+export function registerMotif(name: string, fn: Motif) {
+  registerMotifs({ [name]: fn })
 }
 
 export function hasMotif(m: string): boolean {

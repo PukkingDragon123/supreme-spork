@@ -3,7 +3,10 @@
 import { useState } from 'preact/hooks'
 import { game } from '../../game/state'
 import { levelFromMerit, meritForLevel } from '../../game/economy'
-import { COOKING_LEVEL, DELIVERY_FEE, buyMissing, dishFor, missingCost, missingIngredients, recipeBook, recipeStatus } from '../../game/cooking'
+import { COOKING_LEVEL, dishFor, recipeBook, recipeStatus } from '../../game/cooking'
+import { BUNDLE_OFF, bundleQuote, buyBundle, firstCookActive } from '../../game/workDeals'
+import { dollPortrait } from '../../art/doll'
+import type { AvatarLook } from '../../art/avatar'
 import { RECIPE_BY_ID, STEP_NAMES, type CookRecipe } from '../../game/data/recipes'
 import { ITEM_BY_ID } from '../../game/data/items'
 import { PBtn, Window } from '../../ui/components/kit'
@@ -14,6 +17,50 @@ import { sfx } from '../../engine/audio'
 import { DishImg, FoodIcon } from './parts'
 import { spriteDataUrl } from '../../engine/sprite'
 import { workerCard } from '../../art/workActor'
+
+const CLERK: AvatarLook = { gender: 'f', skin: 1, face: 4, hairColor: 1, hair: 'hair_ponytail', top: 'top_convenience', bottom: 'bot_black', shoes: null, head: null, neck: null, hand: null, back: null }
+
+/** 7-บุญ clerk with today's price list and set deal for the missing ingredients. */
+function MartBrief({ recipeId, onBought }: { recipeId: string; onBought: () => void }) {
+  const q = bundleQuote(recipeId)
+  const face = spriteDataUrl(dollPortrait(CLERK, 30), 2)
+  const buy = () => {
+    if (buyBundle(recipeId)) {
+      sfx.purchase()
+      toast(q.deal ? `ได้วัตถุดิบครบชุด ประหยัด ${q.full - q.price} คอยน์!` : 'ได้วัตถุดิบแล้ว ไปทำอาหารกัน!', 'bag')
+      onBought()
+    }
+  }
+  return (
+    <div class="cook-mart">
+      <div class="cook-mart-who">
+        <span class="cook-mart-face">
+          <img src={face} width={52} height={52} alt="" draggable={false} />
+        </span>
+        <div class="cook-mart-say">
+          <b>น้องมะลิ · 7-บุญ</b>
+          <span>{q.deal ? `“ขาดอีก ${q.lines.length} อย่าง ซื้อครบชุดลด ${Math.round(BUNDLE_OFF * 100)}% ส่งถึงครัวเลยค่า~”` : '“ขาดอีกอย่างเดียว หยิบให้เลยค่า ซื้อ 2 อย่างขึ้นไปลดนะ~”'}</span>
+        </div>
+      </div>
+      <div class="cook-mart-list">
+        {q.lines.map((l) => (
+          <div class="cook-mart-line" key={l.id}>
+            <FoodIcon id={l.id} size={20} />
+            <span class="grow">
+              {l.name} ×{l.packs}
+            </span>
+            <Coin n={l.total} size={14} />
+          </div>
+        ))}
+      </div>
+      <PBtn tone="gold" block icon="bag" onClick={buy}>
+        {q.deal ? 'ซื้อชุดวัตถุดิบ ' : 'ซื้อวัตถุดิบ '}
+        {q.deal && <s class="cook-mart-was">{q.full}</s>}
+        <Coin n={q.price} size={16} />
+      </PBtn>
+    </div>
+  )
+}
 
 /** The player in an apron peeking over the start button. */
 function ChefBust() {
@@ -76,24 +123,17 @@ export function RecipeBook({ selected, onSelect, onCook, onClose }: { selected: 
   const r = RECIPE_BY_ID[selected]
   const lv = levelFromMerit(game.value.merit).level
   const st = recipeStatus(r.id)
-  const miss = missingIngredients(r.id)
-  const cost = missingCost(r.id)
   const plain = dishFor(r.id, 1)!
   const gold = dishFor(r.id, 3)!
-  const deliver = () => {
-    if (buyMissing(r.id, DELIVERY_FEE)) {
-      sfx.purchase()
-      toast('ไรเดอร์ส่งวัตถุดิบถึงครัวแล้ว!', 'bag')
-      bump((n) => n + 1)
-    }
-  }
+  const q = bundleQuote(r.id)
+  const firstCook = firstCookActive()
   return (
     <Window title="ตำราอาหารบุญดี" icon="book" onClose={onClose} full class="cook-book">
       <div class="cook-detail panel">
         <div class="row cook-detail-head">
           <DishImg id={plain.id} scale={2} />
           <div class="grow">
-            <PT text={r.name} size={16} weight={600} {...TONE_TEXT.ink} />
+            <PT text={r.name} size={r.name.length > 12 ? 12 : r.name.length > 9 ? 14 : 16} weight={600} {...TONE_TEXT.ink} />
             <div class="small muted">{r.desc}</div>
             <div class="row wrap cook-merit">
               <span class="chip pink">
@@ -105,6 +145,14 @@ export function RecipeBook({ selected, onSelect, onCook, onClose }: { selected: 
               <span class="chip">ได้ {r.qty} ที่</span>
             </div>
           </div>
+        </div>
+        <div class="cook-deals">
+          <span class={`cook-deal ${q.deal ? 'on' : ''}`}>
+            <Icon name="bag" size={14} /> ซื้อครบชุดลด {Math.round(BUNDLE_OFF * 100)}%
+          </span>
+          <span class={`cook-deal ${firstCook ? 'on' : ''}`}>
+            <Icon name="merit" size={14} /> จานแรกของวัน บุญ ×2{firstCook ? '' : ' (ใช้แล้ว)'}
+          </span>
         </div>
         <div class="cook-sub">วัตถุดิบ</div>
         <div class="cook-ings">
@@ -138,18 +186,8 @@ export function RecipeBook({ selected, onSelect, onCook, onClose }: { selected: 
           <div class="panel dark small center">
             <Icon name="lock" size={16} /> ปลดล็อกเมนูนี้ที่เลเวล {r.level} (ตอนนี้ Lv.{lv})
           </div>
-        ) : st === 'missing' ? (
-          <>
-            <div class="panel soft small cook-mart-hint">
-              <Icon name="shop" size={18} /> ขาด {Object.entries(miss).map(([id, n]) => `${ITEM_BY_ID[id]?.name ?? id} ×${n}`).join(', ')}
-              <br />
-              <b>ไปซื้อที่ 7-บุญ</b> ร้านสะดวกซื้อตรงข้ามประตูวัด มีวัตถุดิบครบทุกเมนู
-            </div>
-            <PBtn tone="blue" block icon="bag" onClick={deliver}>
-              สั่งไรเดอร์ส่งด่วน
-              <Coin n={cost.coins + DELIVERY_FEE} size={16} />
-            </PBtn>
-          </>
+        ) : st === 'missing' && q.lines.length ? (
+          <MartBrief recipeId={r.id} onBought={() => bump((n) => n + 1)} />
         ) : (
           <div class="cook-go">
             <ChefBust />
@@ -157,6 +195,11 @@ export function RecipeBook({ selected, onSelect, onCook, onClose }: { selected: 
               เริ่มทำอาหาร!
             </PBtn>
           </div>
+        )}
+        {st !== 'locked' && (
+          <PBtn tone="paper" block onClick={() => (sfx.close(), onClose())}>
+            กลับ
+          </PBtn>
         )}
       </div>
       <div class="cook-list">

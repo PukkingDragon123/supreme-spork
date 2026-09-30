@@ -11,6 +11,7 @@ import { P } from '../../art/palette'
 import { JobScene, type JobSummary } from './base'
 import { toStars, type JobStars } from '../../game/jobs'
 import { Worker } from './worker'
+import { Life } from './life'
 import { wsfx } from './workSfx'
 import { WP } from '../../art/poses/work'
 import { sunRays } from '../../art/workFx'
@@ -104,6 +105,9 @@ export class FishScene extends JobScene {
     this.worker.view = 'back'
     this.worker.pose = WP.scoopBack
     this.worker.follow = 5
+    this.life = new Life().dragonflies(3, [10, this.top + 10, this.w - 10, this.deckY - 40]).kid(this.cx - 44, this.bottom - 2).kid(this.cx + 48, this.bottom - 3, undefined, true)
+    const pad = this.pads[1]
+    if (pad) this.life.frog(pad.x, pad.y - 1)
   }
 
   protected populate() {
@@ -304,6 +308,7 @@ export class FishScene extends JobScene {
       }
       g.draw(this.murkC, 0, 0)
     }
+    this.life?.drawGround(g)
     // The player on the deck, tossing from the hand.
     this.worker?.draw(g)
     // Pellets in flight.
@@ -316,6 +321,7 @@ export class FishScene extends JobScene {
       g.rect(x - 1, y - 1, 3, 3, P.ink)
       g.px(x, y, '#c28e5c')
     }
+    this.life?.drawAir(g)
     sunRays(g, this.w, this.h, this.t, '#e6fbff', 0.16, this.top - 20)
   }
 }

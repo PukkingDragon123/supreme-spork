@@ -9,6 +9,7 @@ import { addCoins, addMerit, track } from './actions'
 import { JOB_BY_ID, JOBS, type JobDef } from './data/jobs'
 import type { GameEvent } from './data/quests'
 import type { MaterialId } from './materials'
+import { jobDealBonus, TRIO_KEY, type JobBonus } from './workDeals'
 
 export type JobStars = 0 | 1 | 2 | 3
 
@@ -85,6 +86,8 @@ export interface JobResult {
   coins: number
   mat?: { id: MaterialId; n: number }
   capped: boolean
+  /** Deals that paid out on this play (first job, featured job, trio). */
+  bonuses?: JobBonus['applied']
 }
 
 /** Grant the rewards of a finished job and record the play. */
@@ -94,13 +97,15 @@ export function finishJob(id: string, stars: JobStars): JobResult {
   const st = toStars(stars)
   const before = jobPlaysToday(id)
   const r = jobReward(def, st, before)
-  const merit = r.merit > 0 ? addMerit(r.merit) : 0
-  const coins = r.coins > 0 ? addCoins(r.coins, { boost: true }) : 0
+  const bonus = jobDealBonus(def, st, r)
+  const merit = r.merit + bonus.merit > 0 ? addMerit(r.merit + bonus.merit) : 0
+  const coins = r.coins + bonus.coins > 0 ? addCoins(r.coins + bonus.coins, { boost: true }) : 0
   mutate((d) => {
+    if (bonus.trio) d.daily.counts[TRIO_KEY] = 1
     if (st > 0) d.daily.counts[jobKey(id)] = before + 1
     if (r.mat) d.materials[r.mat.id] = (d.materials[r.mat.id] ?? 0) + r.mat.n
   })
   // `'job'` is not in GameEvent yet; tracking it already records stats.job.
   if (st > 0) track(JOB_EVENT as string as GameEvent)
-  return { merit, coins, mat: r.mat, capped: r.capped }
+  return { merit, coins, mat: r.mat, capped: r.capped, bonuses: bonus.applied }
 }

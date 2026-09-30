@@ -17,6 +17,9 @@ import { sfx } from '../../engine/audio'
 import { MK_TRAIN } from '../../scenes/maps/places/hub-maeklong'
 import { stampSprite } from './art'
 import { TicketIcon } from './shell'
+import { RIDES, RIDE_IDS } from './rides'
+import { fireworksAt, fireworksLabel } from './schedule'
+import { isOnline, liveScores } from './live'
 
 const STAMP_ICON: Record<string, 'jj' | 'dn' | 'mk' | 'tp' | 'ky' | 'ic'> = {
   hub_chatuchak: 'jj',
@@ -32,6 +35,36 @@ function go(hotspot: string) {
   sfx.tap()
   closeActivity()
   setTimeout(() => travelTo(hotspot), 30)
+}
+
+function FireworksLine() {
+  useTicker(1000)
+  const st = fireworksAt(Date.now())
+  return (
+    <div class={`fairx-fw ${st.live ? 'live' : ''}`}>
+      <Icon name="sparkle" size={18} /> {fireworksLabel(st)}
+    </div>
+  )
+}
+
+function LiveScores() {
+  const list = liveScores.value.slice(0, 6)
+  return (
+    <div class="fairx-live-list">
+      {list.length ? (
+        list.map((x) => (
+          <div class="fairx-live-row" key={x.from + x.at}>
+            <b>{x.name}</b>
+            <span class="grow">{FAIR_GAMES[x.game]?.name ?? x.game}</span>
+            <span>{'★'.repeat(x.stars) || '☆'}</span>
+            <span>{x.score}</span>
+          </div>
+        ))
+      ) : (
+        <div class="fairx-live-empty">{isOnline() ? 'ยังไม่มีใครเล่นซุ้มเกมตอนนี้ เล่นเป็นคนแรกเลย!' : 'ตอนออนไลน์ คะแนนของผู้เล่นจริงในงานจะขึ้นที่นี่ทันที'}</div>
+      )}
+    </div>
+  )
 }
 
 function TrainLine() {
@@ -91,6 +124,46 @@ export function HubBoard({ req }: { req: ActivityRequest }) {
                 <PBtn tone="gold" size="small" icon="shop" onClick={() => go(pick.shop)}>
                   ไปที่ร้าน
                 </PBtn>
+              )}
+            </div>
+          </div>
+        )}
+
+        {isFair && (
+          <div class="panel fairx-sec">
+            <FireworksLine />
+            <h4 style={{ marginTop: '8px' }}>
+              <span class="fairx-dot" /> คะแนนสดในงาน
+            </h4>
+            <LiveScores />
+          </div>
+        )}
+
+        {isFair && (
+          <div class="panel fairx-sec">
+            <h4>
+              <Icon name="sparkle" size={16} /> เครื่องเล่นและการแสดง
+            </h4>
+            <div class="fairx-list">
+              {RIDE_IDS.map((r) => (
+                <div class="fairx-item" key={r}>
+                  <Icon name={RIDES[r].icon} size={18} />
+                  <span class="grow small">
+                    {RIDES[r].name} · {RIDES[r].price ? `${RIDES[r].price} คอยน์ (รอบแรกฟรี)` : 'ฟรี'}
+                  </span>
+                  <PBtn tone="paper" size="small" onClick={() => (here ? go(`fair:${r}`) : openActivity('fair', { ride: r }))}>
+                    ไป
+                  </PBtn>
+                </div>
+              ))}
+              {here && (
+                <div class="fairx-item">
+                  <Icon name="moon" size={18} />
+                  <span class="grow small">บ้านผีสิง · เจอผีครบทุกตัวได้ใบประกาศ</span>
+                  <PBtn tone="paper" size="small" onClick={() => go('door:fair_temple:ghost')}>
+                    ไป
+                  </PBtn>
+                </div>
               )}
             </div>
           </div>
@@ -216,7 +289,7 @@ export function HubBoard({ req }: { req: ActivityRequest }) {
             </div>
           )}
         </div>
-        <div class="fairx-note">จำนวนคนและข้อความบนบอร์ดเป็นการจำลองในเครื่อง (เวอร์ชันทดลอง) ยังไม่ได้เชื่อมต่อผู้เล่นจริง</div>
+        <div class="fairx-note">{isFair ? 'จำนวนคนและข้อความบนบอร์ดเป็นการจำลองในเครื่อง ส่วนคะแนนสดและการรำวงพร้อมกันจะมาจากผู้เล่นจริงเมื่อเชื่อมต่อออนไลน์' : 'จำนวนคนและข้อความบนบอร์ดเป็นการจำลองในเครื่อง (เวอร์ชันทดลอง) ยังไม่ได้เชื่อมต่อผู้เล่นจริง'}</div>
       </div>
     </Window>
   )

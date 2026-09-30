@@ -129,4 +129,66 @@ export const fairSfx = {
     tone(220, 0.9, 'sine', 0.06, 0, 160)
     tone(233, 0.9, 'sine', 0.05, 0.05, 150)
   },
+  /** Jump scare sting: a stab and a squeaky "eek". */
+  scare() {
+    noise(0.18, 0.28, 1800)
+    tone(880, 0.12, 'square', 0.06, 0, 1760)
+    tone(1320, 0.2, 'triangle', 0.08, 0.1, 1980)
+  },
+  /** Firework: whistle up is done by the rocket; this is the boom. */
+  boom(size = 1) {
+    noise(0.5 * size, 0.3, 300, 0, 'lowpass')
+    tone(90, 0.35, 'sine', 0.14 * size, 0, 45)
+  },
+  /** Crackling glitter. */
+  crackle() {
+    for (let i = 0; i < 6; i++) noise(0.03, 0.12, 3000 + i * 300, 0.25 + i * 0.07)
+  },
+  /** Bumper car bonk. */
+  bump() {
+    tone(180, 0.12, 'square', 0.08, 0, 90)
+    noise(0.08, 0.2, 600, 0, 'lowpass')
+  },
+  /** Pole spark crackle. */
+  zap() {
+    noise(0.05, 0.08, 4000)
+  },
+  /** The โทน drum: low "ตึ่ง". */
+  drum(accent = false) {
+    tone(accent ? 140 : 170, 0.22, 'sine', accent ? 0.2 : 0.14, 0, accent ? 90 : 120)
+    noise(0.04, 0.08, 900, 0, 'lowpass')
+  },
+  /** The ฉิ่ง: bright "ching" (closed = "ฉับ"). */
+  ching(open = true) {
+    tone(2637, open ? 0.35 : 0.06, 'sine', open ? 0.06 : 0.05)
+    tone(3520, open ? 0.25 : 0.05, 'sine', 0.03)
+  },
+  /** A perfect note. */
+  ding() {
+    tone(1568, 0.1, 'triangle', 0.08)
+    tone(2093, 0.14, 'triangle', 0.06, 0.05)
+  },
+  /** Claw motor whirr. */
+  whirr(dur = 0.4) {
+    tone(110, dur, 'sawtooth', 0.03, 0, 130)
+  },
+  /** Boxing bell. */
+  ring() {
+    tone(1200, 0.5, 'triangle', 0.1)
+    tone(1800, 0.4, 'sine', 0.05)
+  },
+  /** Slurp of a straw. */
+  slurp() {
+    noise(0.25, 0.12, 1200)
+    tone(500, 0.2, 'sine', 0.04, 0, 900)
+  },
+  /** A soft melody note (ramwong band). */
+  note(freq: number, dur = 0.22, vol = 0.05) {
+    tone(freq, dur, 'triangle', vol)
+  },
+  /** Crowd cheer (a rumble of noise). */
+  cheer() {
+    noise(0.8, 0.14, 1000)
+    noise(0.6, 0.1, 2200, 0.1)
+  },
 }

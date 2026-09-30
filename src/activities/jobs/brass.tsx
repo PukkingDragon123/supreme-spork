@@ -9,6 +9,8 @@ import { haptic, sfx } from '../../engine/audio'
 import { bakeBrassTable, brassSculpts, BRASS_KINDS, BRASS_NAMES, drawRag, shadow, type BrassKind } from '../../art/jobs'
 import { Drag, JobScene, type JobSummary } from './base'
 import { Worker } from './worker'
+import { Life } from './life'
+import { hdMonkSprite } from '../../art/minigames/monk'
 import { wsfx } from './workSfx'
 import { reachPose, WP } from '../../art/poses/work'
 import { drawFist } from '../../art/workActor'
@@ -88,6 +90,7 @@ export class BrassScene extends JobScene {
     else if (this.phase === 'ready') this.worker.place(this.cx + 30, feet)
     this.worker.goTo(this.worker.tx, feet)
     this.worker.clipY = this.tableY
+    this.life = new Life().cat(16, this.tableY + 24, [14, this.tableY + 22, 20, this.tableY + 26], { state: 'sleep', color: '#6d6070' })
   }
 
   private aimWorker(dt: number) {
@@ -270,7 +273,13 @@ export class BrassScene extends JobScene {
 
   protected draw(g: Surface) {
     if (this.bg) g.draw(this.bg, 0, 0)
+    // A little novice watching from behind the table.
+    const nv = hdMonkSprite('front', this.doneCount > 0 && Math.sin(this.t * 2) > 0.3 ? 'bless' : 'stand', { novice: true })
+    const nx = this.w - 26 - nv.w / 2
+    const ny = this.tableY + 10 - nv.h
+    g.drawPart(nv.canvas, 0, 0, nv.w, Math.max(0, this.tableY - ny), nx, ny)
     this.worker?.draw(g)
+    this.life?.drawGround(g)
     const p = this.current
     if (!p) return
     // Spotlight on the piece being polished.

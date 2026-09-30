@@ -9,10 +9,12 @@ import { bakeShrine, drawCandleFlame, drawCandleRail, drawWindPuff } from '../..
 import { softGlow } from '../../art/hall'
 import { Drag, JobScene, type JobSummary } from './base'
 import { Worker } from './worker'
+import { Life } from './life'
 import { wsfx } from './workSfx'
 import { reachPose, WP } from '../../art/poses/work'
 import { drawLongLighter } from '../../art/workTools'
 import { glow, vignette } from '../../art/workFx'
+import { drawIncenseSmoke } from '../../art/workLife'
 
 const COUNT = 9
 const LIGHT_TIME = 0.35
@@ -84,6 +86,7 @@ export class CandleScene extends JobScene {
     if (!this.worker) this.worker = new Worker(this.cx - 14, this.floorY)
     else if (this.phase === 'ready') this.worker.place(this.cx - 14, this.floorY)
     this.worker.view = 'back'
+    this.life = new Life().gecko(10, this.tableY - 70, [8, this.top + 20, 12, this.tableY - 20])
   }
 
   protected populate() {
@@ -265,6 +268,10 @@ export class CandleScene extends JobScene {
         }
       }
     }
+    // Incense smoke curling up from the urn on the floor.
+    const uy = this.tableY + 46 + 12 + 2
+    for (let i = -2; i <= 2; i++) drawIncenseSmoke(g, this.cx + i * 3, uy - 18, this.t + i * 0.7, 22 + (i % 2) * 6, 0.35)
+    this.life?.drawGround(g)
     // Warm light pooling on the table from every lit candle.
     for (const c of this.candles) if (c.lit) glow(g, c.x, this.railY + 4, 20, 0.12 + c.glow * 0.08, '#ffb050')
     vignette(g, this.w, this.h, 0.5 - k * 0.25, '10,4,10')

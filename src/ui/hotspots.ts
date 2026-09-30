@@ -2,6 +2,7 @@
 
 import { openActivity, openShop, openSocial, mapOpen, openPanel, goHome, openPlaceShop } from './store'
 import { openQuestDialog, questChoicesFor } from './quest/questUi'
+import { fairHotspotActions } from '../activities/fair/hotspots'
 
 export interface HotspotAction {
   label: string
@@ -22,15 +23,8 @@ export function hotspotActions(id: string): HotspotAction[] {
   }
   // Quest-giver NPCs (src/game/data/questNpcs.ts).
   if (id.startsWith('npc:')) return [{ label: 'คุยด้วย', icon: 'wai', run: () => openQuestDialog(id) }]
-  // Temple fair: `fair:<game>` booths and `fair:prizes` (src/activities/fair).
-  if (id.startsWith('fair:')) {
-    const what = id.slice(5)
-    if (what === 'prizes') return [{ label: 'แลกของรางวัล', icon: 'gift', run: () => openActivity('fair', { booth: 'prizes' }) }]
-    return [
-      { label: 'เล่นเกม', icon: 'play', run: () => openActivity('fair', { game: what }) },
-      { label: 'ซุ้มแลกรางวัล', icon: 'gift', tone: 'paper', run: () => openActivity('fair', { booth: 'prizes' }) },
-    ]
-  }
+  // Temple fair: booths, rides, shows, food carts (src/activities/fair/hotspots.ts).
+  if (id.startsWith('fair:')) return fairHotspotActions(id.slice(5))
   // Beaches: `beach:<game>` mini-games and the photo spot (src/activities/beach).
   if (id.startsWith('beach:')) {
     const game = id.slice(6)

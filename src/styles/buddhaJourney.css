@@ -1,0 +1,757 @@
+/* Buddha-journey stage select (src/ui/views/PrayerSelect.tsx).
+   Everything here is prefixed bj-. One art pixel of the map = 2 CSS px.
+   Frames and tiles come from src/art/buddhaJourneyUi.ts as CSS variables. */
+
+.bj-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: #2a130d;
+  color: var(--ink);
+  animation: fade-in 160ms ease-out;
+}
+
+/* ---------- header ---------- */
+
+.bj-head {
+  position: relative;
+  z-index: 6;
+  flex: none;
+  padding: calc(var(--safe-top) + 6px) 8px 6px;
+  background: var(--bj-lacq) 0 0 / 32px 32px repeat, #5a140e;
+  image-rendering: pixelated;
+  box-shadow:
+    0 2px 0 #f2c54e,
+    0 4px 0 #7a4a14,
+    0 6px 0 rgba(20, 8, 4, 0.45);
+}
+
+.bj-head-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+}
+
+.bj-head-title {
+  gap: 0;
+  min-width: 0;
+}
+
+.bj-head-sub {
+  font-size: 10.5px;
+  line-height: 1.2;
+  color: #f3d9a0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bj-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 24px;
+  padding: 0 6px;
+  font-size: 12px;
+  color: #ffe58a;
+  background: rgba(20, 6, 4, 0.45);
+  box-shadow:
+    inset 0 0 0 2px #c98a24,
+    0 0 0 1px #2b1a12;
+  white-space: nowrap;
+}
+
+.bj-pill.streak {
+  color: #fff1c4;
+}
+
+.bj-head .win-x {
+  position: relative !important;
+  right: auto;
+  top: auto;
+  flex: none;
+}
+
+.bj-temples {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.bj-temple {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 26px;
+  padding: 0 4px;
+  border: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fbe6b8;
+  background: rgba(30, 10, 6, 0.55);
+  box-shadow:
+    inset 0 0 0 2px #7a4a14,
+    0 2px 0 #1a0a06;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.bj-temple.on {
+  color: #3b1a0e;
+  background: linear-gradient(#ffe58a, #f2c54e 60%, #e3a93a);
+  box-shadow:
+    inset 0 0 0 2px #7a4a14,
+    inset 0 2px 0 3px #fff6c8,
+    0 2px 0 #1a0a06;
+}
+
+.bj-temple.locked {
+  color: #b9a88e;
+}
+
+.bj-temple:active {
+  transform: translateY(1px);
+}
+
+/* ---------- map ---------- */
+
+.bj-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.bj-mapwrap {
+  position: absolute;
+  inset: 0;
+}
+
+.bj-map {
+  position: absolute;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #b8c68a;
+  scrollbar-width: none;
+}
+
+.bj-mapwrap.night .bj-map {
+  background: #1a2238;
+}
+
+.bj-map::-webkit-scrollbar {
+  display: none;
+}
+
+.bj-inner {
+  position: relative;
+}
+
+.bj-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.bj-fx {
+  z-index: 1;
+  pointer-events: none;
+}
+
+.bj-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #3a2016;
+  animation: bj-breathe 1.4s ease-in-out infinite;
+}
+
+/* Chapter title cartouches sitting on the สินเทา between scenes. */
+.bj-banner {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 4px;
+  transform: translate(-50%, -50%);
+  border-style: solid;
+  border-width: 8px 20px;
+  border-image: var(--bj-cart) 4 10 fill / 8px 20px stretch;
+  image-rendering: pixelated;
+  white-space: nowrap;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 0 rgba(20, 8, 4, 0.5));
+}
+
+/* Tap areas over the painted scenes. */
+.bj-scene {
+  position: absolute;
+  z-index: 1;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.bj-scene:focus-visible {
+  outline: 2px dashed #ffe58a;
+}
+
+.bj-scene:active {
+  background: rgba(255, 240, 180, 0.12);
+}
+
+.bj-scene-tag {
+  position: absolute;
+  right: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  background: #fbf1d8;
+  box-shadow:
+    0 0 0 2px #7a4a14,
+    0 2px 0 2px rgba(20, 8, 4, 0.35);
+  border-radius: 50%;
+  opacity: 0.92;
+  animation: bj-tag 3.2s ease-in-out infinite;
+}
+
+/* Name boards hung on the temple gates. */
+.bj-gate {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px 1px;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(#ffe58a, #f2c54e);
+  box-shadow:
+    0 0 0 2px #7a4a14,
+    0 3px 0 2px rgba(20, 8, 4, 0.4);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.bj-gate.locked {
+  background: #2c2238;
+  box-shadow:
+    0 0 0 2px #b8a8c8,
+    0 3px 0 2px rgba(10, 4, 20, 0.5);
+}
+
+.bj-veil {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(rgba(40, 32, 64, 0) 0, rgba(40, 32, 64, 0.34) 60px, rgba(40, 32, 64, 0.34) calc(100% - 70px), rgba(40, 32, 64, 0) 100%);
+}
+
+/* ---------- stage nodes ---------- */
+
+.bj-node {
+  position: absolute;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.bj-node-img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  filter: drop-shadow(0 3px 0 rgba(20, 10, 6, 0.4));
+}
+
+.bj-node.boss {
+  width: 60px;
+  height: 60px;
+  margin: -30px 0 0 -30px;
+}
+
+.bj-node.boss .bj-node-img {
+  width: 68px;
+  height: 64px;
+}
+
+.bj-node.final {
+  width: 64px;
+  height: 80px;
+  margin: -52px 0 0 -32px;
+}
+
+.bj-node.final .bj-node-img {
+  width: 68px;
+  height: 84px;
+}
+
+.bj-node-num {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  line-height: 0;
+  pointer-events: none;
+}
+
+.bj-node.final .bj-node-num {
+  top: calc(50% + 10px);
+}
+
+.bj-node.locked .bj-node-num {
+  opacity: 0.75;
+}
+
+.bj-node-stars {
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  transform: translateX(-50%);
+  padding: 0 2px;
+  background: rgba(43, 26, 18, 0.72);
+  border-radius: 6px;
+  line-height: 0;
+  pointer-events: none;
+}
+
+.bj-node.boss .bj-node-stars {
+  bottom: -6px;
+}
+
+.bj-node-badge {
+  position: absolute;
+  right: -3px;
+  top: -3px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  background: #7b4fb0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #fff4d8;
+  pointer-events: none;
+}
+
+.bj-node.next .bj-node-img {
+  animation: bj-bob 1.3s ease-in-out infinite;
+}
+
+.bj-node.next::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 236, 150, 0.75) 0 45%, rgba(255, 220, 110, 0) 70%);
+  animation: bj-ping 1.5s ease-out infinite;
+  pointer-events: none;
+}
+
+.bj-node.sel::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2px #fffbe0,
+    0 0 0 4px #2b1a12;
+  pointer-events: none;
+  animation: bj-sel 1.8s ease-in-out infinite;
+}
+
+.bj-node:active .bj-node-img {
+  transform: translate(-50%, -50%) scale(0.92);
+}
+
+.bj-flag {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #3b1a0e;
+  background: #fff4d8;
+  box-shadow:
+    0 0 0 2px #7a4a14,
+    0 3px 0 2px rgba(20, 8, 4, 0.35);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: bj-bob 1.3s ease-in-out infinite;
+}
+
+.bj-flag::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  margin-left: -4px;
+  border: 4px solid transparent;
+  border-top-color: #7a4a14;
+  margin-top: 2px;
+}
+
+.bj-avatar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  width: 34px;
+  height: 52px;
+  image-rendering: pixelated;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 0 rgba(20, 10, 6, 0.35));
+}
+
+/* ---------- overlays on the map ---------- */
+
+.bj-chapter {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: calc(100% - 16px);
+  height: 30px;
+  padding: 0 8px 0 3px;
+  border: 0;
+  background: var(--bj-lacq) 0 0 / 32px 32px repeat, #5a140e;
+  image-rendering: pixelated;
+  box-shadow:
+    inset 0 0 0 2px #f2c54e,
+    0 0 0 2px #2b1a12,
+    0 4px 0 2px rgba(20, 8, 4, 0.35);
+  color: #ffe58a;
+  cursor: pointer;
+}
+
+.bj-chapter.night {
+  background: #23305e;
+}
+
+.bj-chapter-n {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  color: #3b1a0e;
+  background: radial-gradient(circle at 35% 35%, #fff6c8, #f2c54e 55%, #c98a24);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #2b1a12;
+}
+
+.bj-chapter-t {
+  gap: 0;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.bj-goto {
+  position: absolute;
+  right: 10px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 0;
+  background: linear-gradient(#ffe58a, #f2c54e);
+  box-shadow:
+    0 0 0 2px #7a4a14,
+    0 3px 0 2px rgba(20, 8, 4, 0.4);
+  cursor: pointer;
+  animation: bj-bob 1.6s ease-in-out infinite;
+}
+
+.bj-goto.down {
+  bottom: 12px;
+}
+
+.bj-goto.up {
+  top: 58px;
+}
+
+/* ---------- mural frames ---------- */
+
+.bj-frame {
+  border-style: solid;
+  border-width: 12px;
+  border-image: var(--bj-frame) 6 fill / 12px repeat;
+  image-rendering: pixelated;
+}
+
+/* ---------- stage card ---------- */
+
+.bj-card {
+  position: relative;
+  z-index: 6;
+  flex: none;
+  margin: -6px 0 0;
+  padding: 0 2px calc(var(--safe-bottom) + 2px);
+  color: var(--ink);
+  box-shadow: 0 -4px 0 rgba(20, 8, 4, 0.35);
+}
+
+.bj-card.boss {
+  filter: drop-shadow(0 0 6px rgba(255, 214, 90, 0.55));
+}
+
+.bj-card-top {
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.bj-thumb {
+  flex: none;
+  padding: 2px;
+  background: #2b1a12;
+  box-shadow: 0 0 0 2px #c98a24;
+  line-height: 0;
+}
+
+.bj-card-info {
+  gap: 0;
+  min-width: 0;
+}
+
+.bj-card-kicker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: #8e4220;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.bj-card-name {
+  font-size: 15px;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bj-card-stars {
+  flex: none;
+}
+
+.bj-boss-tag {
+  padding: 0 5px;
+  font-size: 10.5px;
+  color: #fff6dc;
+  background: #b8401a;
+  border-radius: 5px;
+}
+
+.bj-card .ch-chips {
+  margin: 4px 0 2px;
+}
+
+.bj-card-rewards {
+  gap: 4px;
+  align-items: center;
+  min-height: 26px;
+}
+
+.bj-card-actions {
+  gap: 6px;
+  align-items: stretch;
+  margin-top: 2px;
+}
+
+.bj-card-actions > .btn {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+}
+
+.bj-book {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  border: 0;
+  background: #fbf1d8;
+  box-shadow:
+    inset 0 0 0 2px #7a4a14,
+    0 3px 0 #7a4a14;
+  cursor: pointer;
+}
+
+.bj-book:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 0 0 2px #7a4a14;
+}
+
+/* ---------- story card ---------- */
+
+.bj-story-back {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--safe-top) + 16px) 12px calc(var(--safe-bottom) + 16px);
+  background: rgba(24, 10, 6, 0.62);
+  animation: fade-in 160ms ease-out;
+}
+
+.bj-story {
+  width: min(100%, 360px);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 0 2px 2px;
+  animation: pop-in 220ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.bj-story-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: -2px -2px 6px;
+  padding: 4px 8px;
+  background: var(--bj-lacq) 0 0 / 32px 32px repeat, #5a140e;
+  image-rendering: pixelated;
+}
+
+.bj-story-place {
+  margin-left: auto;
+  color: #f3d9a0;
+  white-space: nowrap;
+}
+
+.bj-story-pic {
+  display: flex;
+  justify-content: center;
+  line-height: 0;
+  padding: 2px;
+  background: #2b1a12;
+  box-shadow: 0 0 0 2px #c98a24;
+}
+
+.bj-story-pic canvas {
+  display: block;
+  margin: 0 auto;
+  image-rendering: pixelated;
+}
+
+.bj-story-title {
+  margin: 8px 0 2px;
+}
+
+.bj-story-text {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.bj-story-nav {
+  gap: 6px;
+  margin-bottom: 6px;
+  align-items: center;
+}
+
+/* ---------- motion ---------- */
+
+@keyframes bj-bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -3px;
+  }
+}
+
+@keyframes bj-ping {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes bj-sel {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes bj-tag {
+  0%,
+  86%,
+  100% {
+    transform: translateY(0);
+  }
+  92% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes bj-breathe {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.reduce-motion .bj-node.next .bj-node-img,
+.reduce-motion .bj-node.next::before,
+.reduce-motion .bj-flag,
+.reduce-motion .bj-goto,
+.reduce-motion .bj-scene-tag {
+  animation: none;
+}

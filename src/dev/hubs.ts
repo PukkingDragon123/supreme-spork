@@ -8,7 +8,8 @@
 // Checks (listed under each map and in the console, `window.__hubChecks`):
 // hotspot `at` points free and reachable from the spawn, pickups/entries
 // free, doors lead back, a gate exists, every `shop:` has a stall entry,
-// every `npc:` has a quest, the notice board exists, `fair:` games are known.
+// every `npc:` has a quest, the notice board exists, `fair:` hotspots are
+// known and every fair game has a booth. Interiors get the generic checks only.
 
 import { Surface } from '../engine/pixel'
 import { WorldScene } from '../scenes/world'
@@ -17,7 +18,8 @@ import { MAPS } from '../scenes/maps/places/hubs'
 import { game } from '../game/state'
 import { PLACE_SHOPS, SNACK_BY_ID } from '../game/data/placeShops'
 import { HUB_QUESTS } from '../game/data/npcQuests/hubs'
-import { FAIR_GAMES, HUB_META } from '../game/hubs'
+import { FAIR_GAMES, FAIR_ID, HUB_META } from '../game/hubs'
+import { fairHotspotActions, isFairHotspot } from '../activities/fair/hotspots'
 import { PLACE_BY_ID } from '../game/data/places'
 import { HUB_COLLECTIBLE_BY_ID } from '../game/data/collectibles/hubs'
 
@@ -55,14 +57,23 @@ function checks(id: string, scene: WorldScene): string[] {
   }
   if (!map.indoor && !map.hotspots.some((h) => h.id === 'gate')) warn('no gate hotspot')
   for (const h of map.hotspots) if (!scene.grid.find(map.spawn.x, map.spawn.y, h.at.x, h.at.y)) warn(`unreachable hotspot ${h.id}`)
+  const ids = map.hotspots.map((h) => h.id)
+  const dup = ids.filter((x, i) => ids.indexOf(x) !== i)
+  if (dup.length) warn(`duplicate hotspot ids: ${dup.join(', ')}`)
+  // Interiors (the fair's haunted house) only need the generic checks.
+  if (map.indoor) {
+    if (!map.hotspots.some((h) => h.id.startsWith('door:'))) warn('interior without a way out')
+    return out
+  }
   // Hub contracts.
   if (!PLACE_BY_ID[id]) warn('no place entry for this map id')
   if (!HUB_META[id]) warn('no HUB_META entry')
   if (!map.hotspots.some((h) => h.id === `board:${id}`)) warn('no notice board hotspot')
-  const shops = map.hotspots.filter((h) => h.id.startsWith('shop:'))
+  // Stalls: `shop:<id>`, and the fair's food carts `fair:eat:<id>`.
+  const shops = map.hotspots.filter((h) => h.id.startsWith('shop:') || h.id.startsWith('fair:eat:'))
   if (shops.length < 3) warn(`only ${shops.length} shop hotspots`)
   for (const h of shops) {
-    const sid = h.id.slice(5)
+    const sid = h.id.replace(/^shop:|^fair:eat:/, '')
     const shop = PLACE_SHOPS[sid]
     if (!shop) warn(`shop without PLACE_SHOPS entry: ${sid}`)
     else {
@@ -83,11 +94,10 @@ function checks(id: string, scene: WorldScene): string[] {
   }
   for (const h of map.hotspots.filter((h) => h.id.startsWith('fair:'))) {
     const g = h.id.slice(5)
-    if (g !== 'prizes' && !(g in FAIR_GAMES)) warn(`unknown fair game ${g}`)
+    if (!isFairHotspot(g)) warn(`unknown fair hotspot ${g}`)
+    else if (!fairHotspotActions(g).length) warn(`fair hotspot without actions ${g}`)
   }
-  const ids = map.hotspots.map((h) => h.id)
-  const dup = ids.filter((x, i) => ids.indexOf(x) !== i)
-  if (dup.length) warn(`duplicate hotspot ids: ${dup.join(', ')}`)
+  if (id === FAIR_ID) for (const g of Object.keys(FAIR_GAMES)) if (!map.hotspots.some((h) => h.id === `fair:${g}`)) warn(`fair game without a booth: ${g}`)
   return out
 }
 
