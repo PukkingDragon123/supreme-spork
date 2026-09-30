@@ -10,6 +10,8 @@ import { rand } from '../engine/rng'
 import { P } from '../art/palette'
 import type { AvatarLook } from '../art/avatar'
 import { drawKrathong, drawPlayer, handAt, Juice, softGlow, vignette, type TPose } from '../art/minigames/temple'
+import { Critters, Crowd, drawStall } from '../art/minigames/scenery'
+import { KRATHONG_GIRL, WORSHIPPERS } from '../art/minigames/hosts'
 import { tsfx } from '../art/minigames/sfx'
 import { game } from '../game/state'
 import { addMerit, count, recordWish, track, useItem } from '../game/actions'
@@ -50,6 +52,9 @@ class RiverScene implements Scene {
   others: Floater[] = []
   lanterns: { x: number; y: number; ph: number }[] = []
   private bg: HTMLCanvasElement | null = null
+  critters = new Critters()
+  crowd = new Crowd()
+  private lifeInit = false
   constructor(public look: AvatarLook) {}
   resize(w: number, h: number) {
     this.w = w
@@ -57,6 +62,10 @@ class RiverScene implements Scene {
     this.bg = null
     if (!this.others.length)
       for (let i = 0; i < 9; i++) this.others.push({ x: rand(10, w - 10), y: rand(h * 0.32, h * 0.6), s: rand(0.4, 1), c: FLOWERS[i % 3].c, ph: rand(0, 6) })
+    if (!this.lifeInit) {
+      this.lifeInit = true
+      this.crowd.add({ look: WORSHIPPERS[4], x: 12, y: this.bankY + 20, view: 'back', idle: 'stand', reactPose: 'cheer' })
+    }
   }
   get waterY() {
     return Math.round(this.h * 0.28)
@@ -105,6 +114,7 @@ class RiverScene implements Scene {
   }
   launch() {
     this.launched = 0
+    this.crowd.cheer('cheer', 3)
     this.step = 'float'
   }
   update(rawDt: number) {
@@ -136,6 +146,8 @@ class RiverScene implements Scene {
       const [x, y] = this.pos()
       this.particles.add({ kind: 'smoke', x: x + rand(-2, 2), y: y - 16, vx: rand(-1, 1), vy: rand(-8, -4), max: 2, color: '#c9cff0' })
     }
+    this.critters.update(dt, this.w)
+    this.crowd.update(dt)
     this.particles.update(dt)
   }
   private firework() {
@@ -190,6 +202,9 @@ class RiverScene implements Scene {
     const inHands = this.step === 'wish'
     if (!inHands && !floating) drawKrathong(g, x, y, s, this.flower, this.lit, this.t)
     if (floating) drawKrathong(g, x, y, s, this.flower, this.lit, this.t)
+    drawStall(g, this.w - 20, this.bankY + 24, 'krathong', KRATHONG_GIRL, this.t, this.launched < 0)
+    this.critters.render(g)
+    this.crowd.render(g)
     const pl = drawPlayer(g, this.look, pose, 'back', this.playerX, this.footY, { scale: 2 })
     if (inHands) {
       const [lx, ly] = handAt(pl, 1)

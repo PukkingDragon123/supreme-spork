@@ -11,9 +11,12 @@ import { drawHallInterior, drawBuddha, drawArch, drawAltar, drawCandleStand } fr
 import { P, SKIN_TONES } from '../art/palette'
 import type { AvatarLook } from '../art/avatar'
 import { drawPlayer, drawStick, godRays, handAt, impactBurst, Juice, lightPool, motes, softGlow, vignette } from '../art/minigames/temple'
+import { Critters, Crowd } from '../art/minigames/scenery'
+import { WORSHIPPERS } from '../art/minigames/hosts'
 import { tsfx } from '../art/minigames/sfx'
 import { game } from '../game/state'
 import { addMerit, recordFortune, spendCoins, track } from '../game/actions'
+import { useSiamsiCredit } from '../game/templeDeals'
 import { FORTUNES, toThaiDigits, type Fortune } from '../game/data/fortunes'
 import { closeActivity, type ActivityRequest } from '../ui/store'
 import { ActivityFrame, useStage } from './kit'
@@ -36,11 +39,20 @@ class SiamsiScene implements Scene {
   particles = new Particles()
   juice = new Juice()
   private bg: HTMLCanvasElement | null = null
+  critters = new Critters()
+  crowd = new Crowd()
+  private lifeInit = false
   constructor(public look: AvatarLook) {}
   resize(w: number, h: number) {
     this.w = w
     this.h = h
     this.bg = null
+    if (!this.lifeInit) {
+      this.lifeInit = true
+      const fy = this.footY
+      this.crowd.add({ monk: 'monk', x: w - 22, y: fy - 22 }).add({ look: WORSHIPPERS[2], x: 22, y: fy - 26, view: 'back', idle: 'kneelWai', reactPose: 'kneelWai' })
+      this.critters.cat(34, fy + 6, '#f5a55a', 'sleep')
+    }
   }
   get footY() {
     return Math.round(this.h * 0.74)
@@ -107,6 +119,8 @@ class SiamsiScene implements Scene {
           this.landedT = 0
           tsfx.clack()
           impactBurst(this.particles, f.x, f.y, '#fff3a6', 14)
+          this.crowd.cheer('happy', 1.4)
+          this.critters.startle(f.x, f.y, 60)
           this.juice.shake(0.2)
           this.juice.hitstop(0.06)
         }
@@ -117,6 +131,8 @@ class SiamsiScene implements Scene {
       if (Math.random() < dt * 10) this.particles.sparkles(f.x + rand(-12, 12), f.y + rand(-6, 2), 1, '#fff3a6')
     }
     motes(this.particles, dt, this.w, this.footY, 2, '#fff3a6')
+    this.critters.update(dt, this.w)
+    this.crowd.update(dt)
     this.particles.update(dt)
   }
   render(g: Surface) {
@@ -134,7 +150,9 @@ class SiamsiScene implements Scene {
     const f = this.falling
     const pose = f?.landed ? 'ss_happy' : this.shake > 0 ? (Math.floor(this.t * 14) % 2 ? 'ss_shake_a' : 'ss_shake_b') : 'ss_hold'
     const bob = this.shake > 0 ? (Math.floor(this.t * 14) % 2 ? -1 : 0) : f?.landed ? -Math.round(Math.abs(Math.sin(this.landedT * 8)) * 2 * Math.max(0, 1 - this.landedT)) : 0
-    const pl = drawPlayer(g, this.look, pose, 'front', cx, this.footY, { scale: S, t: this.t, barefoot: true, bob })
+    this.critters.render(g)
+    this.crowd.render(g)
+    const pl = drawPlayer(g, this.look, pose, 'front', cx, this.footY, { scale: S, t: this.t, barefoot: true, bob, expr: f && !f.landed ? 'open' : undefined })
     // The cup between the hands.
     const [lx, ly] = handAt(pl, 1)
     const [rx, ry] = handAt(pl, -1)
@@ -287,7 +305,7 @@ export function SiamsiActivity({ req }: { req: ActivityRequest }) {
   }, [paid])
 
   const again = () => {
-    if (!spendCoins(PRICE_EXTRA)) return
+    if (!useSiamsiCredit() && !spendCoins(PRICE_EXTRA)) return
     done.current = false
     setFortune(null)
     setProgress(0)
@@ -327,8 +345,8 @@ export function SiamsiActivity({ req }: { req: ActivityRequest }) {
             <div class="panel act-tip">
               <div class="subtitle">วันนี้เสี่ยงเซียมซีไปแล้ว</div>
               <div class="small muted">เสี่ยงใหม่ได้วันพรุ่งนี้ หรือทำบุญค่าเซียมซี</div>
-              <Btn tone="green" block onClick={() => spendCoins(PRICE_EXTRA) && setPaid(true)}>
-                เสี่ยงอีกครั้ง <Coin n={PRICE_EXTRA} />
+              <Btn tone="green" block onClick={() => (useSiamsiCredit() || spendCoins(PRICE_EXTRA)) && setPaid(true)}>
+                เสี่ยงอีกครั้ง {(game.value.daily.counts.siamsi_credit ?? 0) > 0 ? `(ใช้สิทธิ์ ${game.value.daily.counts.siamsi_credit})` : <Coin n={PRICE_EXTRA} />}
               </Btn>
             </div>
           )}

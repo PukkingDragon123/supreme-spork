@@ -11,6 +11,8 @@ import { P } from '../art/palette'
 import type { AvatarLook } from '../art/avatar'
 import { iconSprite } from '../art/icons'
 import { drawPlayer, handAt, Juice, lightPool, motes, softGlow, vignette, type TPose } from '../art/minigames/temple'
+import { Critters, Crowd } from '../art/minigames/scenery'
+import { TEMPLE_KID } from '../art/minigames/hosts'
 import { tsfx } from '../art/minigames/sfx'
 import { game } from '../game/state'
 import { count, dogState, feedDog, petDog, setCompanion } from '../game/actions'
@@ -43,6 +45,9 @@ class DogScene implements Scene {
   onPet?: () => void
   private petAccum = 0
   private bg: HTMLCanvasElement | null = null
+  critters = new Critters()
+  crowd = new Crowd()
+  private lifeInit = false
   constructor(
     public coat: DogCoat,
     public look: AvatarLook,
@@ -51,6 +56,11 @@ class DogScene implements Scene {
     this.w = w
     this.h = h
     this.bg = null
+    if (!this.lifeInit) {
+      this.lifeInit = true
+      this.crowd.add({ look: TEMPLE_KID, x: Math.round(w * 0.86), y: this.footY - 14, idle: 'stand', reactPose: 'cheer' })
+      this.critters.cat(Math.round(w * 0.2), Math.round(h * 0.55) - 12, '#4a3f55', 'loaf').butterfly(Math.round(w * 0.4), Math.round(h * 0.35), '#ff9fc0').bird(Math.round(w * 0.7), Math.round(h * 0.55) - 12, 'sparrow')
+    }
   }
   get footY() {
     return Math.round(this.h * 0.66)
@@ -129,6 +139,7 @@ class DogScene implements Scene {
       this.petAccum = 0
       this.boop = 1
       this.juice.shake(0.08)
+      this.crowd.cheer('happy', 1)
       this.onPet?.()
     }
   }
@@ -163,6 +174,8 @@ class DogScene implements Scene {
       this.face = Math.sin(this.t * 1.3) > 0.97 ? 'blink' : 'idle'
     }
     motes(this.particles, dt, this.w, this.footY, 1.5, '#fff3c4')
+    this.critters.update(dt, this.w)
+    this.crowd.update(dt)
     this.particles.update(dt)
   }
   private bagMouth: [number, number] = [0, 0]
@@ -213,6 +226,8 @@ class DogScene implements Scene {
     if (this.pour > 0) pose = 'feed_pour'
     else if (this.petT > 0) pose = Math.floor(this.t * 8) % 2 ? 'pet_a' : 'pet_b'
     else if (this.happy > 0 || this.eating > 0) pose = 'kneel'
+    this.critters.render(g)
+    this.crowd.render(g)
     const pl = drawPlayer(g, this.look, pose, 'front', this.playerX, this.footY, { scale: 2, t: this.t, barefoot: true, shadow: false })
     if (pose === 'feed_pour') {
       const [lx, ly] = handAt(pl, 1)

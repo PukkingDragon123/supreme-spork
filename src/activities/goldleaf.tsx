@@ -10,6 +10,8 @@ import { drawBuddha, drawBuddhaBack, BRONZE, GOLD, drawCandleStand } from '../ar
 import { P } from '../art/palette'
 import type { AvatarLook } from '../art/avatar'
 import { drawLeafSheet, drawPlayer, godRays, handAt, impactBurst, Juice, motes, softGlow, vignette, type TPose } from '../art/minigames/temple'
+import { Critters, Crowd } from '../art/minigames/scenery'
+import { GRANNY_GOLD } from '../art/minigames/hosts'
 import { starsFrom } from '../art/minigames/rules'
 import { tsfx } from '../art/minigames/sfx'
 import { game } from '../game/state'
@@ -43,6 +45,9 @@ class GoldScene implements Scene {
   private pointerDown = false
   private tmp: HTMLCanvasElement | null = null
   private bg: HTMLCanvasElement | null = null
+  critters = new Critters()
+  crowd = new Crowd()
+  private lifeInit = false
   constructor(public look: AvatarLook) {}
   resize(w: number, h: number) {
     this.tmp = null
@@ -51,6 +56,11 @@ class GoldScene implements Scene {
     this.h = h
     this.layers = {}
     this.masks = {}
+    if (!this.lifeInit) {
+      this.lifeInit = true
+      this.crowd.add({ look: GRANNY_GOLD, x: w - 18, y: this.baseY + 40, idle: 'wai', reactPose: 'happy' })
+      this.critters.bird(Math.round(w * 0.72), this.baseY, 'sparrow')
+    }
   }
   get cx() {
     return Math.round(this.w / 2)
@@ -151,6 +161,8 @@ class GoldScene implements Scene {
         impactBurst(this.particles, e.x, e.y, '#fff3a6', 14)
         this.juice.shake(0.2)
         this.juice.flash('#fff3a6', 0.18)
+        this.crowd.cheer('happy', 1.6)
+        this.critters.startle(e.x, e.y, 90)
         this.onSheetUsed?.()
       }
     }
@@ -167,6 +179,8 @@ class GoldScene implements Scene {
     this.doneT = Math.max(0, this.doneT - dt)
     this.turnT = Math.max(0, this.turnT - dt)
     motes(this.particles, dt, this.w, this.baseY, 2.5, '#ffe7a0')
+    this.critters.update(dt, this.w)
+    this.crowd.update(dt)
     this.particles.update(dt)
   }
   render(g: Surface) {
@@ -214,6 +228,8 @@ class GoldScene implements Scene {
       flip = f[0] < this.playerX - 4
       pose = this.pressT > 0 ? (Math.floor(this.t * 8) % 2 ? 'press_a' : 'press_b') : 'press_b'
     }
+    this.critters.render(g)
+    this.crowd.render(g)
     const pl = drawPlayer(g, this.look, pose, 'back', this.playerX, this.playerFoot, { scale: 2, flip, shadow: false })
     if (pose === 'leaf_hold' && this.sheet > 0) {
       const [hx, hy] = handAt(pl, -1)

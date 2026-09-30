@@ -13,6 +13,8 @@ import { P } from '../art/palette'
 import type { AvatarLook } from '../art/avatar'
 import { drawBeatCue, drawTempleBell } from '../art/minigames/bells'
 import { drawPlayer, drawStriker, handAt, impactBurst, Juice, motes, softGlow, vignette } from '../art/minigames/temple'
+import { Critters, Crowd } from '../art/minigames/scenery'
+import { WORSHIPPERS } from '../art/minigames/hosts'
 import { beatTiming, comboPraise, type Stars, type Timing } from '../art/minigames/rules'
 import { tsfx } from '../art/minigames/sfx'
 import { treeLine } from '../scenes/maps/common'
@@ -64,6 +66,9 @@ class BellScene implements Scene {
   swingPower = 0
   pushT = 0
   private bg: HTMLCanvasElement | null = null
+  critters = new Critters()
+  crowd = new Crowd()
+  private lifeInit = false
   constructor(
     public big: boolean,
     public look: AvatarLook,
@@ -75,6 +80,17 @@ class BellScene implements Scene {
     this.layout()
     if (!this.px) this.px = this.targetX = this.big ? Math.round(w * 0.8) : Math.round(w / 2)
     if (this.big) this.px = this.targetX = Math.round(w * 0.8)
+    if (!this.lifeInit) {
+      this.lifeInit = true
+      if (this.big) {
+        this.critters.bird(Math.round(w * 0.2), this.bells[0].y - 18).bird(Math.round(w * 0.62), this.bells[0].y - 18).cat(Math.round(w * 0.1), this.footY + 6, '#4a3f55', 'sit')
+        this.crowd.add({ look: WORSHIPPERS[4], x: Math.round(w * 0.08), y: this.footY - 2, idle: 'stand', reactPose: 'cheer' })
+      } else {
+        for (let r = 0; r < 2; r++) this.critters.bird(Math.round(w * (0.2 + r * 0.45)), this.rowY(r) - 7).bird(Math.round(w * (0.6 - r * 0.3)), this.rowY(r) - 7)
+        this.critters.cat(Math.round(w * 0.14), this.footY + 8, '#f5a55a', 'loaf')
+        this.crowd.add({ monk: 'novice', x: Math.round(w * 0.88), y: this.footY - 4 }).add({ look: WORSHIPPERS[0], x: Math.round(w * 0.12), y: this.footY - 6, idle: 'wai', reactPose: 'happy' })
+      }
+    }
   }
   get footY() {
     return Math.round(this.h * (this.big ? 0.68 : 0.75))
@@ -208,6 +224,7 @@ class BellScene implements Scene {
     this.juice.hitstop(0.035)
     sfx.bell(b.idx)
     tsfx.thwack()
+    this.critters.startle(b.x, b.y, 50)
     haptic(12)
     this.onRing?.(b, grade, 1)
   }
@@ -236,6 +253,8 @@ class BellScene implements Scene {
     this.juice.flash('#fff3c4', 0.12 + p * 0.12)
     sfx.bigBell()
     tsfx.thwack()
+    this.critters.startle(b.x, b.y, 400)
+    this.crowd.cheer('cheer', 1.6)
     haptic(Math.round(30 + p * 40))
     this.onRing?.(b, p > 0.85 ? 'perfect' : p > 0.5 ? 'good' : 'miss', p)
   }
@@ -280,6 +299,8 @@ class BellScene implements Scene {
     for (const r of this.rings) r.t += dt
     this.rings = this.rings.filter((r) => r.t < (this.big ? 2.4 : 1))
     motes(this.particles, dt, this.w, this.h * 0.6, this.big ? 2 : 1, '#fff3a6')
+    this.critters.update(dt, this.w)
+    this.crowd.update(dt)
     this.particles.update(dt)
   }
   render(g: Surface) {
@@ -320,6 +341,8 @@ class BellScene implements Scene {
     // the player with the long striker
     const pose = this.hitT > 0.12 ? 'bell_hit' : this.hitT > 0 ? 'bell_up' : 'bell_ready'
     const moving = Math.abs(this.targetX - this.px) > 2
+    this.critters.render(g)
+    this.crowd.render(g)
     const pl = drawPlayer(g, this.look, pose, 'back', Math.round(this.px), this.footY, { flip: this.flip, bob: moving ? -1 : 0 })
 
     const [hx, hy] = handAt(pl, -1)
@@ -359,6 +382,8 @@ class BellScene implements Scene {
     // the player gripping the tail rope
     const pose = this.pushT > 0 ? 'log_push' : this.charge > 0 ? 'log_pull' : 'log_hold'
     const pxX = Math.round(Math.min(this.w - 18, x0 + len + 13))
+    this.critters.render(g)
+    this.crowd.render(g)
     const pl = drawPlayer(g, this.look, pose, 'front', pxX, this.footY, { t: this.t })
 
     const [hx, hy] = handAt(pl, 1)
@@ -426,6 +451,7 @@ export function BellsActivity({ req }: { req: ActivityRequest }) {
         sfx.chime()
         sc.particles.confetti(sc.w / 2, sc.h * 0.5, 40)
         banner(stage.current, 'ครบ ๙ ใบ!', 'gold')
+        sc.crowd.cheer('happy', 1.6)
         setTimeout(() => {
           for (const x of sc.bells) x.rung = false
           setRung(0)

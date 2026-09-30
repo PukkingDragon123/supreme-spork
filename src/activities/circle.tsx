@@ -11,6 +11,8 @@ import type { AvatarLook } from '../art/avatar'
 import { drawChedi } from '../art/buildings'
 import { P } from '../art/palette'
 import { drawHeldCandle, drawLotusBud, drawPlayer, godRays, handAt, Juice, softGlow, vignette, type Placed } from '../art/minigames/temple'
+import { Critters, Crowd } from '../art/minigames/scenery'
+import { WORSHIPPERS } from '../art/minigames/hosts'
 import { tsfx } from '../art/minigames/sfx'
 import type { Stars } from '../art/minigames/rules'
 import { game } from '../game/state'
@@ -48,6 +50,9 @@ class CircleScene implements Scene {
   onOut?: () => void
   private lastPointer: number | null = null
   private bg: HTMLCanvasElement | null = null
+  critters = new Critters()
+  crowd = new Crowd()
+  private lifeInit = false
   constructor(public look: AvatarLook) {
     const others: AvatarLook[] = [
       { gender: 'f', face: 1, skin: 2, hairColor: 0, hair: 'hair_long', top: 'top_white', bottom: 'bot_sarong', shoes: null, head: null, neck: null, hand: null, back: null },
@@ -60,6 +65,12 @@ class CircleScene implements Scene {
     this.w = w
     this.h = h
     this.bg = null
+    if (!this.lifeInit) {
+      this.lifeInit = true
+      this.npcs.push({ a: Math.PI / 2 + 5.4, look: WORSHIPPERS[3], speed: 0.1 }, { a: Math.PI / 2 + 0.8, look: WORSHIPPERS[4], speed: 0.13 })
+      this.crowd.add({ monk: 'monk', x: Math.round(w * 0.1), y: Math.round(this.cy + this.ry + 26) })
+      this.critters.cat(Math.round(w * 0.88), Math.round(this.cy + this.ry + 22), '#4a3f55', 'loaf')
+    }
   }
   get cx() {
     return this.w / 2
@@ -158,6 +169,8 @@ class CircleScene implements Scene {
         const a = rand(0, Math.PI * 2)
         this.particles.add({ kind: 'firefly', x: this.cx + Math.cos(a) * rand(0, this.rx), y: this.cy - rand(20, 120), vx: rand(-3, 3), vy: rand(-5, -1), max: rand(2, 4), color: '#fff3a6' })
       }
+    this.critters.update(dt, this.w)
+    this.crowd.update(dt)
     this.particles.update(dt)
   }
   private placed: Placed | null = null
@@ -192,6 +205,8 @@ class CircleScene implements Scene {
         g.alpha(1)
       }
     }
+    this.critters.render(g)
+    this.crowd.render(g)
     type D = { y: number; draw: () => void }
     const list: D[] = []
     const addWalker = (a: number, look: AvatarLook, moving: boolean, me: boolean) => {

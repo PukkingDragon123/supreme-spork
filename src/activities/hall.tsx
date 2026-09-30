@@ -10,6 +10,7 @@ import { rand } from '../engine/rng'
 import type { AvatarLook } from '../art/avatar'
 import type { BaseDollPose } from '../art/doll'
 import { drawPlayer, godRays, Juice, lightPool, motes, softGlow, vignette } from '../art/minigames/temple'
+import { Critters, Crowd } from '../art/minigames/scenery'
 import { tsfx } from '../art/minigames/sfx'
 import { drawAltar, drawArch, drawBuddha, drawCandleStand, drawHallInterior, drawLightBeams, drawVase } from '../art/interior'
 import { game, level } from '../game/state'
@@ -31,6 +32,9 @@ export class HallScene implements Scene {
   particles = new Particles()
   juice = new Juice()
   private bg: HTMLCanvasElement | null = null
+  critters = new Critters()
+  crowd = new Crowd()
+  private lifeInit = false
   private bowT = -1
   private bowCount = 0
   private bowDone = 0
@@ -55,6 +59,11 @@ export class HallScene implements Scene {
     this.w = w
     this.h = h
     this.bg = null
+    if (!this.lifeInit) {
+      this.lifeInit = true
+      this.crowd.add({ monk: 'monk', x: w - 18, y: this.floorY + 16 })
+      this.critters.cat(16, this.floorY + 24, '#f5a55a', 'sleep')
+    }
   }
 
   get floorY() {
@@ -131,6 +140,8 @@ export class HallScene implements Scene {
       if (Math.random() < dt * 4) this.particles.add({ kind: 'firefly', x: rand(0, this.w), y: rand(this.h * 0.3, this.h), vx: rand(-2, 2), vy: rand(-6, -2), max: rand(3, 5), color: '#fff3a6' })
     } else this.calm = Math.max(0, this.calm - dt)
     motes(this.particles, dt, this.w, this.floorY, 2.5, '#fff3a6')
+    this.critters.update(dt, this.w)
+    this.crowd.update(dt)
     this.particles.update(dt)
   }
 
@@ -167,6 +178,8 @@ export class HallScene implements Scene {
     // The player, close to the camera.
     const breathe = this.mode === 'meditate' ? Math.round(this.breath) : 0
     const bob = this.chantPulse > 0.6 ? -1 : 0
+    this.critters.render(g)
+    this.crowd.render(g)
     drawPlayer(g, this.look, this.pose(), 'back', cx, this.footY, { scale: 2, barefoot: true, bob: bob - breathe })
     if (this.calm > 0) {
       g.ctx.save()

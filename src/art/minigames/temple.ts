@@ -7,7 +7,7 @@ import { dollSprite, type BaseDollPose, type DollView } from '../doll'
 import type { AvatarLook } from '../avatar'
 import { bake, mix, type Surface } from '../../engine/pixel'
 import { P } from '../palette'
-import { T_POSE_NAMES, tWrist, tp, type TPose } from '../poses/temple'
+import { T_POSE_NAMES, tWrist, tp, type TExpr, type TPose } from '../poses/temple'
 import type { Particles } from '../../engine/particles'
 import { rand } from '../../engine/rng'
 
@@ -35,6 +35,8 @@ export interface PlayerOpts {
   t?: number
   barefoot?: boolean
   alpha?: number
+  /** Face override for temple poses (happy, think = focused, open = surprised). */
+  expr?: TExpr
 }
 
 const T_POSES = new Set<string>(T_POSE_NAMES)
@@ -45,7 +47,7 @@ const T_POSES = new Set<string>(T_POSE_NAMES)
  */
 export function drawPlayer(g: Surface, look: AvatarLook, pose: TPose | BaseDollPose, view: DollView, cx: number, footY: number, o: PlayerOpts = {}): Placed {
   const s = o.scale ?? 1
-  const name = T_POSES.has(pose) ? tp(pose as TPose) : (pose as BaseDollPose)
+  const name = T_POSES.has(pose) ? (o.expr ? (`act_t_${pose}__${o.expr}` as const) : tp(pose as TPose)) : (pose as BaseDollPose)
   const blink = view === 'front' && o.t !== undefined && o.t % 3.3 < 0.12
   const spr = dollSprite(look, name, { view, flip: o.flip, blink, barefoot: o.barefoot })
   const x = Math.round(cx - (spr.w * s) / 2)
