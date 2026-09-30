@@ -536,18 +536,18 @@
   height: 120px;
 }
 
-.cook-taste-chef img {
+.cook-taste-chef > img {
   position: absolute;
   left: 0;
   bottom: 0;
   image-rendering: pixelated;
 }
 
-.cook-taste-chef img.a {
+.cook-taste-chef > img.a {
   animation: cook-frame-a 0.8s steps(1) infinite;
 }
 
-.cook-taste-chef img.b {
+.cook-taste-chef > img.b {
   animation: cook-frame-b 0.8s steps(1) infinite;
 }
 
@@ -637,7 +637,7 @@
   pointer-events: none;
 }
 
-.cook-go-chef img {
+.cook-go-chef > img {
   position: absolute;
   left: 0;
   top: 0;

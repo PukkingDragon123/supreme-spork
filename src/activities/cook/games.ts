@@ -293,6 +293,8 @@ export class ChopGame extends StepGame {
   private lx = 0
   private ly = 0
   private knifeT = 0
+  /** Perfect cuts in a row. */
+  private run = 0
   tool: Tool = 'knife'
   limit = 16
 
@@ -342,7 +344,14 @@ export class ChopGame extends StepGame {
       let gi = 0
       for (let i = 1; i < it.guides.length; i++) if (Math.abs(it.guides[i] - cx) < Math.abs(it.guides[gi] - cx)) gi = i
       const good = it.guides.length && Math.abs(it.guides[gi] - cx) <= 4
-      if (good) this.hits++
+      if (good) {
+        this.hits++
+        this.run++
+        if (this.run >= 2) {
+          this.k.particles.popText(it.x + cx, it.y - 16, `x${this.run}`, this.run >= 4 ? '#ff9fc0' : '#ffd54f')
+          wsfx.combo(this.run)
+        }
+      } else this.run = 0
       const at = good ? it.guides[gi] : Math.round(cx)
       it.guides.splice(gi, 1)
       it.cuts.push(at)

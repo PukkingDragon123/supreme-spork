@@ -240,16 +240,29 @@ export function drawFaceFx(g: Surface, look: AvatarLook, ox: number, oy: number,
     }
     case 'soot': {
       // Smudges on the cheeks and nose, singed puff of hair, a smoke curl.
-      const s1 = '#4a3f48'
-      const s2 = '#6d6070'
-      for (const [x, y, c] of [
-        [7, 19, s1], [8, 19, s2], [8, 20, s1], [9, 18, s2], [23, 18, s2], [24, 19, s1], [23, 20, s2], [22, 19, s1],
-        [15, 18, s2], [16, 19, s1], [12, 12, s2], [19, 11, s1], [20, 12, s2],
-      ] as [number, number, string][])
-        facePut(g, ox, oy, flip, x, y, c)
-      drawRows(g, ox, oy, flip, 8, -1, ['..kkk...kkk..', '.kgggk.kgggk.', 'kgglggkggglgk', '.kgggggggggk.'], { k: '#3a3440', g: '#8c8190', l: '#c8c0cc' })
+      // Spiral eyes, soot smudges, a frizzed-up puff of hair and smoke curls.
+      coverEyes(g, look, ox, oy, flip)
+      const sp = ['kkkk', 'k..k', 'k.kk', 'k...']
+      drawRows(g, ox, oy, flip, 10, 16, sp, { k: K })
+      drawRows(g, ox, oy, flip, 18, 16, sp, { k: K })
+      const s1 = '#2a2228'
+      const s2 = '#4a3f48'
+      drawRows(g, ox, oy, flip, 6, 19, ['.ab', 'aab', '.a.'], { a: s1, b: s2 })
+      drawRows(g, ox, oy, flip, 22, 19, ['ba.', 'baa', '.a.'], { a: s1, b: s2 })
+      drawRows(g, ox, oy, flip, 14, 19, ['.b', 'ab'], { a: s1, b: s2 })
+      drawRows(g, ox, oy, flip, 4, -1, [
+        '.....kkk...kkkk...kkk.....',
+        '...kkgggk.kggggk.kgggkk...',
+        '..kgggllgkggllggkgllgggk..',
+        '.kgglggggggggggggggglgggk.',
+        'kgggggglgggggggglggggggggk',
+        'kggglgggggggggggggggglgggk',
+        '.kgggggggkkkkkkkkggggggk..',
+        '..kkggk............kggk...',
+      ], { k: '#2a2228', g: '#6d6070', l: '#a89eac' })
       const up = Math.floor(t * 4) % 3
-      drawRows(g, ox, oy, flip, 20 + (up === 1 ? 1 : 0), -6 - up, ['.ww', 'w..', '.w.'], { w: '#d8d0dc' })
+      drawRows(g, ox, oy, flip, 21 + (up === 1 ? 1 : 0), -9 - up, ['.ww', 'w..', '.w.', '..w'], { w: '#d8d0dc' })
+      drawRows(g, ox, oy, flip, 8 - (up === 2 ? 1 : 0), -8 - ((up + 1) % 3), ['ww.', '..w', '.w.'], { w: '#c8c0cc' })
       break
     }
     case 'sparkle': {
@@ -271,14 +284,14 @@ export function drawFaceFx(g: Surface, look: AvatarLook, ox: number, oy: number,
 export type CardMood = 'thumbs' | 'cheer' | 'phew' | 'yum' | 'sour' | 'burnt' | 'taste'
 
 /** The player striking a reaction pose for a result card (DOLL_W+12 × DOLL_H+8). */
-export function workerCard(look: AvatarLook, mood: CardMood, frame: 0 | 1 = 0, apron = false): Sprite {
-  return cached(`wcard:${lookKey(look)}:${mood}:${frame}:${apron ? 1 : 0}`, () => {
+export function workerCard(look: AvatarLook, mood: CardMood, frame: 0 | 1 = 0, apron = false, faceOverride?: FaceFx): Sprite {
+  return cached(`wcard:${lookKey(look)}:${mood}:${frame}:${apron ? 1 : 0}:${faceOverride ?? ''}`, () => {
     const W = DOLL_W + 12
     const H = DOLL_H + 8
     const g = new Surface(W, H)
     const pose =
       mood === 'thumbs' || mood === 'yum' ? WPOSE.thumbs : mood === 'cheer' ? WPOSE.cheer : mood === 'phew' ? WPOSE.phew : mood === 'taste' ? WPOSE.taste : WPOSE.oops
-    const face: FaceFx = mood === 'yum' ? 'hearts' : mood === 'sour' ? 'sour' : mood === 'burnt' ? 'soot' : mood === 'phew' ? 'sweat' : mood === 'taste' ? 'none' : 'sparkle'
+    const face: FaceFx = faceOverride ?? (mood === 'yum' ? 'hearts' : mood === 'sour' ? 'sour' : mood === 'burnt' ? 'soot' : mood === 'phew' ? 'sweat' : mood === 'taste' ? 'none' : 'sparkle')
     const hop = frame === 1 && (mood === 'cheer' || mood === 'thumbs' || mood === 'yum') ? 2 : 0
     const feet = H - 3 - hop
     drawWorker(g, look, pose, W / 2, feet, { apron, face, t: frame ? 0.2 : 0, blink: frame === 1 && mood === 'phew' })
