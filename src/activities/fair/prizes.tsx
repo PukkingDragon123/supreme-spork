@@ -31,7 +31,7 @@ export function prizeIconUrl(motif: string) {
 /** Prize-wall art: plushies show their stitched plush sprite (26×26), the rest the booth icon. */
 export function prizeArt(p: FairPrize): { url: string; plush: boolean } {
   const col = p.kind === 'collectible' ? HUB_COLLECTIBLE_BY_ID[p.ref] : null
-  if (col && col.kind === 'plush' && hasPlushArt(col.art.motif)) return { url: collectibleUrl(col, 4), plush: true }
+  if (col && col.kind === 'plush' && hasPlushArt(col.art.motif)) return { url: collectibleUrl(col, 6), plush: true }
   return { url: prizeIconUrl(p.art), plush: false }
 }
 
@@ -45,7 +45,7 @@ function PrizeCard({ p }: { p: FairPrize }) {
     <div class={`panel fairx-prize ${avail ? '' : 'owned'}`}>
       {(() => {
         const art = prizeArt(p)
-        const px = art.plush ? 52 : 60
+        const px = art.plush ? 78 : 60
         return <img class={`px fairx-prize-img ${art.plush ? 'plush' : ''}`} src={art.url} alt="" width={px} height={px} style={{ width: `${px}px`, height: `${px}px` }} />
       })()}
       <div class="fairx-name">{p.name}</div>

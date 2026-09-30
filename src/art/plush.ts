@@ -345,7 +345,11 @@ const PLUSH: Record<string, PlushDraw> = {
     }, 'ball', { lightAt: 0.5, spec: false })
     body(k, p, null)
     head(k, p.main, 13, 10, 8, 5.8)
-    k.speckle(4, 5, 22, 22, p.acc.m, 14, 7, [p.main.m, p.main.l])
+    // Golden rosette spots in neat rows.
+    for (const [x, y] of [[8, 5], [13, 4], [18, 5], [5, 9], [21, 9], [8, 17], [18, 17], [13, 19], [22, 14]] as [number, number][]) {
+      k.on(x, y, p.acc.m)
+      k.on(x + 1, y, p.acc.s)
+    }
     k.form(soft(mix(p.raw[0], '#fff6d0', 0.4)), (m) => m.ell(13, 13.4, 5, 1.8, '#000'), 'ball', { spec: false, rim: false })
     eye(k, 8, 8)
     eye(k, 16, 8)
@@ -472,29 +476,35 @@ const PLUSH: Record<string, PlushDraw> = {
     tag(k)
   },
   mookata(k, p) {
-    // ตุ๊กตาหมูกระทะ: a smiling dome grill in its moat of soup, pork slices on top.
-    const steel = soft('#9a9aae')
-    k.form(steel, (m) => m.ell(13, 19, 11, 4.4, '#000'), 'bevel')
-    k.form(soft('#f8a860'), (m) => m.ell(13, 18.4, 9.6, 3.2, '#000'), 'ball', { lightAt: 0.4, spec: false, rim: false })
+    // ตุ๊กตาหมูกระทะ: a smiling brass dome grill in its moat of soup, pork
+    // slices and a butter cube on top.
+    const brass = soft('#e0b060')
+    k.form(soft('#9a9aae'), (m) => m.ell(13, 19.2, 11, 4.2, '#000'), 'bevel')
+    k.form(soft('#f8a860'), (m) => m.ell(13, 18.6, 9.6, 3, '#000'), 'ball', { lightAt: 0.4, spec: false, rim: false })
     k.px(5, 18, M.green.m)
+    k.px(6, 19, M.green.l)
     k.px(20, 19, M.cream.l)
-    k.px(8, 20, '#ffffff')
-    k.form(soft('#6e6e82'), (m) => m.ell(13, 13, 8, 7, '#000'), 'ball', { lightAt: 0.5, spec: false, sep: 'down' })
-    for (const [x, y] of [[9, 7], [14, 6.4], [17, 9]] as [number, number][]) {
-      k.form(soft(p.raw[1]), (m) => m.ell(x, y, 2.4, 1.2, '#000'), 'bevel')
-      k.on(x - 1, y, '#ffffff')
+    k.px(19, 18, M.cream.m)
+    k.form(brass, (m) => m.ell(13, 13, 8.4, 7.2, '#000'), 'ball', { lightAt: 0.5, spec: false, sep: 'down' })
+    // Grill slots.
+    for (const [x, y] of [[7, 10], [19, 10], [6, 14], [20, 14]] as [number, number][]) k.on(x, y, brass.d)
+    // Pork belly slices with white fat stripes.
+    for (const [x, y] of [[8.6, 7.4], [14, 6], [17.6, 8.4]] as [number, number][]) {
+      k.form(soft(p.raw[1]), (m) => m.ell(x, y, 2.6, 1.4, '#000'), 'ball', { spec: false, rim: false })
+      k.hline(Math.round(x - 1), Math.round(x + 1), Math.round(y), '#fff6f0')
     }
+    k.form(M.yolk, (m) => m.rect(12, 3, 3, 2, '#000'), 'bevel')
     eye(k, 9, 12)
     eye(k, 15, 12)
     blush(k, 7, 15)
     blush(k, 17, 15)
-    k.px(12, 15, '#ffffff')
-    k.px(13, 16, '#ffffff')
-    k.px(14, 15, '#ffffff')
-    k.fx(6, 3, 'rgba(238,230,242,0.9)')
-    k.fx(7, 2, 'rgba(238,230,242,0.6)')
-    k.fx(19, 3, 'rgba(238,230,242,0.9)')
-    k.fx(20, 2, 'rgba(238,230,242,0.6)')
+    k.px(12, 15, EYE)
+    k.px(13, 16, EYE)
+    k.px(14, 15, EYE)
+    k.fx(5, 4, 'rgba(238,230,242,0.9)')
+    k.fx(6, 3, 'rgba(238,230,242,0.6)')
+    k.fx(20, 3, 'rgba(238,230,242,0.9)')
+    k.fx(21, 2, 'rgba(238,230,242,0.6)')
     tag(k, 21, 19)
   },
   friedegg(k, p) {

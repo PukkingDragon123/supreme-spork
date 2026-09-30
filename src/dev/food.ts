@@ -19,7 +19,10 @@ const bgOnly = q.get('bg')
 
 const ALMS = ['rice', 'sticky', 'curry', 'egg', 'dessert', 'banana', 'water', 'fruit', 'laddu', 'milk', 'redsoda', 'boiledegg', 'tea', 'fishfood', 'dogfood', 'chicken', 'bread', 'sangkhathan']
 
-const groups: [string, [string, () => Sprite][]][] = [
+const ids = q.get('ids')
+const groups: [string, [string, () => Sprite][]][] = ids
+  ? [['pick', ids.split(',').map((n) => [n, () => iconSprite(n)] as [string, () => Sprite])]]
+  : [
   ['alms', ALMS.map((n) => [n, () => iconSprite(n)])],
   ['cook', FOOD_ICON_IDS.map((n) => [n, () => iconSprite(n)])],
   ['snacks', SNACKS.map((s) => [s.id, () => snackSprite(s.id, s.icon)])],

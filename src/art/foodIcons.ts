@@ -68,18 +68,32 @@ const ICON: Record<string, FoodDraw> = {
     k.px(10, 8, M.yolk.s)
   },
   dessert: (k) => {
-    // ทองหยิบ & ทองหยอด on a plate – golden egg-yolk sweets.
-    plate(k, 11.5)
+    // ทองหยอด drops and a ทองหยิบ flower on a plate – golden egg-yolk sweets.
+    plate(k, 12)
     const g = M.gold
-    k.ball(4.8, 9.5, 2.3, 2, g)
-    k.ball(11.2, 9.5, 2.3, 2, g)
-    // ทองหยิบ flower on top (five pinched petals).
-    for (const [x, y] of [[8, 4.2], [5.8, 6], [10.2, 6], [6.6, 8.4], [9.4, 8.4]] as [number, number][]) k.ball(x, y, 1.7, 1.6, g, { spec: false })
-    k.px(8, 6, g.d)
-    k.px(8, 7, g.s)
-    k.px(7, 3, g.hi)
-    k.px(4, 8, g.hi)
-    k.px(10, 8, g.hi)
+    for (const [x, y] of [[4.4, 9.6], [8, 10.2], [11.6, 9.6]] as [number, number][]) k.ball(x, y, 2.3, 2, g, { sep: 'down' })
+    // ทองหยิบ: a five-petal pinched flower with a darker heart.
+    k.form(g, (m) => {
+      m.ell(8, 5.6, 4, 3.2, '#000')
+      m.px(8, 1.8, '#000')
+    }, 'ball', { sep: 'down' })
+    for (const [x, y] of [[8, 3], [5, 5], [11, 5], [6, 8], [10, 8]] as [number, number][]) k.on(x, y, g.s)
+    k.px(8, 5, g.d)
+    k.px(8, 6, g.s)
+    k.px(7, 4, g.hi)
+  },
+  friedegg: (k) => {
+    // ไข่ดาว on a plate: crispy lacy edge, runny yolk.
+    plate(k, 12)
+    k.form(M.crispy, (m) => {
+      m.ell(8, 9, 6, 3.4, '#000')
+      m.px(2, 9, '#000')
+      m.px(13, 8, '#000')
+    }, 'bevel', { sep: 'down' })
+    k.form(M.eggW, (m) => m.ell(7.6, 8.6, 4.8, 2.6, '#000'), 'ball', { rim: false })
+    k.ball(8.4, 8.2, 2.2, 1.8, M.yolk)
+    k.on(3, 10, M.crispy.hi)
+    k.on(12, 10, M.crispy.l)
   },
   banana: (k) => {
     // Bunch of กล้วยน้ำว้า: three curved fingers from one green crown.
@@ -322,7 +336,6 @@ const ICON: Record<string, FoodDraw> = {
     k.line(4, 6, 5, 1, s.d)
     k.px(9, 5, s.hi)
   },
-  eggs: (k) => ICON.ing_egg(k),
 }
 
 // ---------------------------------------------------------------------------
@@ -534,6 +547,24 @@ for (const [id, fn] of Object.entries(DISHES_ART)) {
   ALL[`${id}_gold`] = (k) => fn(k, true)
 }
 for (const [id, fn] of Object.entries(SNACK_ICON_ART)) if (!ALL[id]) ALL[id] = fn
+
+// Friendly aliases so other systems can ask for the Thai classics by name.
+const ALIAS: Record<string, string> = {
+  kaprao: 'dish_kaprao',
+  padthai: 'dish_padthai',
+  mangosticky: 'mango_sticky',
+  khanomkrok: 'dish_khanomkrok',
+  bualoy: 'dish_bualoy',
+  thongyod: 'dessert',
+  icecream: 'icecream_coconut',
+  namdaeng: 'red_soda',
+  popcorn: 'hub_popcorn',
+  saimai: 'hub_sai_mai',
+  khaolam: 'khao_lam',
+  moopin: 'moo_ping',
+  somtam: 'som_tam',
+}
+for (const [a, to] of Object.entries(ALIAS)) if (!ALL[a] && ALL[to]) ALL[a] = ALL[to]
 
 /** Every icon name this module draws. */
 export const FOOD_KIT_NAMES = Object.keys(ALL)

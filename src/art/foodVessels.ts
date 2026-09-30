@@ -10,11 +10,11 @@ import { M, Pix, type Ramp } from './foodKit'
 /** Round plate seen from the front; the food sits around y = cy - 1. */
 export function plate(k: Pix, cy = 11, gold = false, rim = '#8fb8ee') {
   const p = gold ? M.gold : M.plate
-  k.ell(8, cy + 0.7, 7, 2.6, p.s)
-  k.ell(8, cy, 7, 2.5, gold ? p.m : p.l)
-  k.ell(8, cy + 0.2, 5.6, 1.7, gold ? p.l : p.m)
-  k.px(1, cy, gold ? p.d : rim)
-  k.px(14, cy, gold ? p.d : rim)
+  // Underside, blue-rimmed enamel top, then the white well.
+  k.ell(8, cy + 0.8, 7, 2.6, p.s)
+  k.ell(8, cy, 7, 2.5, gold ? p.m : mix(rim, '#ffffff', 0.45))
+  k.ell(8, cy - 0.2, 6.6, 2.1, gold ? p.l : mix(rim, '#ffffff', 0.7))
+  k.ell(8, cy + 0.1, 5.4, 1.6, gold ? p.hi : mix(rim, '#ffffff', 0.8))
   k.hline(6, 10, Math.round(cy + 2.8), p.d)
 }
 

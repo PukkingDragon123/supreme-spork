@@ -345,8 +345,8 @@ export class Pix {
 
   /** Rice grains: short light/dark dashes over a white mound. */
   grains(x0: number, y0: number, x1: number, y1: number, r: Ramp, seed = 3) {
-    this.speckle(x0, y0, x1, y1, r.s, Math.max(2, Math.round(((x1 - x0 + 1) * (y1 - y0 + 1)) / 7)), seed, [r.m, r.l])
-    this.speckle(x0, y0, x1, y1, r.hi, Math.max(1, Math.round(((x1 - x0 + 1) * (y1 - y0 + 1)) / 12)), seed + 7, [r.m])
+    this.speckle(x0, y0, x1, y1, r.s, Math.max(2, Math.round(((x1 - x0 + 1) * (y1 - y0 + 1)) / 11)), seed, [r.m, r.l])
+    this.speckle(x0, y0, x1, y1, r.hi, Math.max(1, Math.round(((x1 - x0 + 1) * (y1 - y0 + 1)) / 16)), seed + 7, [r.m])
   }
 
   /** Condensation / sauce shine: a bright pixel with a soft tail below. */

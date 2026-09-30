@@ -4,7 +4,7 @@
 // every snack sold at place and hub stalls (keyed by snack id) plus a few
 // extra Thai classics other systems can use as icon names.
 
-import { M, Pix, R5, twinkle, type Ramp } from './foodKit'
+import { M, Pix, R5, ramp, twinkle, type Ramp } from './foodKit'
 import { bowl, cup, plate, stick } from './foodVessels'
 
 type Draw = (k: Pix) => void
@@ -117,9 +117,9 @@ export const DISHES_ART: Record<string, (k: Pix, gold: boolean) => void> = {
     sparkleGold(k, gold)
   },
   dish_kaprao: (k, gold) => {
+    // ข้าวกะเพรา ไข่ดาว: rice, basil pork, and a crispy fried egg on top.
     plate(k, 12, gold)
-    mound(k, 4.8, 10, 3.6, 2.4, M.rice, 6)
-    // Basil stir-fried pork, glossy and speckled.
+    mound(k, 4.8, 10, 3.6, 2.2, M.rice, 6)
     const pk = R5('#e8b080', '#b8703c', '#8a4a26', '#62321c', '#3e1e12')
     k.form(pk, (m) => m.ell(11, 10.2, 3.8, 2.3, '#000'), 'ball', { sep: true })
     k.speckle(8, 8, 14, 12, pk.l, 3, 5)
@@ -127,57 +127,55 @@ export const DISHES_ART: Record<string, (k: Pix, gold: boolean) => void> = {
     k.px(12, 11, M.basil.m)
     k.px(9, 11, M.basil.m)
     k.px(14, 10, M.chili.m)
-    // Fried egg crowning it all.
-    friedEgg(k, 8, 6.4, 5, 2.8)
+    friedEgg(k, 7.6, 5.6, 5, 3)
     sparkleGold(k, gold)
   },
   dish_khanomkrok: (k, gold) => {
-    // ขนมครก pairs on a banana-leaf tray: golden crisp cups, coconut tops.
-    leafTray(k, gold, 9)
-    const piece = (x: number, y: number) => {
-      k.form(M.crispy, (m) => m.ell(x, y, 2.5, 2, '#000'), 'ball', { sep: 'down', spec: false })
-      k.form(M.cream, (m) => m.ell(x - 0.3, y - 0.5, 1.7, 1.1, '#000'), 'ball', { rim: false })
+    // ขนมครก: golden crisp half-spheres with coconut-cream tops and spring onion.
+    leafTray(k, gold, 10)
+    const piece = (x: number, y: number, sep: boolean) => {
+      k.form(M.crispy, (m) => m.ell(x, y, 3, 2.3, '#000'), 'ball', { sep: sep ? 'down' : false, spec: false })
+      k.form(M.cream, (m) => m.ell(x - 0.2, y - 0.5, 2, 1.3, '#000'), 'ball', { rim: false })
       k.px(Math.round(x), Math.round(y - 1), M.green.m)
     }
-    piece(4, 7)
-    piece(8, 6)
-    piece(12, 7)
-    piece(6, 10)
-    piece(10.4, 10)
+    piece(4.6, 7, false)
+    piece(11.4, 7, false)
+    piece(5.4, 10.6, true)
+    piece(10.6, 10.6, true)
     sparkleGold(k, gold)
   },
   dish_bualoy: (k, gold) => {
     bowl(k, 7, gold, M.cream)
-    const cols = [M.pandan, M.pink, M.orange, M.cream, M.pandan]
-    for (const [i, [x, y]] of ([[4.5, 6.4], [7, 5.4], [9.6, 6.2], [12, 6.8], [7.6, 7.6]] as [number, number][]).entries())
-      k.ball(x, y, 1.5, 1.3, cols[i], { spec: false, rim: false })
-    k.px(6, 5, '#ffffff')
-    k.px(9, 5, '#ffffff')
-    k.px(3, 8, M.cream.hi)
+    // Rainbow glutinous-rice balls bobbing in coconut milk.
+    const cols = [M.pandan, M.pink, M.orange, M.pandan]
+    for (const [i, [x, y]] of ([[4.8, 7.4], [8, 6.6], [11.2, 7.4], [8.4, 8.8]] as [number, number][]).entries()) k.ball(x, y, 1.9, 1.6, cols[i], { sep: 'down' })
     sparkleGold(k, gold)
   },
   dish_padthai: (k, gold) => {
+    // ผัดไทยห่อไข่: tamarind noodles wrapped in a thin omelette, cut open on
+    // top, with a shrimp, chives, bean sprouts, peanuts and lime.
     plate(k, 12, gold)
+    const om = R5('#fff6c0', '#ffe07a', '#f8c648', '#d8982e', '#9a6420')
+    k.form(om, (m) => m.ell(7.6, 8.8, 5.4, 3.2, '#000'), 'ball', { sep: 'down' })
+    // Folded envelope creases.
+    k.line(3, 8, 7, 11, om.s)
+    k.line(12, 8, 8, 11, om.s)
+    // The cut: noodles peeking out.
     const n = R5('#ffe8c0', '#f7c486', '#e49a56', '#bb6e3a', '#844626')
-    k.form(n, (m) => m.ell(7.4, 8.8, 5.4, 3, '#000'), 'ball')
-    // Noodle strands.
-    for (const y of [7, 9, 10]) k.line(3 + (y % 2), y, 11 - (y % 2), y - 1, n.s)
-    k.line(4, 8, 10, 8, n.l)
-    // Shrimp, sprouts, peanuts, chives, lime.
+    k.form(n, (m) => m.ell(7.6, 7.4, 2.6, 1.4, '#000'), 'ball', { spec: false })
+    k.line(6, 7, 9, 8, n.s)
     k.form(M.shrimp, (m) => {
-      m.px(5, 6, '#000')
       m.px(6, 5, '#000')
       m.px(7, 5, '#000')
-      m.px(8, 6, '#000')
-    }, 'bevel')
-    k.px(9, 6, M.shrimp.l)
-    k.px(10, 7, M.shrimp.m)
-    k.px(3, 8, M.cream.hi)
-    k.px(4, 10, M.cream.hi)
-    k.px(9, 10, M.cream.l)
-    k.speckle(4, 7, 11, 11, '#f0d090', 3, 17)
-    k.px(6, 9, M.green.m)
-    k.px(11, 9, M.green.l)
+      m.px(8, 5, '#000')
+      m.px(9, 6, '#000')
+      m.px(5, 6, '#000')
+    }, 'bevel', { sep: 'down' })
+    k.px(7, 5, M.shrimp.hi)
+    k.px(10, 6, M.green.m)
+    k.px(11, 7, M.green.l)
+    k.px(4, 10, '#fffaf0')
+    k.px(3, 11, '#f4f0d8')
     lime(k, 11, 10)
     sparkleGold(k, gold)
   },
@@ -214,10 +212,10 @@ export const DISHES_ART: Record<string, (k: Pix, gold: boolean) => void> = {
 // Snack builders
 
 /** Grilled pieces on a bamboo stick (หมูปิ้ง, ลูกชิ้น, ไส้อั่ว…). */
-function skewer(k: Pix, r: Ramp, pieces: [number, number, number, number][], o: { char?: string; glaze?: string; stick?: boolean } = {}) {
+function skewer(k: Pix, r: Ramp, pieces: [number, number, number, number][], o: { char?: string; glaze?: string; stick?: boolean; sep?: boolean } = {}) {
   if (o.stick !== false) stick(k, 2, 14, 14, 1)
   for (const [x, y, rx, ry] of pieces) {
-    k.ball(x, y, rx, ry, r)
+    k.ball(x, y, rx, ry, r, { sep: o.sep ? 'down' : false })
     if (o.char) {
       k.on(x - 1, y + 1, o.char)
       k.on(x + 1, y, o.char)
@@ -226,15 +224,18 @@ function skewer(k: Pix, r: Ramp, pieces: [number, number, number, number][], o: 
   }
 }
 
-/** A noodle bowl: broth + noodle lines + toppings. */
+/** A noodle bowl: broth, a tangle of noodles heaped above it, toppings, chopsticks. */
 function noodleBowl(k: Pix, broth: Ramp, noodle: string, tops: [number, number, string][]) {
   bowl(k, 7, false, broth)
-  k.line(4, 7, 7, 8, noodle)
-  k.line(8, 8, 12, 7, noodle)
+  const n = ramp(noodle)
+  k.form(n, (m) => m.ell(8, 7, 4.2, 2, '#000'), 'ball', { spec: false })
+  k.line(5, 6, 8, 8, n.s)
+  k.line(8, 6, 11, 7, n.s)
+  k.line(6, 7, 9, 6, n.l)
   for (const [x, y, c] of tops) k.px(x, y, c)
-  // Chopsticks.
-  k.line(9, 6, 14, 0, M.wood.l)
-  k.line(10, 6, 15, 1, M.wood.s)
+  // Chopsticks resting in the bowl.
+  k.line(10, 6, 14, 0, M.wood.l)
+  k.line(11, 6, 15, 1, M.wood.s)
 }
 
 /** Iced drink in a cup (optionally with a creamy layer). */
@@ -248,11 +249,13 @@ function onPlate(k: Pix, draw: () => void, cy = 12) {
   draw()
 }
 
-/** Paper cone/bag (เกาลัด, ถั่ว) with contents on top. */
-function paperBag(k: Pix, paper: Ramp, fill: Ramp, n = 5) {
-  k.form(paper, (m) => m.poly([[3, 6], [13, 6], [12, 14], [4, 14]], '#000'), 'cyl')
-  for (let i = 0; i < n; i++) k.ball(4.6 + i * 1.8, 5 - (i % 2), 1.6, 1.4, fill, { spec: i % 2 === 0 })
-  k.hline(3, 12, 6, paper.hi)
+/** Paper bag (เกาลัด, ถั่ว) with a heap of contents spilling over the top. */
+function paperBag(k: Pix, paper: Ramp, fill: Ramp) {
+  for (const [x, y] of [[5, 7], [8, 6], [11, 7], [6.5, 4.6], [9.5, 4.4], [8, 2.8]] as [number, number][]) k.ball(x, y, 1.9, 1.6, fill, { sep: 'down' })
+  k.form(paper, (m) => m.poly([[3, 8], [13, 8], [12, 14.5], [4, 14.5]], '#000'), 'cyl', { sep: true })
+  k.hline(3, 12, 8, paper.hi)
+  k.px(7, 11, paper.s)
+  k.px(9, 11, paper.s)
 }
 
 // ---------------------------------------------------------------------------
@@ -327,9 +330,9 @@ export const SNACK_ICON_ART: Record<string, Draw> = {
     k.form(M.husk, (m) => m.ell(8, 11, 6.5, 3.4, '#000'), 'ball')
     k.speckle(2, 11, 14, 14, M.husk.d, 5, 7)
     k.ell(8, 9, 6.4, 1.5, M.coconutMeat.m)
-    k.ball(6.2, 7, 2.8, 2.5, M.cream)
-    k.ball(10, 6.4, 2.8, 2.6, M.cream)
-    k.ball(8, 4.2, 2.4, 2.2, M.cream)
+    k.ball(6.2, 7, 2.8, 2.5, M.cream, { sep: 'down' })
+    k.ball(10, 6.4, 2.8, 2.6, M.cream, { sep: 'down' })
+    k.ball(8, 4.2, 2.4, 2.2, M.cream, { sep: 'down' })
     k.px(6, 6, '#e0a860')
     k.px(10, 5, '#e0a860')
     k.px(8, 3, '#c07a40')
@@ -430,12 +433,14 @@ export const SNACK_ICON_ART: Record<string, Draw> = {
     k.px(10, 6, M.pink.l)
   }),
   kanom_pang: (k) => {
-    // Steamed bread cubes with a dish of green pandan custard.
-    k.form(M.cream, (m) => m.rect(2, 5, 5, 4, '#000'), 'bevel')
-    k.form(M.cream, (m) => m.rect(4, 8, 5, 4, '#000'), 'bevel')
-    k.form(M.plate, (m) => m.ell(11, 11, 3.8, 2.4, '#000'), 'bevel')
-    k.form(M.pandan, (m) => m.ell(11, 10.4, 3, 1.6, '#000'), 'ball')
-    k.px(3, 6, '#ffffff')
+    // ขนมปังสังขยา: fluffy steamed bread slices with green pandan custard.
+    const b = R5('#ffffff', '#fffaf0', '#f6ead4', '#dcc8a8', '#b09a78')
+    k.form(b, (m) => m.poly([[2, 5], [9, 3], [12, 8], [5, 10]], '#000'), 'bevel')
+    k.form(M.pandan, (m) => m.poly([[3.4, 5.4], [8.6, 4], [10.4, 7.4], [5.4, 8.6]], '#000'), 'ball', { cx: 7, cy: 6, rx: 4, ry: 3 })
+    k.px(6, 5, M.pandan.hi)
+    k.form(b, (m) => m.poly([[5, 10], [12, 8], [14.5, 12], [7.5, 14.5]], '#000'), 'bevel', { sep: true })
+    k.form(M.pandan, (m) => m.poly([[6.4, 10.4], [11.6, 9], [13, 11.8], [8, 13.4]], '#000'), 'ball', { cx: 10, cy: 11, rx: 4, ry: 2.5 })
+    k.px(9, 10, M.pandan.hi)
   },
   hub_roti_banana: (k) => onPlate(k, () => {
     // Folded crispy roti squares, banana slices, condensed milk zigzag.
@@ -526,8 +531,7 @@ export const SNACK_ICON_ART: Record<string, Draw> = {
     k.px(10, 3, M.corn.hi)
     k.px(5, 5, M.crispy.m)
   },
-  coconut_sugar: (k) => SNACK_ICON_ART.ing_sugar_stack(k),
-  ing_sugar_stack: (k) => {
+  coconut_sugar: (k) => {
     const p = R5('#ffe8b8', '#f2c078', '#d9964a', '#b06a2c', '#7a441c')
     for (let i = 0; i < 3; i++) k.form(p, (m) => m.ell(8, 11 - i * 3, 5.4, 2, '#000'), 'ball', { spec: i === 2 })
   },
@@ -537,7 +541,7 @@ export const SNACK_ICON_ART: Record<string, Draw> = {
     // หมูปิ้ง: three glazed grilled pork pieces with char marks + sticky rice.
     k.form(M.sticky, (m) => m.ell(4, 11.5, 3.2, 2.4, '#000'), 'ball')
     k.grains(1, 9, 7, 14, M.sticky, 4)
-    skewer(k, M.grill, [[11, 4, 2.6, 2.2], [8.6, 6.6, 2.6, 2.2], [6.2, 9.2, 2.6, 2.2]], { char: '#4a2418', glaze: M.grill.hi })
+    skewer(k, M.grill, [[11, 4, 2.6, 2.2], [8.6, 6.6, 2.6, 2.2], [6.2, 9.2, 2.6, 2.2]], { char: '#4a2418', glaze: M.grill.hi, sep: true })
   },
   hub_lookchin_tod: (k) => {
     // ลูกชิ้นทอด: puffy fried balls with sweet chilli sauce.
@@ -648,20 +652,26 @@ export const SNACK_ICON_ART: Record<string, Draw> = {
     k.steam(3, 3)
   },
   khaomangai: (k) => {
-    // ข้าวมันไก่: dome of chicken-fat rice, glossy poached chicken slices,
-    // cucumber and a cup of ginger-soy sauce.
+    // ข้าวมันไก่: yellow-tinted chicken-fat rice, sliced poached chicken with
+    // golden skin, cucumber, and a cup of ginger-soy sauce.
     plate(k, 12)
-    mound(k, 6.4, 9.6, 4.6, 2.8, R5('#ffffff', '#fffbe8', '#f8ecc8', '#e0cca0', '#b89e74'), 9)
-    const c = R5('#ffffff', '#fff6e4', '#f6e0bc', '#dcbc8c', '#aa8a5c')
-    k.form(c, (m) => m.poly([[3, 7], [10, 5], [11, 7.5], [4, 9.5]], '#000'), 'bevel', { sep: 'down' })
-    k.line(5, 7, 10, 6, c.hi)
-    k.px(6, 8, c.s)
-    k.px(8, 7, c.s)
-    k.px(4, 6, M.green.m)
-    cucumber(k, 10, 10)
-    k.form(M.plate, (m) => m.ell(12.8, 7.6, 2.2, 1.6, '#000'), 'bevel')
-    k.ell(12.8, 7.4, 1.4, 0.8, M.sauce.m)
-    k.px(12, 7, M.chili.m)
+    mound(k, 6.4, 9.6, 4.8, 2.8, R5('#ffffff', '#fff8dc', '#f8eab8', '#e0c890', '#b89a64'), 9)
+    const skin = R5('#fff8d0', '#ffe590', '#f5c85c', '#d49c3c', '#9a6a28')
+    const meat = R5('#ffffff', '#fffaf2', '#f8ecdc', '#e0c8b0', '#b09880')
+    for (let i = 0; i < 3; i++) {
+      const x = 4 + i * 2.6
+      k.form(meat, (m) => m.poly([[x, 7.6], [x + 2.4, 6.8], [x + 2.4, 9], [x, 9.8]], '#000'), 'bevel', { sep: 'down' })
+      k.line(x, 7, x + 2, 6.4, skin.m)
+      k.px(Math.round(x), 7, skin.l)
+    }
+    k.px(3, 6, M.green.m)
+    k.px(4, 6, M.green.l)
+    cucumber(k, 11, 10)
+    cucumber(k, 9, 11)
+    k.form(M.plate, (m) => m.ell(12.8, 6.6, 2.2, 1.6, '#000'), 'bevel', { sep: 'down' })
+    k.ell(12.8, 6.4, 1.4, 0.8, M.sauce.s)
+    k.px(12, 6, M.chili.m)
+    k.px(13, 6, '#f0c060')
   },
   som_tam: (k) => {
     // ส้มตำ: shredded papaya, tomato, long bean, chilli, peanuts – with a mortar.
