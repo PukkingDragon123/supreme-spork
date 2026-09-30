@@ -589,19 +589,23 @@ export const SNACK_ICON_ART: Record<string, Draw> = {
     k.ball(13.5, 4.5, 1.3, 1.3, M.cream, { spec: false })
   },
   dried_squid: (k) => {
-    // Grilled squid on a stick: pointed mantle with fins, curly tentacles.
-    stick(k, 2, 15, 6, 10)
+    // หมึกย่าง: a whole grilled squid on a stick – long glossy mantle with a
+    // diamond fin on top, a fringe of curly tentacles below.
     const s = R5('#ffe8c8', '#f6c890', '#e09a5c', '#b8703c', '#804a26')
     k.form(s, (m) => {
-      m.poly([[6, 9], [7, 3], [10, 0.5], [12, 4], [11, 9]], '#000')
-      m.poly([[6, 4], [4, 6], [6.5, 6]], '#000')
-      m.poly([[12, 4], [14, 6], [11.5, 6]], '#000')
+      m.poly([[4.5, 10], [5.5, 4], [8, 1.5], [10.5, 4], [11.5, 10]], '#000')
+      m.poly([[8, 0], [11, 2.6], [8, 4], [5, 2.6]], '#000')
     }, 'cyl')
-    k.form(s, (m) => {
-      for (const x of [6.5, 8.5, 10.5]) m.thick(x, 9, x - 1 + (x > 8 ? 2 : 0), 13, 0.6, '#000')
-    }, 'bevel')
-    k.line(8, 2, 8, 7, s.l)
-    for (const [x, y] of [[9, 4], [10, 6], [9, 7]] as [number, number][]) k.px(x, y, '#9a4a28')
+    // Three curly tentacle strands (the gaps fill with outline ink).
+    for (const [x, dir] of [[5.6, -1], [8, 0], [10.4, 1]] as [number, number][]) {
+      k.px(x, 10, s.m)
+      k.px(x + dir * 0.5, 11, s.l)
+      k.px(x + dir, 12, s.m)
+      k.px(x + dir * 1.5 + (dir === 0 ? 1 : 0), 13, s.s)
+    }
+    stick(k, 8, 15, 8, 11)
+    for (const [x, y] of [[7, 4], [9, 6], [7, 7], [9, 8]] as [number, number][]) k.px(x, y, '#9a4a28')
+    k.px(7, 3, s.hi)
   },
   fair_squid_grill: (k) => {
     SNACK_ICON_ART.dried_squid(k)
