@@ -162,6 +162,8 @@ export const WP = {
   carry: workPose({ name: 'act_w_carry', view: 'front', L: { w: [12, 34] }, R: { w: [20, 34] }, expr: 'smile' }),
   /** Lifting something to chest height. */
   lift: workPose({ name: 'act_w_lift', view: 'front', L: { w: [11.5, 29.5] }, R: { w: [20.5, 29.5] }, expr: 'open' }),
+  /** Holding something up over the head (onto a high shelf). */
+  liftHigh: workPose({ name: 'act_w_lift_hi', view: 'front', L: { w: [12.5, 31], z: 'front' }, R: { w: [28, 13.5], z: 'top' }, expr: 'open' }),
   /** Seen from behind: winding up a toss (right hand low and back). */
   tossBack0: workPose({ name: 'act_w_toss_b0', view: 'back', L: { w: [10, 30], z: 'back' }, R: { w: [27.5, 33], z: 'top', hand: 'fist' }, expr: 'smile' }),
   /** Seen from behind: releasing the toss (hand up and forward). */

@@ -8,6 +8,11 @@ import { rand, pick } from '../../engine/rng'
 import { haptic, sfx } from '../../engine/audio'
 import { bakeBrassTable, brassSculpts, BRASS_KINDS, BRASS_NAMES, drawRag, shadow, type BrassKind } from '../../art/jobs'
 import { Drag, JobScene, type JobSummary } from './base'
+import { Worker } from './worker'
+import { wsfx } from './workSfx'
+import { reachPose, WP } from '../../art/poses/work'
+import { drawFist } from '../../art/workActor'
+import { glow, vignette } from '../../art/workFx'
 
 const SCALE = 1.45
 const DONE_AT = 0.82
@@ -42,6 +47,8 @@ export class BrassScene extends JobScene {
   private tableY = 200
   private hinted = false
   private slowT = 0
+  private hardT = 0
+  private shineT = 0
 
   get current(): Piece | undefined {
     return this.pieces[this.index]
@@ -61,6 +68,9 @@ export class BrassScene extends JobScene {
   goalText() {
     return `ขัดจนเงา ${this.doneCount}/${this.pieces.length} ชิ้น`
   }
+  cheerText() {
+    return 'เงาวิ้งทุกชิ้น!'
+  }
   summary(): JobSummary {
     return {
       title: this.doneCount === this.pieces.length ? 'ทองเหลืองเงาวิ้งทุกชิ้น!' : undefined,
@@ -72,6 +82,34 @@ export class BrassScene extends JobScene {
     this.tableY = Math.round(this.top + this.playH * 0.52)
     this.baseY = Math.round(this.top + this.playH * 0.7)
     this.bg = bakeBrassTable(this.w, this.h, this.tableY)
+    // The player stands behind the table, waist at its back edge.
+    const feet = this.tableY + 19
+    if (!this.worker) this.worker = new Worker(this.cx + 30, feet)
+    else if (this.phase === 'ready') this.worker.place(this.cx + 30, feet)
+    this.worker.goTo(this.worker.tx, feet)
+    this.worker.clipY = this.tableY
+  }
+
+  private aimWorker(dt: number) {
+    const wk = this.worker
+    if (!wk) return
+    const d = this.drag
+    if (this.rubbing && this.slide === 0) {
+      const fast = d.speed > 200
+      this.hardT = fast ? this.hardT + dt : Math.max(0, this.hardT - dt * 2)
+      // Lean toward the rag, sway with the strokes.
+      wk.follow = 9
+      wk.goTo(Math.max(18, Math.min(this.w - 18, d.x + 10)), this.tableY + 19 + (fast && Math.sin(this.t * 24) > 0 ? 1 : 0))
+      const sx = wk.x + 7.5
+      const sy = wk.feetY - 26
+      wk.pose = reachPose('front', 'R', Math.atan2(d.y - sy, d.x - sx), 9, fast ? 'open' : 'smile', { w: [10, 37] })
+      wk.face = this.hardT > 1.2 ? 'sweat' : 'none'
+    } else {
+      this.hardT = 0
+      wk.pose = WP.ready
+      wk.face = 'none'
+      wk.follow = 5
+    }
   }
 
   protected populate() {
@@ -151,6 +189,10 @@ export class BrassScene extends JobScene {
       if (Math.random() < 0.25 + power * 0.4) this.particles.add({ kind: 'dot', x: x1 + rand(-5, 5), y: y1 + rand(-3, 3), vx: rand(-20, 20), vy: rand(-10, 20), g: 120, max: 0.5, color: pick(['#5a482c', '#566a48', '#3e4e36']) })
       if (power > 0.6 && Math.random() < 0.3) this.particles.add({ kind: 'sparkle', x: x1 + rand(-6, 6), y: y1 + rand(-6, 6), max: 0.35, color: '#fff3a6' })
       if (power > 0.7 && Math.random() < 0.05) haptic(4)
+      if (power > 0.55 && this.shineT <= 0) {
+        wsfx.shine()
+        this.shineT = 0.35
+      }
     }
   }
 
@@ -166,6 +208,8 @@ export class BrassScene extends JobScene {
   protected tick(dt: number) {
     const d = this.drag
     if (!d.down) d.settle(dt)
+    this.shineT -= dt
+    this.aimWorker(dt)
     if (this.playing && !this.hinted && this.elapsed > 0.3 && this.current) {
       this.hinted = true
       this.say(this.cx, this.baseY - this.current.oy - 6, `ถู${BRASS_NAMES[this.current.kind]}แรง ๆ`, 'info', 1.8)
@@ -220,13 +264,17 @@ export class BrassScene extends JobScene {
     } else sfx.chime()
     sfx.sparkle()
     haptic(24)
-    this.say(this.cx, oy - 8, pick(['เงาวิ้ง!', 'สะท้อนแสงเลย!', 'ใหม่เอี่ยมเลย!']), 'good', 1.3)
+    if (this.doneCount < this.pieces.length) this.praise(pick(['เงาวิ้ง!', 'สะท้อนแสงเลย!', 'ใหม่เอี่ยม!']), 'gold', 1.2)
+    this.worker?.reactWith('cheer', 0.9)
   }
 
   protected draw(g: Surface) {
     if (this.bg) g.draw(this.bg, 0, 0)
+    this.worker?.draw(g)
     const p = this.current
     if (!p) return
+    // Spotlight on the piece being polished.
+    glow(g, this.cx, this.baseY - p.oy * 0.5, 60, 0.16 + p.frac * 0.25, '#ffe7a0')
     // Slide the finished piece out to the right and the next one in from the left.
     const s = this.slide
     this.drawPiece(g, p, s > 0 ? s * s * (this.w * 0.9) : 0)
@@ -239,7 +287,11 @@ export class BrassScene extends JobScene {
       g.rect(x - 3, y - 3, 7, 7, '#3a2838')
       g.rect(x - 2, y - 2, 5, 5, q.done ? '#ffd54f' : i === this.index ? '#fff1d6' : '#7e683e')
     })
-    if (this.rubbing && this.slide === 0) drawRag(g, this.drag.x, this.drag.y, this.t, Math.min(1, this.drag.speed / 200))
+    if (this.rubbing && this.slide === 0) {
+      drawRag(g, this.drag.x, this.drag.y, this.t, Math.min(1, this.drag.speed / 200))
+      if (this.worker) drawFist(g, this.worker.look, this.drag.x + 2 + Math.sin(this.t * 30) * Math.min(1, this.drag.speed / 200), this.drag.y - 3)
+    }
+    vignette(g, this.w, this.h, 0.3)
     if (this.rubbing && this.drag.speed > 200 && Math.random() < 0.5) this.particles.add({ kind: 'dot', x: this.drag.x + rand(-8, 8), y: this.drag.y + rand(-2, 6), vy: rand(-6, 6), max: 0.25, color: '#fff3c8' })
   }
 

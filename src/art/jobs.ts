@@ -1388,6 +1388,23 @@ export function bakeKutiGarden(w: number, h: number, ledgeY: number): HTMLCanvas
   })
 }
 
+/** Low hedge along the wall behind the pots (the gardener stands behind it). Canvas w × 30, bush tops ≈ row 6. */
+export function bakeHedge(w: number): HTMLCanvasElement {
+  return bake(w, 30, (g) => {
+    const blobs: [number, number, number][] = []
+    for (let x = -6; x < w + 10; x += 9) blobs.push([x, 13 + ((x * 7) % 3), 8 + ((x * 5) % 3)])
+    for (let x = -2; x < w + 10; x += 13) blobs.push([x + 4, 20 + ((x * 3) % 2), 9])
+    canopy(g, blobs, LEAVES.deep, 5)
+    g.rect(0, 24, w, 6, '#2c6a45')
+    // Tiny white jasmine flowers dotted through the hedge.
+    for (let x = 3; x < w; x += 11) {
+      const y = 11 + ((x * 13) % 9)
+      g.px(x, y, '#fffaf0')
+      g.px(x + 1, y + 1, '#fff3c8')
+    }
+  })
+}
+
 export type PlantKind = 'marigold' | 'jasmine' | 'orchid' | 'rose' | 'sunflower'
 
 const PLANT_FLOWER: Record<PlantKind, { a: Color; b: Color; c: Color }> = {
@@ -1529,6 +1546,24 @@ export function drawGauge(g: Surface, x: number, y: number, hgt: number, level: 
 }
 
 /** Green watering can; the spout tip is at (x, y). tilt 0..1 pours. */
+/** Where the spout tip sits for a hand on the can's handle (mirror = spout to the right). */
+export function wateringSpoutFromHandle(hx: number, hy: number, tilt: number, mirror = false): [number, number] {
+  const a = -0.15 - tilt * 0.55
+  const ox = 21 * Math.cos(a) + 4 * Math.sin(a)
+  const oy = 21 * Math.sin(a) - 4 * Math.cos(a)
+  return [mirror ? hx + ox : hx - ox, hy - oy]
+}
+
+/** Watering can with its spout tip at (x, y); `mirror` points the spout to the right. */
+export function drawWateringCanM(g: Surface, x: number, y: number, tilt: number, mirror: boolean) {
+  if (!mirror) return drawWateringCan(g, x, y, tilt)
+  g.ctx.save()
+  g.ctx.translate(Math.round(2 * (x - g.ox)) + 1, 0)
+  g.ctx.scale(-1, 1)
+  drawWateringCan(g, x, y, tilt)
+  g.ctx.restore()
+}
+
 export function drawWateringCan(g: Surface, x: number, y: number, tilt: number) {
   const a = -0.15 - tilt * 0.55
   const ca = Math.cos(a)

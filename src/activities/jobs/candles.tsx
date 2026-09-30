@@ -5,9 +5,14 @@ import type { PointerInfo } from '../../engine/stage'
 import type { Surface } from '../../engine/pixel'
 import { rand, pick } from '../../engine/rng'
 import { haptic, sfx } from '../../engine/audio'
-import { bakeShrine, drawCandleFlame, drawCandleRail, drawTaper, drawWindPuff } from '../../art/jobs'
+import { bakeShrine, drawCandleFlame, drawCandleRail, drawWindPuff } from '../../art/jobs'
 import { softGlow } from '../../art/hall'
 import { Drag, JobScene, type JobSummary } from './base'
+import { Worker } from './worker'
+import { wsfx } from './workSfx'
+import { reachPose, WP } from '../../art/poses/work'
+import { drawLongLighter } from '../../art/workTools'
+import { glow, vignette } from '../../art/workFx'
 
 const COUNT = 9
 const LIGHT_TIME = 0.35
@@ -46,6 +51,7 @@ export class CandleScene extends JobScene {
   private railY = 190
   private spawnT = 3
   private hinted = false
+  private floorY = 300
 
   get lit() {
     return this.candles.filter((c) => c.lit).length
@@ -55,6 +61,9 @@ export class CandleScene extends JobScene {
   }
   goalText() {
     return `เทียนติด ${this.lit}/${COUNT} เล่ม`
+  }
+  cheerText() {
+    return 'สว่างไสวทั้งวิหาร!'
   }
   summary(): JobSummary {
     return {
@@ -70,6 +79,11 @@ export class CandleScene extends JobScene {
     const x0 = 18
     const x1 = this.w - 18
     this.candles.forEach((c, i) => (c.x = Math.round(x0 + ((x1 - x0) * i) / (COUNT - 1))))
+    // The player stands on the floor in front of the altar table.
+    this.floorY = Math.min(this.bottom - 2, this.tableY + 56)
+    if (!this.worker) this.worker = new Worker(this.cx - 14, this.floorY)
+    else if (this.phase === 'ready') this.worker.place(this.cx - 14, this.floorY)
+    this.worker.view = 'back'
   }
 
   protected populate() {
@@ -103,7 +117,7 @@ export class CandleScene extends JobScene {
       if (this.drag.down) return
       this.drag.begin(e)
       this.holding = true
-      sfx.tap()
+      wsfx.flick()
       return
     }
     if (e.type === 'move') {
@@ -122,12 +136,29 @@ export class CandleScene extends JobScene {
     haptic(12)
   }
 
-  /** Flame tip of the taper (just above the finger). */
+  /** Flame tip of the lighter (just above the finger). */
   private get tip(): [number, number] {
     return [this.drag.x, this.drag.y - 12]
   }
 
+  private aimWorker() {
+    const wk = this.worker
+    if (!wk) return
+    wk.follow = this.holding ? 12 : 6
+    if (!this.holding) {
+      wk.pose = WP.scoopBack
+      return
+    }
+    const [tx, ty] = this.tip
+    wk.goTo(Math.max(14, Math.min(this.w - 14, tx - 12)), this.floorY)
+    // Right arm raised toward the flame.
+    const sx = wk.x + 7.5
+    const sy = wk.feetY - 26
+    wk.pose = reachPose('back', 'R', Math.atan2(ty - sy, tx - sx), 9, 'smile', 'rest')
+  }
+
   protected tick(dt: number) {
+    this.aimWorker()
     const [tx, ty] = this.tip
     for (const c of this.candles) {
       c.glow += ((c.lit ? 1 : 0) - c.glow) * Math.min(1, dt * 4)
@@ -145,10 +176,13 @@ export class CandleScene extends JobScene {
         if (c.heat >= LIGHT_TIME) {
           c.lit = true
           c.heat = 0
-          sfx.candle()
+          wsfx.whoomp()
           sfx.merit()
           haptic(10)
-          this.particles.sparkles(c.x, this.flameY(c), 6, '#fff3a6')
+          this.particles.sparkles(c.x, this.flameY(c), 10, '#fff3a6', 14)
+          for (let i = 0; i < 6; i++) this.particles.add({ kind: 'dot', x: c.x + rand(-2, 2), y: this.flameY(c), vx: rand(-25, 25), vy: rand(-45, -15), g: 60, max: rand(0.4, 0.8), color: i % 2 ? '#ffd54f' : '#ff9a3a' })
+          c.glow = 1.6
+          this.streak(c.x, this.flameY(c) - 10, 2.2)
           if (this.lit >= COUNT) {
             this.flash(0.4)
             this.particles.confetti(this.cx, this.railY - 40, 40, ['#ffd54f', '#fff3a6', '#ffb347', '#ff9fc0'])
@@ -191,6 +225,8 @@ export class CandleScene extends JobScene {
           sfx.candle()
           this.shake(0.15, 1)
           this.say(cc.x, this.flameY(cc) - 12, 'เทียนดับ!', 'warn', 1)
+          this.breakStreak()
+          this.worker?.reactWith('oops', 0.8)
         }
       }
     }
@@ -229,10 +265,20 @@ export class CandleScene extends JobScene {
         }
       }
     }
-    for (const p of this.puffs) drawWindPuff(g, p.x, p.y, p.dir, this.t + p.ph, p.gone > 0 ? p.gone / 0.3 : 1)
-    if (this.holding) {
-      const [tx, ty] = this.tip
-      drawTaper(g, tx, ty, this.t)
+    // Warm light pooling on the table from every lit candle.
+    for (const c of this.candles) if (c.lit) glow(g, c.x, this.railY + 4, 20, 0.12 + c.glow * 0.08, '#ffb050')
+    vignette(g, this.w, this.h, 0.5 - k * 0.25, '10,4,10')
+    // The player with the long lighter.
+    const wk = this.worker
+    if (wk) {
+      wk.draw(g)
+      if (this.holding && this.phase !== 'done') {
+        const [hx, hy] = wk.wrist('R')
+        const [tx, ty] = this.tip
+        drawLongLighter(g, hx, hy, tx, ty, this.t, true)
+        wk.fists(g, ['R'])
+      }
     }
+    for (const p of this.puffs) drawWindPuff(g, p.x, p.y, p.dir, this.t + p.ph, p.gone > 0 ? p.gone / 0.3 : 1)
   }
 }
