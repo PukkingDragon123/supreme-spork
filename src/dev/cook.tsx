@@ -225,7 +225,7 @@ async function main() {
   } else {
     setupState()
     const recipe = q.get('recipe') ?? undefined
-    activity.value = { id: 'cook', params: recipe ? { recipe } : {} }
+    activity.value = { id: 'cook', params: recipe ? { recipe, ...(q.has('go') ? { go: '1' } : {}) } : {} }
     render(<CookView />, app)
   }
 }

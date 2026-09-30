@@ -11,6 +11,7 @@ import { noviceSweepSprite } from '../../art/characters'
 import { bakeCourtyard, drawAt, drawBasket, drawBroom, drawDustpan, leafSprite, LEAF_COLORS, shadow } from '../../art/jobs'
 import { Drag, JobScene, type JobSummary } from './base'
 import { Worker } from './worker'
+import { Life } from './life'
 import { wsfx } from './workSfx'
 import { gripPose, WP } from '../../art/poses/work'
 import { DOLL_H, DOLL_W } from '../../art/doll'
@@ -109,6 +110,7 @@ export class SweepScene extends JobScene {
     this.binX = w - 24
     this.binY = bottom - 6
     for (const l of this.leaves) this.clampLeaf(l)
+    if (!this.life) this.life = new Life().cat(Math.round(w * 0.72), top + 48, [24, top + 40, w - 30, top + 110], { state: 'sleep', color: '#f5a55a' }).pigeons(4, [30, top + 70, w - 40, top + 130]).kid(Math.round(w * 0.58), top + 32)
     if (!this.worker) this.worker = new Worker(Math.round(w * 0.22), bottom - 14)
     else if (this.phase === 'ready') this.worker.place(Math.round(w * 0.22), bottom - 14)
   }
@@ -542,6 +544,7 @@ export class SweepScene extends JobScene {
       const s = leafSprite(l.kind, l.rot)
       g.draw(s.canvas, Math.round(this.pileX + l.ox - s.w / 2), Math.round(this.pileY + l.oy - s.h / 2))
     }
+    this.life?.drawGround(g)
     // The player (y-sorted against the basket).
     const behind = this.worker && this.worker.y < this.binY
     if (behind) this.drawWorker(g)
@@ -556,6 +559,7 @@ export class SweepScene extends JobScene {
       g.px(s.x + s.len * Math.sign(s.v) * 1.1, s.y - 1, '#ffffff')
       g.alpha(1)
     }
+    this.life?.drawAir(g)
     motes(g, w, this.top + 20, this.bottom - 20, this.t, 12)
     sunRays(g, w, this.h, this.t, '#fff2c4', 0.16, this.top - 10)
   }

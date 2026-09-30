@@ -11,10 +11,12 @@ import { bakeShrineShelf, makeDust } from '../../art/jobs'
 import { toStars, type JobStars } from '../../game/jobs'
 import { Drag, JobScene, type JobSummary } from './base'
 import { Worker } from './worker'
+import { Life } from './life'
 import { wsfx } from './workSfx'
 import { reachPose, WP } from '../../art/poses/work'
 import { drawClothPole } from '../../art/workTools'
 import { glow, motes, vignette } from '../../art/workFx'
+import { drawIncenseSmoke } from '../../art/workLife'
 
 const SCALE = 0.62
 const DONE_AT = 0.85
@@ -88,6 +90,7 @@ export class StatueScene extends JobScene {
     if (!this.worker) this.worker = new Worker(this.cx, this.floorY)
     else if (this.phase === 'ready') this.worker.place(this.cx, this.floorY)
     this.worker.view = 'back'
+    this.life = new Life().kid(18, this.floorY + 2).gecko(this.w - 5, this.shelfY - 40, [this.w - 6, this.top + 10, this.w - 4, this.shelfY - 10])
   }
 
   private aimWorker() {
@@ -252,6 +255,16 @@ export class StatueScene extends JobScene {
       g.draw(s.img, ox, oy)
       if (!s.done) g.draw(s.dust, ox, oy)
     }
+    // Incense cup on the shelf, smoke drifting past the statues.
+    const ix = 26
+    g.ellipse(ix, this.shelfY - 2, 4, 2, '#3a2838')
+    g.ellipse(ix, this.shelfY - 2.5, 3, 1.3, '#e9a53a')
+    for (let i = -1; i <= 1; i++) {
+      g.vline(ix + i * 2, this.shelfY - 10, this.shelfY - 3, '#c8704a')
+      g.px(ix + i * 2, this.shelfY - 11, '#ff8a3a')
+      drawIncenseSmoke(g, ix + i * 2, this.shelfY - 12, this.t + i, 28, 0.3)
+    }
+    this.life?.drawGround(g)
     glow(g, this.cx, this.shelfY - 30, 80, 0.12 + this.progress() * 0.2, '#ffe7a0')
     motes(g, this.w, this.top + 10, this.shelfY, this.t, 12)
     vignette(g, this.w, this.h, 0.28)

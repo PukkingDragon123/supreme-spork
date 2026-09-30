@@ -20,6 +20,7 @@ import { ads } from '../../services/ads'
 import { spriteDataUrl } from '../../engine/sprite'
 import { workerCard, type CardMood } from '../../art/workActor'
 import { wsfx } from './workSfx'
+import { JobBrief } from './brief'
 import { PT, TONE_TEXT } from '../../ui/pixeltext'
 import { haptic, sfx } from '../../engine/audio'
 import { fmtTime, type Bubble, type JobScene, type JobSummary, type Praise } from './base'
@@ -238,7 +239,8 @@ export function JobRun({ def, make, onAgain, tw = 190 }: { def: JobDef; make: ()
   const topRef = useRef<HTMLDivElement>(null)
   const botRef = useRef<HTMLDivElement>(null)
   const tipKey = `goal:job:${def.id}`
-  const [intro, setIntro] = useState(() => !game.value.seen.tips.includes(tipKey))
+  // The brief (requester, task, rewards, deals) opens before every play.
+  const [intro, setIntro] = useState(true)
   const [help, setHelp] = useState(false)
   const [quit, setQuit] = useState(false)
   const [count, setCount] = useState<string | null>(null)
@@ -323,6 +325,7 @@ export function JobRun({ def, make, onAgain, tw = 190 }: { def: JobDef; make: ()
       })
     const lines = [`${'★'.repeat(stars)}${'☆'.repeat(3 - stars)} ${STAR_WORDS[stars]}`, ...summary.lines]
     if (r.mat) lines.push(`ได้${MATERIAL_INFO[r.mat.id].name} +${r.mat.n} ไว้ทำเฟอร์นิเจอร์`)
+    for (const b of r.bonuses ?? []) lines.push(`ดีล: ${b.label}`)
     const left = jobFullLeft(def.id)
     if (r.capped) lines.push('วันนี้รับรางวัลเต็มครบแล้ว รอบนี้ได้ 25%')
     else if (stars > 0) lines.push(left > 0 ? `รางวัลเต็มเหลืออีก ${left} รอบวันนี้` : 'ครบรางวัลเต็มของวันนี้แล้ว ขอบคุณจิตอาสา!')
@@ -427,7 +430,7 @@ export function JobRun({ def, make, onAgain, tw = 190 }: { def: JobDef; make: ()
           </div>
         </div>
       )}
-      {(intro || help) && !result && <JobGoalCard def={def} again={help} onStart={start} onClose={intro ? closeActivity : () => setHelp(false)} />}
+      {(intro || help) && !result && <JobBrief def={def} again={help} onStart={start} onClose={intro ? closeActivity : () => setHelp(false)} />}
       {quit && (
         <Window
           title="ออกจากงานนี้?"

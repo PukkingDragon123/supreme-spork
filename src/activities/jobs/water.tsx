@@ -10,6 +10,7 @@ import { bakeHedge, bakeKutiGarden, drawButterfly, drawGauge, drawPlant, drawPot
 import { toStars, type JobStars } from '../../game/jobs'
 import { Drag, JobScene, type JobSummary } from './base'
 import { Worker } from './worker'
+import { Life } from './life'
 import { wsfx } from './workSfx'
 import { reachPose } from '../../art/poses/work'
 import { glow, sunRays } from '../../art/workFx'
@@ -122,6 +123,7 @@ export class WaterScene extends JobScene {
     if (!this.worker) this.worker = new Worker(this.w - 30, this.ledgeY - 11)
     else if (this.phase === 'ready') this.worker.place(this.w - 30, this.ledgeY - 11)
     this.worker.shadow = false
+    this.life = new Life().cat(Math.round(this.w * 0.7), this.ledgeY + 40, [20, this.ledgeY + 30, this.w - 20, this.bottom - 10], { color: '#e8c898' }).dragonflies(2, [10, this.ledgeY - 60, this.w - 10, this.bottom - 20]).gecko(this.w - 12, this.ledgeY * 0.5, [this.w - 14, this.top + 10, this.w - 10, this.ledgeY - 40])
     const n = this.pots.length || 5
     this.pots.forEach((p, i) => (p.x = Math.round(18 + ((this.w - 42) * i) / (n - 1))))
     if (!this.holding) {
@@ -261,6 +263,7 @@ export class WaterScene extends JobScene {
   protected draw(g: Surface) {
     if (this.bg) g.draw(this.bg, 0, 0)
     glow(g, this.w * 0.5, this.ledgeY * 0.55, 60, 0.18, '#fff3c8')
+    this.life?.drawGround(g)
     // The player behind the hedge, then the hedge over their legs.
     this.worker?.draw(g)
     if (this.hedge) g.draw(this.hedge, 0, this.ledgeY - 26)
@@ -282,6 +285,7 @@ export class WaterScene extends JobScene {
       const y = t ? this.potTop(t) : this.ledgeY
       if (Math.floor(this.t * 6) % 2) g.px(sx, y - 1, '#ffffff')
     }
+    this.life?.drawAir(g)
     sunRays(g, this.w, this.h, this.t, '#fff2c4', 0.18, this.top - 20)
   }
 }

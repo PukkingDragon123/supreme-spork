@@ -6,10 +6,11 @@ import type { PointerInfo } from '../../engine/stage'
 import type { Surface } from '../../engine/pixel'
 import { rand } from '../../engine/rng'
 import { haptic, sfx } from '../../engine/audio'
-import { bakeRiver, drawCatfishBack, drawCatfishHead, drawCatfishLeap, drawFoodBowl } from '../../art/jobs'
+import { bakeRiver, drawCatfishBack, drawCatfishHead, drawCatfishLeap, drawFoodBowl, drawLongtail } from '../../art/jobs'
 import { P } from '../../art/palette'
 import { JobScene, type JobSummary } from './base'
 import { Worker } from './worker'
+import { Life } from './life'
 import { wsfx } from './workSfx'
 import { WP } from '../../art/poses/work'
 import { glow, sunRays } from '../../art/workFx'
@@ -96,6 +97,7 @@ export class CatfishScene extends JobScene {
     this.worker.view = 'back'
     this.worker.pose = WP.scoopBack
     this.worker.follow = 6
+    this.life = new Life().kid(16, this.bottom - 3).kid(this.w - 16, this.bottom - 4, undefined, true).dragonflies(2, [10, this.horizon + 10, this.w - 10, this.pierY - 40])
   }
 
   protected populate() {
@@ -248,6 +250,7 @@ export class CatfishScene extends JobScene {
 
   protected draw(g: Surface) {
     if (this.bg) g.draw(this.bg, 0, 0)
+    drawLongtail(g, ((this.t * 9) % (this.w + 60)) - 30, this.horizon + 5, this.t)
     const backs = [...this.backs].sort((a, b) => a.y - b.y)
     const heads = [...this.heads].sort((a, b) => a.y - b.y)
     let hi = 0
@@ -257,6 +260,7 @@ export class CatfishScene extends JobScene {
     }
     while (hi < heads.length) this.drawHead(g, heads[hi++])
     drawFoodBowl(g, this.cx, this.bottom - 6)
+    this.life?.drawGround(g)
     this.worker?.draw(g)
     // Food in flight.
     for (const tz of this.tosses) {
@@ -267,6 +271,7 @@ export class CatfishScene extends JobScene {
       g.rect(x - 1, y - 1, 2, 2, '#e8c07a')
       g.px(x - 1, y - 1, '#fff3c8')
     }
+    this.life?.drawAir(g)
     glow(g, this.w * 0.5, this.horizon, 90, 0.18, '#ffe0a0')
     sunRays(g, this.w, this.h, this.t, '#fff2c4', 0.12, this.top - 20)
   }

@@ -7,9 +7,10 @@ import { Surface } from '../../engine/pixel'
 import { rand, randInt, pick } from '../../engine/rng'
 import { haptic, sfx } from '../../engine/audio'
 import { DOG_COATS, dogSprite } from '../../art/characters'
-import { bakeHallFloor, drawAt, drawBucket, drawMop, shadow, stampPrint, stampSplat, wetSignSprite, type PrintKind } from '../../art/jobs'
+import { bakeHallFloor, drawAt, drawBucket, drawDonationBox, drawFan, drawMop, shadow, stampPrint, stampSplat, wetSignSprite, type PrintKind } from '../../art/jobs'
 import { Drag, JobScene, type JobSummary } from './base'
 import { Worker } from './worker'
+import { Life } from './life'
 import { wsfx } from './workSfx'
 import { gripPose } from '../../art/poses/work'
 import { DOLL_H, DOLL_W } from '../../art/doll'
@@ -64,6 +65,7 @@ export class MopScene extends JobScene {
   private grip = gripPose(0.3)
   private squeakT = 0
   private praised = 0
+  private catSaid = false
 
   progress() {
     const cleaned = this.total > 0 ? 1 - this.remaining / this.total : 1
@@ -89,6 +91,11 @@ export class MopScene extends JobScene {
     this.bucketY = this.bottom - 6
     const hx = this.bucketX + 26
     const hy = this.bucketY - 4
+    if (!this.life)
+      this.life = new Life().cat(this.w - 28, this.wallY + 30, [24, this.wallY + 30, this.w - 24, this.bottom - 30], {
+        color: '#fffaf0',
+        onStep: (x, y, flip) => this.catPrint(x, y, flip),
+      })
     if (!this.worker) this.worker = new Worker(hx, hy)
     else if (this.phase === 'ready') this.worker.place(hx, hy)
   }
@@ -287,6 +294,19 @@ export class MopScene extends JobScene {
     this.dogs = this.dogs.filter((dg) => dg.x > -20 && dg.x < this.w + 20)
   }
 
+  /** The temple cat pads across the wet floor and leaves little prints. */
+  private catPrint(x: number, y: number, flip: boolean) {
+    if (!this.dirt || !this.playing) return
+    const up = Math.floor(x / 4) % 2 ? -1 : 1
+    const before = this.regionAlpha(x, y + up)
+    stampPrint(this.dirt, x - (flip ? -3 : 3), y + 1 + up, flip ? Math.PI : 0, 'paw', up < 0, Math.round(x * 7 + y))
+    this.total += Math.max(0, this.regionAlpha(x, y + up) - before) * 0.6
+    if (!this.catSaid) {
+      this.catSaid = true
+      this.say(x, y - 14, 'เหมียว~ ขอเดินด้วย', 'warn', 1.2)
+    }
+  }
+
   private regionAlpha(x: number, y: number): number {
     if (!this.dirt) return 0
     const x0 = Math.max(0, Math.round(x) - 6)
@@ -370,6 +390,9 @@ export class MopScene extends JobScene {
       if (s.t > 1) g.px(s.x + 2, s.y - 1, '#ffffff')
     }
     g.alpha(1)
+    drawFan(g, 18, this.wallY + 26, this.t)
+    drawDonationBox(g, this.w - 20, this.wallY + 22)
+    this.life?.drawGround(g)
     drawAt(g, wetSignSprite(), this.w - 20, this.bottom - 4)
     drawBucket(g, this.bucketX, this.bucketY, this.t, this.slosh)
     if (this.wet < 0.12 && Math.sin(this.t * 8) > 0) {
