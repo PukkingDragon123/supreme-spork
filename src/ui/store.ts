@@ -30,6 +30,8 @@ export type ActivityId =
   | 'fair'
   /** Hub-market notice board. */
   | 'hub'
+  /** Beach mini-games and the photo spot (src/activities/beach). */
+  | 'beach'
 
 export interface ActivityRequest {
   id: ActivityId

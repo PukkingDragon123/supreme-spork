@@ -31,6 +31,12 @@ export function hotspotActions(id: string): HotspotAction[] {
       { label: 'ซุ้มแลกรางวัล', icon: 'gift', tone: 'paper', run: () => openActivity('fair', { booth: 'prizes' }) },
     ]
   }
+  // Beaches: `beach:<game>` mini-games and the photo spot (src/activities/beach).
+  if (id.startsWith('beach:')) {
+    const game = id.slice(6)
+    const label = game === 'photo' ? 'ถ่ายรูป' : game === 'banana' ? 'ขึ้นเรือ' : game === 'snorkel' ? 'ลงดำน้ำ' : game === 'cleanup' ? 'รับงานอาสา' : 'เริ่มเลย'
+    return [{ label, icon: game === 'photo' ? 'camera' : 'play', run: () => openActivity('beach', { game }) }]
+  }
   // Hub markets: `board:<hubId>` notice boards.
   if (id.startsWith('board:')) return [{ label: 'อ่านบอร์ดข่าวตลาด', icon: 'scroll', run: () => openActivity('hub', { hub: id.slice(6) }) }]
   if (id.startsWith('pray')) return [{ label: 'สวดมนต์', icon: 'pray', run: () => openPanel('pray') }]
