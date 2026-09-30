@@ -13,7 +13,6 @@ export type TPose =
   | 'alms_hold'
   | 'alms_give'
   | 'alms_scoop'
-  | 'kruat'
   | 'toss_ready'
   | 'toss_throw'
   | 'bell_ready'
@@ -72,16 +71,6 @@ const arm = (a: ArmSpec | 'rest' | null | undefined, side: 1 | -1, dy: number): 
   return { s, e, w, hand, z, k }
 }
 
-/** Shift an arm spec down by `d` rows (standing pose → kneeling pose). */
-const down = (a: ArmSpec, d: number): ArmSpec => [
-  [a[0][0], a[0][1] + d],
-  [a[1][0], a[1][1] + d],
-  [a[2][0], a[2][1] + d],
-  a[3],
-  a[4],
-  a[5],
-]
-
 /** Mirror an arm spec across the doll's centre line (L ↔ R). */
 const mirror = (a: ArmSpec): ArmSpec => [[31 - a[0][0] + 1, a[0][1]], [31 - a[1][0] + 1, a[1][1]], [31 - a[2][0] + 1, a[2][1]], a[3], a[4], a[5]]
 
@@ -90,9 +79,6 @@ const mirror = (a: ArmSpec): ArmSpec => [[31 - a[0][0] + 1, a[0][1]], [31 - a[1]
 // Front: both hands meeting at the chest, a little right of centre.
 const F_HOLD_L: ArmSpec = [[8.5, 25], [10, 30.5], [16.5, 30], 'fist', 'front', [0.5, 0]]
 const F_HOLD_R: ArmSpec = [[23.5, 25], [24.5, 30.5], [20.5, 29.5], 'fist', 'front', [0.5, 0]]
-// Back: arms reaching forward (hidden behind the torso).
-const B_FWD_L: ArmSpec = [[8.5, 25], [7.5, 29.5], [10.5, 31], 'none', 'back']
-const B_FWD_R: ArmSpec = [[23.5, 25], [24.5, 29.5], [21.5, 31], 'none', 'back']
 
 const SPECS: Record<TPose, { front?: Spec; back?: Spec }> = {
   // ตักบาตร: hold the food at the chest, then reach it out to the monk on the right.
@@ -112,11 +98,6 @@ const SPECS: Record<TPose, { front?: Spec; back?: Spec }> = {
       R: [[23.5, 25], [27, 26], [29, 22], 'fist', 'top', [0.5, 0.3]],
       expr: 'open',
     },
-  },
-  // กรวดน้ำ: kneeling, pouring a little vessel with both hands.
-  kruat: {
-    front: { dy: K, legs: 'kneelF', L: down(F_HOLD_L, K), R: down(F_HOLD_R, K), expr: 'serene' },
-    back: { dy: K, legs: 'kneelB', L: down(B_FWD_L, K), R: down(B_FWD_R, K), expr: 'serene' },
   },
   // Koi food: the bag in the left hand, the right arm winds up / throws.
   toss_ready: {

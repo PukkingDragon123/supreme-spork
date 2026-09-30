@@ -8,6 +8,7 @@ import { game, mutate } from '../game/state'
 import { PBtn, Window } from '../ui/components/kit'
 import { Icon } from '../ui/components/common'
 import { goalRequest } from './kit'
+import { BRIEFS, TempleBrief } from './temple-brief'
 import { HallActivity } from './hall'
 import { WishActivity } from './wish'
 import { SiamsiActivity } from './siamsi'
@@ -73,6 +74,7 @@ export function GoalCard({ id, onStart, onClose }: { id: ActivityId; onStart: ()
 export function ActivityHost() {
   const a = activity.value
   const [started, setStarted] = useState<string | null>(null)
+  const [briefed, setBriefed] = useState<ActivityRequest | null>(null)
   if (!a) return null
   const C = REGISTRY[a.id]
   if (!C) return null
@@ -85,6 +87,20 @@ export function ActivityHost() {
     mutate((d) => {
       if (!d.seen.tips.includes(`goal:${a.id}`)) d.seen.tips.push(`goal:${a.id}`)
     })
+  }
+  // Temple games get the host's brief card (price, deals) every time they open.
+  if (BRIEFS[a.id]) {
+    const show = briefed !== a || again
+    const go = () => {
+      setBriefed(a)
+      start()
+    }
+    return (
+      <>
+        <C key={key} req={a} />
+        {show && <TempleBrief req={a} again={again} onStart={go} onBack={closeActivity} />}
+      </>
+    )
   }
   // Key on id + params so switching activities remounts cleanly.
   return (

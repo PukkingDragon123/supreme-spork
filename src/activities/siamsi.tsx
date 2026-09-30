@@ -14,6 +14,7 @@ import { drawPlayer, drawStick, godRays, handAt, impactBurst, Juice, lightPool, 
 import { tsfx } from '../art/minigames/sfx'
 import { game } from '../game/state'
 import { addMerit, recordFortune, spendCoins, track } from '../game/actions'
+import { useSiamsiCredit } from '../game/templeDeals'
 import { FORTUNES, toThaiDigits, type Fortune } from '../game/data/fortunes'
 import { closeActivity, type ActivityRequest } from '../ui/store'
 import { ActivityFrame, useStage } from './kit'
@@ -287,7 +288,7 @@ export function SiamsiActivity({ req }: { req: ActivityRequest }) {
   }, [paid])
 
   const again = () => {
-    if (!spendCoins(PRICE_EXTRA)) return
+    if (!useSiamsiCredit() && !spendCoins(PRICE_EXTRA)) return
     done.current = false
     setFortune(null)
     setProgress(0)
@@ -327,8 +328,8 @@ export function SiamsiActivity({ req }: { req: ActivityRequest }) {
             <div class="panel act-tip">
               <div class="subtitle">วันนี้เสี่ยงเซียมซีไปแล้ว</div>
               <div class="small muted">เสี่ยงใหม่ได้วันพรุ่งนี้ หรือทำบุญค่าเซียมซี</div>
-              <Btn tone="green" block onClick={() => spendCoins(PRICE_EXTRA) && setPaid(true)}>
-                เสี่ยงอีกครั้ง <Coin n={PRICE_EXTRA} />
+              <Btn tone="green" block onClick={() => (useSiamsiCredit() || spendCoins(PRICE_EXTRA)) && setPaid(true)}>
+                เสี่ยงอีกครั้ง {(game.value.daily.counts.siamsi_credit ?? 0) > 0 ? `(ใช้สิทธิ์ ${game.value.daily.counts.siamsi_credit})` : <Coin n={PRICE_EXTRA} />}
               </Btn>
             </div>
           )}
