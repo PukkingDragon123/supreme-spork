@@ -204,3 +204,16 @@ export function stirPose(phase: number, expr: Expr = 'open'): WorkPose['name'] {
     expr,
   })
 }
+
+/** Rolling dough between the palms (both hands circling at the chest). */
+export function rollPose(phase: number): WorkPose['name'] {
+  const i = ((Math.round((phase / (Math.PI * 2)) * 6) % 6) + 6) % 6
+  const a = (i / 6) * Math.PI * 2
+  return workPose({
+    name: `act_w_roll_${i}`,
+    view: 'front',
+    L: { w: [13 + Math.cos(a) * 1.5, 31.5 + Math.sin(a) * 1], z: 'front' },
+    R: { w: [19 - Math.cos(a) * 1.5, 31.5 - Math.sin(a) * 1], z: 'front' },
+    expr: 'open',
+  })
+}

@@ -12,6 +12,20 @@ import { PT, TONE_TEXT } from '../../ui/pixeltext'
 import { toast } from '../../game/events'
 import { sfx } from '../../engine/audio'
 import { DishImg, FoodIcon } from './parts'
+import { spriteDataUrl } from '../../engine/sprite'
+import { workerCard } from '../../art/workActor'
+
+/** The player in an apron peeking over the start button. */
+function ChefBust() {
+  const look = game.value.player.look
+  const urls = [0, 1].map((f) => spriteDataUrl(workerCard(look, 'thumbs', f as 0 | 1, true), 2))
+  return (
+    <span class="cook-go-chef" aria-hidden="true">
+      <img class="px a" src={urls[0]} width={92} height={120} alt="" draggable={false} />
+      <img class="px b" src={urls[1]} width={92} height={120} alt="" draggable={false} />
+    </span>
+  )
+}
 
 export function LockedKitchen({ onClose }: { onClose: () => void }) {
   const s = game.value
@@ -137,9 +151,12 @@ export function RecipeBook({ selected, onSelect, onCook, onClose }: { selected: 
             </PBtn>
           </>
         ) : (
-          <PBtn tone="green" size="big" block icon="play" onClick={() => onCook(r.id)}>
-            เริ่มทำอาหาร!
-          </PBtn>
+          <div class="cook-go">
+            <ChefBust />
+            <PBtn tone="green" size="big" block onClick={() => onCook(r.id)}>
+              เริ่มทำอาหาร!
+            </PBtn>
+          </div>
         )}
       </div>
       <div class="cook-list">

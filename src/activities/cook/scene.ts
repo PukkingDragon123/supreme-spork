@@ -9,7 +9,10 @@ import { rand } from '../../engine/rng'
 import { sfx } from '../../engine/audio'
 import { bakeKitchen, drawBits, drawPot, drawStove, drawFlames } from '../../art/cooking'
 import type { Bit, CookRecipe, Vessel } from '../../game/data/recipes'
-import { makeGame, type Kitchen, type StepGame } from './games'
+import { chefFeet, makeGame, type Kitchen, type StepGame } from './games'
+import { Worker } from '../jobs/worker'
+import { WP } from '../../art/poses/work'
+import { glow, sunRays, vignette } from '../../art/workFx'
 
 export interface KitchenCallbacks {
   /** A new step started (index into recipe.steps). */
@@ -46,6 +49,11 @@ export class KitchenScene implements Scene, Kitchen {
   cookVessel: Vessel = 'wok'
   carry: Bit[] = ['rice']
   cb: KitchenCallbacks = {}
+  /** Something burnt during this recipe. */
+  burnt = false
+  /** The player cooking behind the counter, in an apron. */
+  chef: Worker | null = null
+  private bgBack = -1
 
   resize(w: number, h: number) {
     this.w = w
@@ -67,6 +75,11 @@ export class KitchenScene implements Scene, Kitchen {
     return Math.round(top + Math.max(60, bot - top) * 0.44)
   }
 
+  /** Back edge of the counter, just behind the station: the chef's waist. */
+  get backY() {
+    return this.cy - 36
+  }
+
   shake(px = 1) {
     this.shakeT = 0.1
     this.shakeAmp = Math.max(this.shakeAmp, px)
@@ -84,6 +97,7 @@ export class KitchenScene implements Scene, Kitchen {
     this.dishId = dishId
     this.index = -1
     this.scores = []
+    this.burnt = false
     this.carry = ['rice']
     // The plating step serves from the last vessel something was cooked in.
     const cooking = recipe.steps.filter((s) => s.vessel && s.vessel !== 'board')
@@ -111,6 +125,7 @@ export class KitchenScene implements Scene, Kitchen {
     this.game = makeGame(step, this)
     this.phase = this.prev ? 'slide' : 'play'
     this.phaseT = 0
+    if (this.chef) this.chef.face = 'none'
     if (this.prev) sfx.whoosh()
     this.cb.onStep?.(this.index, this.game)
   }
@@ -135,7 +150,9 @@ export class KitchenScene implements Scene, Kitchen {
       this.phaseT = 0
       this.cb.onGrade?.(this.index, g.score)
       if (g.score >= 0.88) this.particles.sparkles(this.cx, this.cy - 20, 16, '#fff3a6', 30)
+      this.chefReact(g.score)
     }
+    this.updateChef(dt)
     if (this.phase === 'grade' && this.phaseT >= GRADE_TIME) this.next()
     if (this.phase === 'idle') {
       // Book view: a pot of rice soup simmering on the stove.
@@ -143,10 +160,51 @@ export class KitchenScene implements Scene, Kitchen {
     }
   }
 
+  private chefReact(score: number) {
+    const c = this.chef
+    if (!c) return
+    if (score >= 0.88) c.reactWith('thumbs', GRADE_TIME)
+    else if (score >= 0.66) c.reactWith('cheer', GRADE_TIME)
+    else if (score >= 0.4) c.reactWith('phew', GRADE_TIME)
+    else {
+      c.face = this.burnt ? 'soot' : 'sweat'
+      c.reactWith('oops', GRADE_TIME)
+    }
+  }
+
+  private updateChef(dt: number) {
+    if (!this.w) return
+    if (!this.chef) {
+      this.chef = new Worker(this.cx, chefFeet(this))
+      this.chef.apron = true
+      this.chef.shadow = false
+    }
+    const c = this.chef
+    c.clipY = this.backY
+    const g = this.game
+    if (this.phase === 'play' && g) g.chefPose(c)
+    else if (this.phase === 'idle') {
+      c.pose = WP.ready
+      c.face = 'none'
+      c.goTo(this.cx + 18, chefFeet(this))
+    } else if (this.phase === 'slide') {
+      c.pose = WP.ready
+      c.goTo(this.cx, chefFeet(this))
+    }
+    c.ty = chefFeet(this)
+    c.update(dt)
+  }
+
   render(g: Surface) {
     const { w, h } = this
-    if (!this.bg) this.bg = bakeKitchen(w, h, this.counterY)
+    if (!this.bg || this.bgBack !== this.backY) {
+      this.bg = bakeKitchen(w, h, this.backY)
+      this.bgBack = this.backY
+    }
     g.draw(this.bg, 0, 0)
+    // Warm window light and the player behind the counter.
+    glow(g, w * 0.3, this.backY - 60, 70, 0.22, '#fff3c8')
+    this.chef?.draw(g)
     const sx = this.shakeAmp ? Math.round(rand(-this.shakeAmp, this.shakeAmp)) : 0
     const sy = this.shakeAmp ? Math.round(rand(-this.shakeAmp, this.shakeAmp) * 0.5) : 0
     if (this.phase === 'idle') {
@@ -165,10 +223,14 @@ export class KitchenScene implements Scene, Kitchen {
     } else if (this.game) {
       g.setCamera(sx, sy)
       this.game.draw(g)
+      g.setCamera(0, 0)
+      if (this.chef && (this.phase === 'play' || this.phase === 'grade' || this.phase === 'done') && !this.chef.reacting) this.game.drawHeld(g, this.chef)
     }
     g.setCamera(0, 0)
     this.particles.render(g)
     if (this.game && this.phase === 'play') this.game.drawCursor(g, this.t)
+    sunRays(g, w, h, this.t, '#fff2c4', 0.1, 0)
+    vignette(g, w, h, 0.18)
   }
 
   pointer(e: PointerInfo) {

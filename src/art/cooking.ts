@@ -865,6 +865,25 @@ export function bakeKitchen(w: number, h: number, counterY: number): HTMLCanvasE
 const STEEL = { hi: '#f2f2f6', l: '#d0d0da', b: '#a8a8b8', d: '#80808e', D: '#5a5a68', DD: '#3a3a48' }
 const WOK = { rim: '#6d6d7a', rimL: '#9a9aa8', in: '#3a3a46', inL: '#4d4d5c', inD: '#2a2a34' }
 
+/** Wok-hei flare: flame tongues licking up round the rim when stirring hard (power 0..1). */
+export function drawWokFire(g: Surface, cx: number, cy: number, rx: number, ry: number, t: number, power: number) {
+  if (power < 0.05) return
+  const n = 7
+  for (let i = 0; i < n; i++) {
+    const side = i % 2 ? 1 : -1
+    const k = (i >> 1) / 3
+    const x = cx + side * rx * (0.62 + k * 0.4)
+    const y = cy + ry * (0.1 + k * 0.5)
+    const ph = Math.sin(t * 19 + i * 2.3) * 0.5 + 0.5
+    const hgt = (6 + ph * 9) * power * (1 - k * 0.4)
+    if (hgt < 2) continue
+    const lean = side * (1.5 + ph)
+    g.ellipse(x + lean * 0.3, y - hgt * 0.45, 3 + power, hgt * 0.55, '#ff7a24')
+    g.ellipse(x + lean * 0.5, y - hgt * 0.5, 2 + power * 0.6, hgt * 0.42, '#ffb347')
+    g.ellipse(x + lean * 0.6, y - hgt * 0.42, 1.2, hgt * 0.28, '#ffe27a')
+  }
+}
+
 /** Two-burner gas stove centred at cx; the burner ring sits at (cx, cy). */
 export function drawStove(g: Surface, cx: number, cy: number) {
   const w = 124
