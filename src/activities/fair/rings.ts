@@ -9,6 +9,9 @@ import { rand, pick } from '../../engine/rng'
 import { haptic } from '../../engine/audio'
 import { JobScene, type JobSummary } from '../jobs/base'
 import { boothBackdrop, drawBottle, drawBulbs, drawCorkPrize, drawRing, type CorkPrizeKind } from './art'
+import { BoothDress } from './booth-dress'
+import { VENDORS } from './vendors'
+import { FAIR_GAMES } from '../../game/hubs'
 import { fairSfx } from './sound'
 import { RING_TARGET, ROW_DEPTH, ROW_POINTS, ROW_SCALE, ringCatches, ringLanding } from './rules'
 import { drawPlayer, placePlayer } from './player'
@@ -39,6 +42,7 @@ interface Throw {
 }
 
 export class RingsScene extends JobScene {
+  private dress = new BoothDress(this, { vendor: VENDORS.rings, color: '#3d63b5', sign: FAIR_GAMES.rings.booth })
   duration = 40
   thresholds: [number, number, number] = [4 / RING_TARGET, 8 / RING_TARGET, 1]
   score = 0
@@ -81,6 +85,7 @@ export class RingsScene extends JobScene {
     this.tableTop = Math.round(this.top + (this.bottom - this.top) * 0.4)
     this.tableFront = Math.round(this.top + (this.bottom - this.top) * 0.66)
     this.bg = boothBackdrop(this.w, this.h, this.top + 20, '#3d63b5', '#2a3a6a')
+    this.dress.anchor(this.top + 20)
   }
 
   protected populate() {
@@ -130,6 +135,7 @@ export class RingsScene extends JobScene {
   }
 
   protected tick(dt: number) {
+    this.dress.update(dt)
     this.tossT = Math.max(0, this.tossT - dt)
     for (const th of this.throws) {
       if (th.state === 'fly') {
@@ -169,6 +175,7 @@ export class RingsScene extends JobScene {
       this.say(best.x, y - 24, best.gold ? `ขวดทอง! +${pts}` : pick([`คล้องได้! +${pts}`, `เป๊ะ! +${pts}`, `สวย! +${pts}`]), 'good', 1)
       fairSfx.clink()
       haptic(14)
+      this.dress.cheer(best.gold || best.row === 2)
       if (best.gold) this.flash(0.15)
       return
     }
@@ -181,11 +188,13 @@ export class RingsScene extends JobScene {
     th.vy = -40
     const txt = th.depth > 2.35 ? 'ไกลไป!' : th.depth < -0.2 ? 'ใกล้ไป!' : pick(['กระเด้งออก!', 'เฉียดไปนิดเดียว!', 'อ๊ะ!'])
     this.say(th.lx, th.my - 18, txt, 'warn', 0.9)
+    this.dress.oops()
     fairSfx.miss()
   }
 
   protected draw(g: Surface) {
     if (this.bg) g.draw(this.bg, 0, 0)
+    this.dress.drawBack(g, this.t)
     drawBulbs(g, this.w, this.top + 6, this.t)
     // Prize shelf on the back wall: what you could win.
     const shelfY = this.tableTop - 34
@@ -255,7 +264,8 @@ export class RingsScene extends JobScene {
       g.alpha(1)
     }
     // Rings left (stacked on a peg by the counter).
-    for (let i = 0; i < this.rings; i++) drawRing(g, 20, this.bottom - 10 - i * 3, 0.9, i % 2 ? '#ffd23f' : '#ff9fc0', 0.3)
+    for (let i = 0; i < this.rings; i++) drawRing(g, 40, this.bottom - 10 - i * 3, 0.9, i % 2 ? '#ffd23f' : '#ff9fc0', 0.3)
+    this.dress.drawPeople(g, this.t)
     // You, from behind: swing back while you drag, toss on release.
     const pose = this.tossT > 0 ? 'act_f_toss_b' : d ? 'act_f_toss_a' : this.rings > 0 ? 'stand' : this.ringed >= 4 ? 'act_f_cheer' : 'act_f_oops'
     const me = drawPlayer(g, pose, this.cx + 10, this.bottom)

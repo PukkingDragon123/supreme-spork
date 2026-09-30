@@ -18,6 +18,9 @@ import { INK, mix } from '../../art/places/hub-kit'
 import { fairHand } from '../../art/poses/fair'
 import { JobScene, Drag, type JobSummary } from '../jobs/base'
 import { boothBackdrop, drawBulbs } from './art'
+import { BoothDress } from './booth-dress'
+import { VENDORS } from './vendors'
+import { FAIR_GAMES } from '../../game/hubs'
 import { fairSfx } from './sound'
 import { bestFish, catchWear, FISH, fishFor, paperWear, SCOOP_PAPERS, SCOOP_R, SCOOP_TARGET, scoopCatches, type FishKind } from './rules'
 
@@ -47,6 +50,7 @@ export function takeHomeFish(kind: FishKind): string {
 }
 
 export class ScoopScene extends JobScene {
+  private dress = new BoothDress(this, { vendor: VENDORS.scoop, color: '#2a9ac8', sign: FAIR_GAMES.scoop.booth, crowd: 0 })
   duration = 40
   thresholds: [number, number, number] = [4 / SCOOP_TARGET, 8 / SCOOP_TARGET, 1]
   score = 0
@@ -84,8 +88,9 @@ export class ScoopScene extends JobScene {
   protected anchor() {
     const H = this.bottom - this.top
     this.tub = { cx: this.cx, cy: Math.round(this.top + H * 0.46), rx: Math.round(this.w / 2 - 12), ry: Math.round(H * 0.3) }
-    this.bowl = { x: this.w - 30, y: this.bottom - 22 }
+    this.bowl = { x: this.w - 56, y: this.bottom - 22 }
     this.bg = boothBackdrop(this.w, this.h, this.top + 18, '#2a9ac8', '#1e5a8a')
+    this.dress.anchor(this.top + 18)
   }
 
   protected populate() {
@@ -158,6 +163,7 @@ export class ScoopScene extends JobScene {
       this.particles.add({ kind: 'drop', x: f.x, y: f.y, vy: -30, g: 80, max: 0.6, color: '#9fd8f0' })
     }
     if (got.some((f) => f.kind === 'lion')) this.flash(0.2)
+    this.dress.cheer(got.some((f) => f.kind !== 'orange'))
     this.particles.sparkles(x, y, 8, '#e8f8ff', 8)
     fairSfx.clink()
     haptic(14)
@@ -173,10 +179,12 @@ export class ScoopScene extends JobScene {
     for (let i = 0; i < 10; i++) this.particles.add({ kind: 'dot', x: x + rand(-6, 6), y: y + rand(-6, 6), vx: rand(-20, 20), vy: rand(-30, 0), g: 60, max: 0.8, color: '#f6f2ea' })
     this.say(x, y - 16, this.papers > 0 ? pick(['โปยขาด!', 'แฉะไปแล้ว!', 'ขาดดด!']) : 'โปยหมดแล้ว!', 'warn', 1)
     fairSfx.miss()
+    this.dress.oops()
     this.shake(0.12, 1)
   }
 
   protected tick(dt: number) {
+    this.dress.update(dt)
     if (this.tearT > 0) {
       this.tearT -= dt
       if (this.tearT <= 0 && this.papers > 0) this.paper = 1
@@ -231,6 +239,7 @@ export class ScoopScene extends JobScene {
 
   protected draw(g: Surface) {
     if (this.bg) g.draw(this.bg, 0, 0)
+    this.dress.drawBack(g, this.t)
     drawBulbs(g, this.w, this.top + 4, this.t)
     const T = this.tub
     // The tub: blue plastic rim, water with light ripples.
@@ -279,6 +288,7 @@ export class ScoopScene extends JobScene {
       const y = f.fy + (this.bowl.y - 8 - f.fy) * k - Math.sin(k * Math.PI) * 30
       this.drawFish(g, x, y, k * 8, f.kind, f.wig + k * 10, 1)
     }
+    this.dress.drawPeople(g, this.t)
     // The bowl with what you caught.
     const B = this.bowl
     g.ellipse(B.x, B.y, 18, 12, '#d4f1ff')
@@ -287,7 +297,7 @@ export class ScoopScene extends JobScene {
     this.caught.slice(-6).forEach((k, i) => this.drawFish(g, B.x - 9 + (i % 3) * 9, B.y - 3 + Math.floor(i / 3) * 4, this.t * (1 + i * 0.2), k, this.t * 4 + i, 0.7))
     // Papers left.
     for (let i = 0; i < this.papers; i++) {
-      const x = this.w - 84 + i * 13
+      const x = this.w - 108 + i * 13
       const y = this.bottom - 10
       g.circle(x, y, 5, '#fffaf0')
       for (let j = 0; j < 16; j++) g.px(Math.round(x + Math.cos(j * 0.4) * 5), Math.round(y + Math.sin(j * 0.4) * 5), '#ff6f91')
