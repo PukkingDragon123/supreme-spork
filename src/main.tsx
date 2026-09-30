@@ -9,14 +9,18 @@ import './styles/v2.css'
 import { App } from './ui/App'
 import './ui/wiring'
 import { installSkins } from './ui/skin'
-import { game, loadState, migrate, persistNow, replaceState } from './game/state'
+import { game, loadState, migrate, persistNow, replaceState, useSaveSlot } from './game/state'
 import { ensureDaily, isAreaUnlocked } from './game/actions'
 import { area, mapId, mode } from './ui/store'
 import { initAccount } from './ui/account'
+import { initNet } from './services/netInit'
+import { installOnline } from './ui/online/onlineHub'
 
 installSkins()
-game.value = loadState()
 const q0 = new URLSearchParams(location.search)
+// Dev: ?slot=a keeps a separate save per tab (two-tab online testing).
+if (import.meta.env.DEV && q0.get('slot')) useSaveSlot(`dev-${q0.get('slot')}`)
+game.value = loadState()
 // Dev convenience: ?skipintro jumps straight into the temple (?house for the home).
 const skip = import.meta.env.DEV && q0.has('skipintro')
 if (skip) game.value = { ...game.value, onboarded: true, account: game.value.account ?? { kind: 'guest', id: null, email: null } }
@@ -26,6 +30,9 @@ mapId.value = area.value
 mode.value = skip ? (q0.has('house') ? 'house' : 'world') : game.value.seen.intro ? 'title' : 'intro'
 if (import.meta.env.DEV && q0.get('mode')) mode.value = q0.get('mode') as never
 void initAccount()
+// Online play with real players (artifact room or self-hosted realtime; offline otherwise).
+installOnline()
+void initNet()
 // Build the Thailand map art while idle so the map opens instantly.
 setTimeout(() => {
   const idle = (window as unknown as { requestIdleCallback?: (f: () => void) => void }).requestIdleCallback ?? ((f: () => void) => setTimeout(f, 1500))

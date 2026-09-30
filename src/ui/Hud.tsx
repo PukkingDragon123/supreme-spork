@@ -13,6 +13,7 @@ import { sfx } from '../engine/audio'
 import { DAILY_PRAYER_GOAL, prayersToday } from '../game/prayer'
 import { EventBadge } from './views/EventBadge'
 import { HomeTag } from './homeland/ProvincePicker'
+import { OnlinePill } from './online/OnlinePill'
 
 export function PortraitRing({ size = 72 }: { size?: number }) {
   const look = game.value.player.look
@@ -52,6 +53,7 @@ export function Hud() {
         </span>
       </button>
       <EventBadge />
+      <OnlinePill />
     </div>
   )
 }

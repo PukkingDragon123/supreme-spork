@@ -143,6 +143,14 @@ export interface RemotePlayer {
   look: AvatarLook
   pet?: string | null
   level?: number
+  /** A real online player (services/net.ts); the rest are simulated. */
+  real?: boolean
+  /** Invited guest (real players only; display only). */
+  guest?: boolean
+  /** Short activity label shown under the name tag. */
+  doing?: string | null
+  /** Live position feed (real players): replaces the simulated wandering and chatter. */
+  pos?: () => { x: number; y: number; face: Facing; moving: boolean; pose?: Pose | null } | null
 }
 
 interface RemoteEnt {
@@ -152,6 +160,7 @@ interface RemoteEnt {
   chat: number
   petX: number
   petY: number
+  pose?: Pose | null
 }
 
 const REMOTE_CHAT = ['สาธุ~', 'มาทำบุญด้วยกันนะ', 'อนุโมทนาบุญค่ะ', 'วันนี้คนเยอะจัง', 'ใครสวดด่าน 5 ผ่านแล้วบ้าง', 'ไปกินไอติมกันไหม', 'สวัสดีครับ 🙏', 'แมวน่ารักมาก', 'ขอให้ถูกหวยนะ 555', 'ชุดสวยจัง!', 'เพิ่งได้มังกรมา ><', '🙏🙏🙏']
@@ -171,6 +180,8 @@ export interface WorldCallbacks {
    * the scene draws a small wordless pixel bubble.
    */
   onSay?(text: string, x: number, y: number): void
+  /** A remote player was tapped; return true to consume the tap (e.g. open their card). */
+  onPlayer?(id: string): boolean
 }
 
 export interface SpeechBubble {
@@ -345,6 +356,8 @@ export class WorldScene implements Scene {
   highlight: string | null = null
   /** Quest/shop markers above hotspots (see questLayer.ts); set by the UI. */
   private markerFn: MarkerFn | null = null
+  /** Optional pose override for the player (online emotes); null = walk/stand. */
+  playerPose: (() => Pose | null) | null = null
 
   constructor(
     readonly map: MapDef,
@@ -680,6 +693,15 @@ export class WorldScene implements Scene {
         return
       }
     }
+    // Other players (the host decides whether a tap on them means anything).
+    if (this.cb.onPlayer) {
+      for (const r of this.remotes) {
+        if (Math.abs(wx - r.w.x) < 8 && wy > r.w.y - 26 && wy < r.w.y + 3 && this.cb.onPlayer(r.p.id)) {
+          this.tapFx = { x: wx, y: wy, t: 0.4, walk: false }
+          return
+        }
+      }
+    }
     for (const p of this.pickups) {
       if (Math.hypot(wx - p.x, wy - (p.y - 3)) < 10) {
         this.tapFx = { x: wx, y: wy, t: 0.4, walk: true }
@@ -720,22 +742,47 @@ export class WorldScene implements Scene {
     this.remotes = list.map((p) => {
       const old = keep.get(p.id)
       if (old) return { ...old, p }
-      const [x, y] = this.randomPoint()
+      const at = p.pos?.()
+      const [x, y] = at ? [at.x, at.y] : this.randomPoint()
       return { p, w: new Walker(x, y, 30 + Math.random() * 6), timer: Math.random() * 3, chat: 4 + Math.random() * 14, petX: x + 8, petY: y + 3 }
     })
   }
 
+  /** World position of a remote player's feet, or null. */
+  remoteWorldPos(id: string): [number, number] | null {
+    const r = this.remotes.find((q) => q.p.id === id)
+    return r ? [r.w.x, r.w.y] : null
+  }
+
+  /** Screen (virtual px) position of a remote player's feet, or null. */
+  remoteScreenPos(id: string): [number, number] | null {
+    const r = this.remotes.find((q) => q.p.id === id)
+    return r ? [r.w.x - this.camX, r.w.y - this.camY] : null
+  }
+
   /** Name tags for other players (screen virtual px, above their heads). */
-  nameTags(): { id: string; name: string; level?: number; x: number; y: number }[] {
+  nameTags(): { id: string; name: string; level?: number; x: number; y: number; real?: boolean; guest?: boolean; doing?: string | null }[] {
     return this.remotes
       .filter((r) => this.onScreen(r.w.x, r.w.y, 10))
-      .map((r) => ({ id: r.p.id, name: r.p.name, level: r.p.level, x: r.w.x - this.camX, y: r.w.y - 30 - this.camY }))
+      .map((r) => ({ id: r.p.id, name: r.p.name, level: r.p.level, x: r.w.x - this.camX, y: r.w.y - 30 - this.camY, real: r.p.real, guest: r.p.guest, doing: r.p.doing }))
   }
 
   private updateRemotes(dt: number) {
     for (const r of this.remotes) {
-      r.w.walk(dt)
-      if (!r.w.moving) {
+      const live = r.p.pos?.()
+      if (live) {
+        // Real player: follow the (interpolated) network position.
+        r.w.x = live.x
+        r.w.y = live.y
+        r.w.facing = live.face
+        r.w.moving = live.moving
+        r.w.path = []
+        if (live.moving) r.w.animT += dt
+        r.pose = live.pose ?? null
+      } else if (r.p.pos) {
+        r.pose = null
+      } else r.w.walk(dt)
+      if (!r.p.pos && !r.w.moving) {
         r.timer -= dt
         if (r.timer <= 0) {
           r.timer = 2 + Math.random() * 6
@@ -745,7 +792,7 @@ export class WorldScene implements Scene {
         }
       }
       r.chat -= dt
-      if (r.chat <= 0) {
+      if (r.chat <= 0 && !r.p.real) {
         r.chat = 10 + Math.random() * 18
         const lines = this.map.remoteChat ?? REMOTE_CHAT
         if (this.onScreen(r.w.x, r.w.y, 0)) this.say(lines[Math.floor(Math.random() * lines.length)], r.w.x, r.w.y - 30, 2.4)
@@ -1230,11 +1277,11 @@ export class WorldScene implements Scene {
         })
       }
     }
-    add(this.player.y + 0.1, () => drawWalker(this.player, this.look))
+    add(this.player.y + 0.1, () => drawWalker(this.player, this.look, this.playerPose?.() ?? undefined))
     if (this.pet) add(this.petPos.y, () => this.drawPet(g, t))
     for (const r of this.remotes) {
       if (!this.onScreen(r.w.x, r.w.y, 30)) continue
-      add(r.w.y, () => drawWalker(r.w, r.p.look))
+      add(r.w.y, () => drawWalker(r.w, r.p.look, r.pose ?? undefined))
       if (r.p.pet) {
         const pid = r.p.pet
         add(r.petY, () => {

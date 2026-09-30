@@ -1,0 +1,874 @@
+/* Online play (ol-*): HUD pill, chat sheet, bubbles over heads, player card,
+   gift picker, trade window and the online list. */
+
+/* ---------- HUD pill + chat button ---------- */
+
+.ol-hud {
+  position: absolute;
+  z-index: 20;
+  right: 8px;
+  top: calc(var(--safe-top) + 160px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.ol-hud > * {
+  pointer-events: auto;
+}
+
+.ol-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 170px;
+  min-height: 34px;
+  padding: 0 4px 0 2px;
+  color: #fff6dc;
+  font-family: var(--font);
+  text-align: left;
+  border-style: solid;
+  border-width: 5px;
+  border-image: var(--sk-card-dark) 3 fill / 5px repeat;
+  background: none;
+  cursor: pointer;
+  animation: slide-up 240ms ease-out;
+}
+
+.ol-pill-body {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.ol-pill-text {
+  font-size: 12px;
+  font-weight: 600;
+  text-shadow: 0 1px 0 #1c120c;
+}
+
+.ol-pill-sub {
+  font-size: 10px;
+  color: #d9c9a8;
+}
+
+.ol-dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  background: #5fe36a;
+  box-shadow:
+    0 0 0 2px #1d4a23,
+    0 0 8px 2px rgba(95, 227, 106, 0.65);
+  animation: ol-pulse 1.6s ease-in-out infinite;
+}
+
+.dot-yellow .ol-dot {
+  background: #ffd34e;
+  box-shadow:
+    0 0 0 2px #6a4a10,
+    0 0 6px 1px rgba(255, 211, 78, 0.6);
+}
+
+.dot-grey .ol-dot,
+.ol-dot.off {
+  background: #a89a88;
+  box-shadow: 0 0 0 2px #4a3c30;
+  animation: none;
+}
+
+.dot-ghost .ol-dot {
+  background: #c9b8ff;
+  box-shadow: 0 0 0 2px #4a3a7a;
+  animation: none;
+}
+
+@keyframes ol-pulse {
+  50% {
+    box-shadow:
+      0 0 0 2px #1d4a23,
+      0 0 2px 0 rgba(95, 227, 106, 0.2);
+  }
+}
+
+.reduce-motion .ol-dot {
+  animation: none;
+}
+
+.ol-fab {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-style: solid;
+  border-width: 8px;
+  border-image: var(--sk-hot) 4 fill / 8px repeat;
+  background: none;
+  cursor: pointer;
+}
+
+.ol-fab.on {
+  border-image-source: var(--sk-hot-on);
+}
+
+.ol-fab-n {
+  position: absolute;
+  right: -10px;
+  top: -10px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #fff;
+  background: #3f9a4a;
+  box-shadow:
+    0 0 0 2px #1d4a23,
+    inset 0 2px 0 #7cc55e;
+}
+
+/* ---------- bubbles over heads ---------- */
+
+.ol-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 13;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.ol-say {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 180px;
+  padding: 1px 7px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #3b2616;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  border-style: solid;
+  border-width: 6px;
+  border-image: var(--sk-bubble) 4 fill / 6px repeat;
+  transform-origin: 50% 100%;
+}
+
+.ol-say.me {
+  color: #5a3410;
+}
+
+.ol-say.icon-only {
+  padding: 0 1px;
+}
+
+.ol-emote {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.ol-say.em-dance .ol-emote,
+.ol-say.em-laugh .ol-emote {
+  animation: ol-bob 360ms ease-in-out infinite;
+}
+
+.ol-say.em-heart .ol-emote {
+  animation: ol-beat 520ms ease-in-out infinite;
+}
+
+@keyframes ol-bob {
+  50% {
+    transform: translateY(-2px) rotate(-8deg);
+  }
+}
+
+@keyframes ol-beat {
+  30% {
+    transform: scale(1.18);
+  }
+}
+
+/* Real players' name tags: green, with a glowing "online" dot. */
+.nametag.real {
+  padding: 0 5px 1px;
+  color: #f2ffe8;
+  background: rgba(22, 92, 40, 0.86);
+  box-shadow:
+    0 0 0 1px #0d3a18,
+    inset 0 1px 0 rgba(185, 232, 154, 0.55);
+  white-space: pre;
+  text-align: center;
+}
+
+.nametag.real::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 4px 1px 0;
+  vertical-align: middle;
+  background: #7dff8a;
+  box-shadow: 0 0 5px 1px rgba(125, 255, 138, 0.8);
+}
+
+/* ---------- chat sheet (top of the screen: players stay visible, keyboard stays clear) ---------- */
+
+.ol-chat {
+  position: absolute;
+  z-index: 24;
+  left: 6px;
+  right: 6px;
+  top: calc(var(--safe-top) + 6px);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: calc(100% - 330px);
+  padding: 0;
+  border-style: solid;
+  border-width: 12px;
+  border-image: var(--sk-panel) 8 fill / 12px repeat;
+  animation: ol-drop 200ms ease-out;
+}
+
+@keyframes ol-drop {
+  from {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+}
+
+.ol-chat-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+}
+
+.ol-chat-head .chip {
+  margin: 0;
+  font-size: 11px;
+}
+
+.ol-x {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-style: solid;
+  border-width: 4px 4px 6px;
+  border-image: var(--sk-btn-red) 4 4 6 4 fill / 4px 4px 6px repeat;
+  background: none;
+  cursor: pointer;
+}
+
+.ol-x img {
+  filter: brightness(3) saturate(0);
+}
+
+.ol-emotes {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.ol-emote-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 40px;
+  padding: 0;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  border-style: solid;
+  border-width: 5px;
+  border-image: var(--sk-card-gold) 3 fill / 5px repeat;
+  background: none;
+  cursor: pointer;
+}
+
+.ol-emote-btn:active {
+  transform: translateY(1px);
+}
+
+.ol-emote-btn:disabled,
+.ol-phrase:disabled {
+  opacity: 0.5;
+}
+
+.ol-log {
+  max-height: 62px;
+  overflow-y: auto;
+  padding: 0 4px;
+  font-size: 12px;
+  line-height: 1.35;
+  border-style: solid;
+  border-width: 5px;
+  border-image: var(--sk-input) 3 fill / 5px repeat;
+}
+
+.ol-line {
+  overflow-wrap: anywhere;
+}
+
+.ol-line b {
+  margin-right: 4px;
+  color: #2f6e36;
+}
+
+.ol-line.me b {
+  color: #9a6418;
+}
+
+.ol-line-emote {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  vertical-align: middle;
+}
+
+.ol-phrases {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ol-phrases::-webkit-scrollbar {
+  display: none;
+}
+
+.ol-phrase {
+  flex-shrink: 0;
+  min-height: 34px;
+  font-family: var(--font);
+  font-size: 12px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.ol-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ol-input .pinput {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  font-size: 16px;
+}
+
+.ol-count {
+  font-size: 10px;
+  color: var(--ink-soft);
+  min-width: 30px;
+  text-align: right;
+}
+
+.ol-send {
+  min-width: 46px;
+  padding: 0 6px;
+}
+
+.ol-send img {
+  filter: brightness(1.1);
+}
+
+.ol-note {
+  margin: 0;
+  font-size: 10px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+/* ---------- windows ---------- */
+
+/* Room for the big title plate above the first row. */
+.ol-win.titled .win-body {
+  padding-top: 42px;
+}
+
+/* ---------- player card ---------- */
+
+.ol-card {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.ol-card-doll {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 108px;
+  padding: 4px 0 18px;
+  border-style: solid;
+  border-width: 6px;
+  border-image: var(--sk-card-green) 3 fill / 6px repeat;
+}
+
+.ol-card-doll img {
+  width: 102px;
+  height: 156px;
+}
+
+.ol-live {
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #f2ffe8;
+  background: #1f6a32;
+  box-shadow: 0 0 0 1px #0d3a18;
+}
+
+.ol-live .ol-dot {
+  width: 6px;
+  height: 6px;
+}
+
+.ol-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ol-card-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+
+.ol-lv {
+  display: inline-block;
+  padding: 0 4px;
+  font-size: 11px;
+  color: #5a3410;
+  background: #f2bf3f;
+  box-shadow: 0 0 0 1px #7a4f12;
+  vertical-align: middle;
+}
+
+.ol-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.ol-meta b {
+  color: var(--ink);
+}
+
+.ol-guest {
+  margin: 0 0 0 2px;
+  font-size: 10px;
+}
+
+.ol-card-acts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.ol-card-acts .btn {
+  min-width: 0;
+  margin: 0;
+}
+
+.ol-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.ol-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 2px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  color: #7a4f12;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+/* ---------- online list ---------- */
+
+.ol-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 2px 4px;
+  color: #fff1d6;
+  border-style: solid;
+  border-width: 6px;
+  border-image: var(--sk-card-dark) 3 fill / 6px repeat;
+}
+
+.ol-status .ol-dot {
+  margin-top: 5px;
+}
+
+.ol-status .small {
+  color: #e6d6b8;
+  line-height: 1.35;
+}
+
+.ol-h {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 4px;
+  font-size: 14px;
+}
+
+.ol-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ol-row-who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  font-family: var(--font);
+  color: var(--ink);
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.ol-row-text {
+  gap: 0;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.ol-row-btns {
+  gap: 0;
+  align-items: center;
+}
+
+.ol-friends {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.ol-friends .chip {
+  font-size: 11px;
+}
+
+.ol-friends .ol-dot {
+  width: 6px;
+  height: 6px;
+}
+
+.ol-sim {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 10px 2px 0;
+  padding: 4px 6px;
+  background: rgba(154, 100, 24, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(154, 100, 24, 0.35);
+}
+
+.ol-sim-tag {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 10px;
+}
+
+.ol-empty {
+  margin: 6px 0;
+}
+
+.ol-warn {
+  color: #b23a2a;
+  font-weight: 600;
+}
+
+/* ---------- gift picker ---------- */
+
+.ol-gift-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0;
+}
+
+.ol-gift-sel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ol-qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ol-qty b {
+  min-width: 18px;
+  text-align: center;
+  font-size: 16px;
+}
+
+/* ---------- trade ---------- */
+
+.ol-ask {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.ol-ask p {
+  margin: 2px 0;
+}
+
+.ol-ask-btns {
+  justify-content: center;
+  margin-top: 6px;
+}
+
+.ol-trade {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 2px;
+}
+
+.ol-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 132px;
+  padding: 2px 3px;
+  border-style: solid;
+  border-width: 6px;
+  border-image: var(--sk-card) 3 fill / 6px repeat;
+}
+
+.ol-side.ready {
+  border-image-source: var(--sk-card-green);
+}
+
+.ol-side header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.ol-side header .chip {
+  margin: 0;
+  font-size: 10px;
+}
+
+.ol-swap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ol-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ol-lineitem {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+}
+
+.ol-lname {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.ol-rar {
+  font-style: normal;
+  font-size: 9px;
+  color: #7a5a3e;
+}
+
+.ol-rar.r-rare {
+  color: #2f6fb8;
+}
+
+.ol-rar.r-epic {
+  color: #8a3fc2;
+}
+
+.ol-rar.r-legendary {
+  color: #c07a10;
+}
+
+.ol-minus {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-family: var(--num);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff1e6;
+  border-style: solid;
+  border-width: 3px 3px 5px;
+  border-image: var(--sk-btn-red) 4 4 6 4 fill / 3px 3px 5px repeat;
+  background: none;
+  cursor: pointer;
+}
+
+.ol-picker {
+  margin-top: 6px;
+}
+
+.ol-pick-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.ol-pick {
+  width: 48px;
+  height: 48px;
+}
+
+.ol-pick:disabled {
+  opacity: 0.45;
+}
+
+.ol-trade-note {
+  margin: 6px 2px;
+  text-align: center;
+}
+
+.ol-trade-btns {
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ol-trade-pill {
+  position: absolute;
+  z-index: 26;
+  left: 50%;
+  top: calc(var(--safe-top) + 8px);
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 8px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: #5a3410;
+  border-style: solid;
+  border-width: 5px;
+  border-image: var(--sk-card-gold) 3 fill / 5px repeat;
+  background: none;
+  cursor: pointer;
+  animation: ol-nudge 1.4s ease-in-out infinite;
+}
+
+@keyframes ol-nudge {
+  50% {
+    transform: translateX(-50%) translateY(2px);
+  }
+}
+
+.ol-trade-with {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.ol-trade-with .chip {
+  margin: 0;
+  font-size: 10px;
+}
+
+.ol-noface {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #dff2cf;
+}
+
+.ol-noface img {
+  position: static;
+  transform: none;
+}
