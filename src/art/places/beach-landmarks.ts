@@ -126,15 +126,36 @@ export function karstCliff(g: Surface, pts: [number, number][], night: boolean, 
   const x1 = Math.max(...xs)
   const y0 = Math.min(...ys)
   const y1 = Math.max(...ys)
-  // Vertical streaks (tufa curtains) and grey weathering.
+  // Vertical tufa curtains: column bands of light/dark rock, grey and orange stains.
+  const orange = night ? '#7a5a5a' : '#c07a4a'
   for (let x = x0; x <= x1; x++) {
-    const v = hsh(x, 3, seed)
+    const v = hsh(x >> 2, 3, seed)
+    const band = v % 5
     for (let y = y0; y <= y1; y++) {
       if (!inPoly(pts, x, y)) continue
-      const n = Math.sin(x * 0.4 + seed) * 0.6 + Math.sin(x * 0.13 + y * 0.02)
-      if (v % 7 === 0 && ditherOn(x, y, 0.7)) g.px(x, y, rockD)
-      else if (n > 1.1 && ditherOn(x, y, 0.5)) g.px(x, y, rockL)
-      else if (n < -1.1 && ditherOn(x, y, 0.5)) g.px(x, y, grey)
+      const wob = Math.round(Math.sin(y * 0.07 + (x >> 2)) * 1.5)
+      const b2 = hsh((x + wob) >> 2, 3, seed) % 5
+      let c = b2 === 0 ? rockD : b2 === 1 ? rockL : b2 === 2 ? orange : rock
+      const n = Math.sin(x * 0.13 + y * 0.03 + seed) + Math.sin(y * 0.05 - x * 0.02)
+      if (n > 1.3 && ditherOn(x, y, 0.6)) c = grey
+      if (!inPoly(pts, x + 3, y) && ditherOn(x, y, 0.6)) c = rockD
+      if (hsh(x, y, seed) < 6) c = rockD
+      g.px(x, y, c)
+      void band
+    }
+  }
+  // Ledges with little bushes clinging on.
+  for (let ly = y0 + 30; ly < y1 - 20; ly += 34 + (hsh(ly, 1, seed) % 14)) {
+    for (let x = x0; x <= x1; x++) {
+      const y = ly + Math.round(Math.sin(x * 0.12 + ly) * 2)
+      if (!inPoly(pts, x, y)) continue
+      g.px(x, y, rockD)
+      g.px(x, y - 1, rockL)
+      const v = hsh(x, ly, seed)
+      if (v < 90) {
+        g.circle(x, y - 2, 2.2, night ? '#1e3a34' : '#3f7a4f')
+        g.px(x - 1, y - 3, night ? '#305248' : '#6aae64')
+      }
     }
   }
   // Stalactite drips along the overhang.

@@ -211,7 +211,7 @@ export const BEACH_META: Record<BeachId, BeachMeta> = {
     id: 'beach_samui',
     short: 'สมุย',
     landmark: 'พระใหญ่เกาะฟาน',
-    games: ['snorkel', 'chedi', 'shells', 'turtle', 'photo'],
+    games: ['snorkel', 'chedi', 'shells', 'turtle', 'cleanup', 'photo'],
     sea: 'gulf',
     chat: [...COMMON_CHAT, 'กราบพระใหญ่มาแล้ว', 'คืนนี้มีโชว์ควงไฟ!', 'น้ำใสเห็นปลาเลย', 'มะพร้าวสมุยหวานที่สุด'],
   },

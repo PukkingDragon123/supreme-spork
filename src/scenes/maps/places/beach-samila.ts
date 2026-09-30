@@ -9,6 +9,7 @@ import type { Surface } from '../../../engine/pixel'
 import { pick } from '../../../engine/rng'
 import { sfx } from '../../../engine/audio'
 import { Gags } from '../../gags'
+import { Traffic } from '../../life'
 import { TapZones } from '../../life'
 import { road, sidewalk } from '../common'
 import { boardwalk, casuarina, coconutCart, footprintTrail, isle, lampPost, lifeguardTower, lounger, massageMats, photoFrame, rocks, SAND, sandShadow, seaAlmond, swimFlag, trashBins, turtleHatchery, umbrella, hooksAt } from '../../../art/places/beach-kit'
@@ -185,6 +186,7 @@ export function samilaMap(): MapDef {
     vendors: [{ x: 124, y: 600 }],
     life(s) {
       return [
+        new Traffic(s, [{ y: 752, dir: 1 }, { y: 800, dir: -1 }]),
         new Gags(s, [
           sunbatherGag(152, 490, ['ขอตากแดดอีกด้านนะ', 'ผิวแทนต้องเท่ากันทั้งสองด้าน!', 'ร้อนแต่ฟิน~']),
           buriedDadGag(40, 540),

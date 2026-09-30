@@ -10,8 +10,9 @@ import { QUESTS as NORTH } from './north'
 import { QUESTS as SOUTH } from './south'
 import { RANK_QUESTS } from './ranks'
 import { QUESTS as HUBS } from './hubs'
+import { QUESTS as BEACH } from './beach'
 
-const GROUPS: NpcQuestDef[][] = [HOME, BANGKOK, CENTRAL, NORTH, SOUTH, RANK_QUESTS, HUBS]
+const GROUPS: NpcQuestDef[][] = [HOME, BANGKOK, CENTRAL, NORTH, SOUTH, RANK_QUESTS, HUBS, BEACH]
 
 export const NPC_QUESTS: NpcQuestDef[] = GROUPS.flat()
 

@@ -79,6 +79,8 @@ export interface BeachConfig {
   vendors?: MapDef['vendors']
   visitors?: number
   camBias?: number
+  /** Columns that have surf (default: the whole width). */
+  surf?: [number, number]
   /** Extra areas that block walking in the water (piers are carved out of the sea by leaving them open). */
   openWater?: R[]
 }
@@ -137,7 +139,7 @@ export function buildBeach(c: BeachConfig): MapDef {
     life(s) {
       return [
         new BeachArrival(s),
-        new Shore(s, c.shore, sea, SEA.night, c.skyH),
+        new Shore(s, c.shore, sea, SEA.night, c.skyH, c.surf),
         new Footprints(s, c.shore, c.sandTo),
         new Crabs(s, c.crabHoles),
         new Palms(s, c.palms),

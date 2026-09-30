@@ -45,6 +45,8 @@ export class Shore implements Life {
     private day: SeaPal,
     private night: SeaPal,
     private horizon: number,
+    /** Columns with surf (headlands and cliffs cut the beach short). */
+    private span: [number, number] = [0, 99999],
   ) {}
   update(dt: number, t: number) {
     this.nextWash -= dt
@@ -64,8 +66,8 @@ export class Shore implements Life {
   ground(g: Surface, t: number) {
     const s = this.s
     const pal = s.isNight() ? this.night : this.day
-    const x0 = Math.max(0, Math.floor(s.camX) - 2)
-    const x1 = Math.min(s.map.w - 1, Math.ceil(s.camX + s.vw) + 2)
+    const x0 = Math.max(this.span[0], Math.floor(s.camX) - 2)
+    const x1 = Math.min(this.span[1], s.map.w - 1, Math.ceil(s.camX + s.vw) + 2)
     const sunPath = s.phase === 'golden' || s.phase === 'dawn'
     const moon = s.isNight()
     const sunX = s.phase === 'dawn' ? 26 : s.phase === 'golden' ? s.map.w - 30 : s.map.w - 34
@@ -334,9 +336,11 @@ export class Boats implements Life {
       this.riders.forEach((lk, i) => {
         const sx = bx - p.dir * (-12 + i * 8)
         const hop = Math.floor(t * 6 + i) % 3 === 0 ? 1 : 0
-        const sp = avatarSprite(lk, 'side', i % 2 ? 'happy' : 'sit', { flip })
-        G.draw(sp.canvas, Math.round(sx - sp.w / 2), Math.round(p.y - 5 - sp.h + 6 - hop))
-        G.rect(Math.round(sx - 2), Math.round(p.y - 14 - hop), 4, 4, '#ff7a1a')
+        const sp = avatarSprite(lk, 'side', i % 2 ? 'happy' : 'stand', { flip })
+        // Upper body only: they sit astride the tube in orange life vests.
+        G.drawPart(sp.canvas, 0, 0, sp.w, 17, Math.round(sx - sp.w / 2), Math.round(p.y - 22 - hop))
+        G.rect(Math.round(sx - 3), Math.round(p.y - 10 - hop), 6, 4, '#ff7a1a')
+        G.px(Math.round(sx), Math.round(p.y - 9 - hop), '#fff3a6')
       })
     }
   }
