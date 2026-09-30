@@ -222,7 +222,7 @@ function holy(c: PaintCtx, f: Sculpted, dx: number, up: number, halo: [number, n
   c.both((g) => aureole(g, x, y - hup, hw, hh))
   c.both((g) => drawSculpt(g, f, x, y))
   c.light(dx, up + hup, hh * 0.9, '#ffd98a', 0.32 * glow)
-  c.addFx(glowFx(x, y - hup, hh * 0.75, 0.22 * glow, '#ffe6a0', 1.1, 1.4))
+  c.addFx(glowFx(x, y - hup, hh * 0.8, 0.14 * glow, '#ffe6a0', 1.1, 1))
 }
 
 /** A sculpted figure (gold, so it also shines at night). */

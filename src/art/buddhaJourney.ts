@@ -91,8 +91,9 @@ export function journeyNight(art: JourneyArt): HTMLCanvasElement {
   })
   for (let y = 0; y < h; y++) moonlight(d, y * w * 4, (y + 1) * w * 4, soft[y] ? 0.78 : 1)
   ctx.putImageData(img, 0, 0)
-  ctx.drawImage(art.emissive, 0, 0)
+  // Glows first, so gold figures and lamps stay crisp on top of their light.
   for (const L of art.lights) softGlow(g, L.x, L.y, L.r, L.s, L.color)
+  ctx.drawImage(art.emissive, 0, 0)
   nightCache.set(w, c)
   return c
 }
