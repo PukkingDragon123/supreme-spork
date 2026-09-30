@@ -6,7 +6,7 @@
 // rounds (GameState.beach.plays); after they are used up rewards drop to 25%.
 
 import { game, mutate, type GameState } from './state'
-import { addCoins, addMerit, track } from './actions'
+import { addCoins, addMerit, spendCoins, track } from './actions'
 import { grantCollectibles } from './collectibles'
 import { BEACH_GAMES, isBeach, type BeachGameDef, type BeachGameId } from './data/beaches'
 import { BEACH_SHELLS } from './data/collectibles/beach'
@@ -42,11 +42,91 @@ export function beachReward(def: BeachGameDef, stars: JobStars, playsBefore: num
   const capped = playsBefore >= def.daily
   if (stars <= 0) return { merit: def.merit > 0 ? 1 : 0, coins: 0, capped }
   const rate = BEACH_STAR_RATE[stars] * (capped ? BEACH_CAPPED_RATE : 1)
+  // Deal: the first counted round of the day multiplies the merit.
+  const first = playsBefore === 0 && def.firstBonus ? def.firstBonus : 1
   return {
-    merit: def.merit > 0 ? Math.max(1, Math.round(def.merit * rate)) : 0,
+    merit: def.merit > 0 ? Math.max(1, Math.round(def.merit * rate * first)) : 0,
     coins: Math.max(capped ? 0 : 1, Math.round(def.coins * rate)),
     capped,
   }
+}
+
+// ---------------------------------------------------------------------------
+// Prices and deals (shown on the brief card before a round)
+
+export interface BeachDeal {
+  kind: 'first' | 'pack' | 'gear' | 'tide' | 'credit' | 'sunset'
+  text: string
+  active: boolean
+}
+
+export interface BeachOffer {
+  /** Coins this round costs right now (0 = free or prepaid). */
+  price: number
+  /** The undiscounted price. */
+  base: number
+  /** A ride pack you can buy instead (price for n rounds). */
+  pack: { n: number; price: number; save: number } | null
+  /** Prepaid rounds left. */
+  credits: number
+  deals: BeachDeal[]
+}
+
+/** Morning low tide (05:00-09:00) brings rarer shells up the beach. */
+export function shellLuck(hour: number): number {
+  return hour >= 5 && hour < 9 ? 0.35 : 0
+}
+
+/** Price, pack and deals of a beach game for this player right now. Pure (reads the given state). */
+export function beachOffer(id: BeachGameId, s: GameState = game.value, day = dayKey(), hour = new Date().getHours()): BeachOffer {
+  const def = BEACH_GAMES[id]
+  const credits = s.beach.credits[id] ?? 0
+  const deals: BeachDeal[] = []
+  let price = def.price
+  if (def.firstBonus) deals.push({ kind: 'first', text: `รอบแรกของวันได้บุญ x${def.firstBonus}`, active: beachPlaysToday(id, s, day) === 0 })
+  if (def.gearOff) {
+    const full = s.player.look.suit === 'suit_scuba' && s.player.look.shoes === 'shoes_flippers'
+    deals.push({ kind: 'gear', text: `ใส่ชุดดำน้ำครบเซ็ต (ชุด + ตีนกบ) ลด ${Math.round(def.gearOff * 100)}%`, active: full })
+    if (full) price = Math.round(price * (1 - def.gearOff))
+  }
+  if (id === 'shells') deals.push({ kind: 'tide', text: 'น้ำลงตอนเช้า (ตีห้าถึงเก้าโมง) เจอหอยหายากบ่อยขึ้น', active: shellLuck(hour) > 0 })
+  if (id === 'photo') deals.push({ kind: 'sunset', text: 'ภาพพระอาทิตย์ตกใบแรกของแต่ละหาด รับ 25 คอยน์', active: true })
+  let pack: BeachOffer['pack'] = null
+  if (def.pack && def.price > 0) {
+    const full = def.price * def.pack.n
+    const pp = Math.round(full * (1 - def.pack.off))
+    pack = { n: def.pack.n, price: pp, save: full - pp }
+    deals.push({ kind: 'pack', text: `ซื้อ ${def.pack.n} รอบ ลด ${Math.round(def.pack.off * 100)}% (${pp} คอยน์)`, active: true })
+  }
+  if (credits > 0) {
+    deals.push({ kind: 'credit', text: `มีรอบที่จ่ายไว้แล้ว ${credits} รอบ`, active: true })
+    price = 0
+  }
+  return { price, base: def.price, pack, credits, deals }
+}
+
+/**
+ * Pay for a round: use a prepaid credit, buy a pack (`pack`: the first round
+ * of it is used now), or pay the single price. False if coins are short.
+ */
+export function payBeachRound(id: BeachGameId, pack = false): boolean {
+  const o = beachOffer(id)
+  if (o.credits > 0) {
+    mutate((d) => {
+      d.beach.credits[id] = Math.max(0, (d.beach.credits[id] ?? 0) - 1)
+    })
+    return true
+  }
+  if (pack && o.pack) {
+    const p = o.pack
+    if (!spendCoins(p.price)) return false
+    mutate((d) => {
+      d.beach.credits[id] = (d.beach.credits[id] ?? 0) + p.n - 1
+    })
+    return true
+  }
+  if (o.price <= 0) return true
+  return spendCoins(o.price)
 }
 
 // ---------------------------------------------------------------------------

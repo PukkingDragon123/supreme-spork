@@ -5,6 +5,7 @@
 // openActivity('beach', { game }) on the current beach map.
 
 import type { GameEvent } from './quests'
+import type { AvatarLook } from '../../art/avatar'
 
 export const BEACH_IDS = ['beach_bangsaen', 'beach_huahin', 'beach_samila', 'beach_samui', 'beach_patong', 'beach_railay'] as const
 export type BeachId = (typeof BEACH_IDS)[number]
@@ -35,6 +36,16 @@ export interface BeachGameDef {
   event?: GameEvent
   /** Hotspot hint on the map. */
   hint: string
+  /** The host / vendor who runs it (shown on the brief card). */
+  host: { name: string; role: string; line: string; look: Partial<AvatarLook> }
+  /** Coins per round (0 = free). */
+  price: number
+  /** Ride packs: N rounds for a discount (e.g. 3 rounds 20% off). */
+  pack?: { n: number; off: number }
+  /** Merit multiplier on the first counted round of the day. */
+  firstBonus?: number
+  /** Price off (0..1) when wearing the full snorkel set (suit + flippers). */
+  gearOff?: number
 }
 
 export const BEACH_GAMES: Record<BeachGameId, BeachGameDef> = {
@@ -51,6 +62,9 @@ export const BEACH_GAMES: Record<BeachGameId, BeachGameDef> = {
     coins: 20,
     event: 'sand_chedi',
     hint: 'ก่อพระเจดีย์ทรายถวายเป็นพุทธบูชา',
+    host: { name: 'ยายเพียร', role: 'ผู้เฒ่าชวนก่อเจดีย์ทราย', line: 'ทรายติดเท้าออกจากวัดไป ก่อเจดีย์คืนให้ท่านนะหลาน ได้บุญสองเด้ง', look: { gender: 'f', skin: 2, face: 1, hair: 'hair_bun', hairColor: 6, top: 'top_white', bottom: 'bot_sarong', head: 'head_sunhat' } },
+    price: 0,
+    firstBonus: 2,
   },
   cleanup: {
     id: 'cleanup',
@@ -65,6 +79,9 @@ export const BEACH_GAMES: Record<BeachGameId, BeachGameDef> = {
     coins: 24,
     event: 'job',
     hint: 'งานอาสา: เก็บขยะคืนหาดสวยให้ทะเล',
+    host: { name: 'พี่เต้ย', role: 'หัวหน้าจิตอาสารักษ์หาด', line: 'ถุงมือกับที่คีบพร้อม! ขยะหนึ่งชิ้นอาจช่วยชีวิตเต่าได้หนึ่งตัวเลยนะ', look: { gender: 'm', skin: 2, face: 0, hair: 'hair_short', hairColor: 0, top: 'top_tee_boon', bottom: 'bot_cargo', head: 'head_cap' } },
+    price: 0,
+    firstBonus: 2,
   },
   turtle: {
     id: 'turtle',
@@ -79,6 +96,9 @@ export const BEACH_GAMES: Record<BeachGameId, BeachGameDef> = {
     coins: 18,
     event: 'sea_turtle',
     hint: 'ช่วยศูนย์อนุรักษ์ปล่อยลูกเต่าทะเล',
+    host: { name: 'หมอเต่า', role: 'สัตวแพทย์ศูนย์อนุรักษ์เต่าทะเล', line: 'ลูกเต่าฟักเมื่อคืนสิบสองตัว ห้ามให้ปูกับนกได้ไปแม้แต่ตัวเดียวนะ!', look: { gender: 'f', skin: 1, face: 5, hair: 'hair_ponytail', hairColor: 1, top: 'top_polo', bottom: 'bot_khaki', head: 'head_cap' } },
+    price: 10,
+    firstBonus: 2,
   },
   shells: {
     id: 'shells',
@@ -92,6 +112,8 @@ export const BEACH_GAMES: Record<BeachGameId, BeachGameDef> = {
     merit: 6,
     coins: 12,
     hint: 'เดินเก็บเปลือกหอยริมคลื่น',
+    host: { name: 'น้องมุก', role: 'เด็กชาวเล นักล่าเปลือกหอย', line: 'หอยที่มีปูเสฉวนอยู่ห้ามเอานะ เขาเช่าบ้านอยู่ ยังไม่หมดสัญญา!', look: { gender: 'f', skin: 3, face: 5, hair: 'hair_ponytail', hairColor: 0, top: 'top_tee_white', bottom: 'bot_jeans' } },
+    price: 0,
   },
   snorkel: {
     id: 'snorkel',
@@ -105,6 +127,9 @@ export const BEACH_GAMES: Record<BeachGameId, BeachGameDef> = {
     merit: 10,
     coins: 26,
     hint: 'ใส่ชุดดำน้ำหรือตีนกบแล้วลงไปดูปะการัง',
+    host: { name: 'บังโซ๊ะ', role: 'คนขับเรือพาดำน้ำ', line: 'ใส่ตีนกบแล้วว่ายตามบังมา ปลาการ์ตูนนั่งรออยู่ในดอกไม้ทะเลแล้ว', look: { gender: 'm', skin: 3, face: 2, hair: 'hair_buzz', hairColor: 0, top: 'top_hawaii', bottom: 'bot_fisherman', head: 'head_sunglasses' } },
+    price: 20,
+    gearOff: 0.5,
   },
   banana: {
     id: 'banana',
@@ -118,6 +143,9 @@ export const BEACH_GAMES: Record<BeachGameId, BeachGameDef> = {
     merit: 4,
     coins: 22,
     hint: 'ขี่กล้วยยักษ์ลากด้วยเรือเร็ว',
+    host: { name: 'พี่ต้อง', role: 'คนขับเรือเร็วลากบานาน่าโบ๊ต', line: 'เกาะแน่น ๆ นะ รับรองไม่ตก... อาจจะตกนิดหน่อย 555', look: { gender: 'm', skin: 2, face: 3, hair: 'hair_short', hairColor: 0, top: 'top_hawaii', bottom: 'bot_jeans', head: 'head_sunglasses' } },
+    price: 30,
+    pack: { n: 3, off: 0.2 },
   },
   photo: {
     id: 'photo',
@@ -131,6 +159,8 @@ export const BEACH_GAMES: Record<BeachGameId, BeachGameDef> = {
     merit: 0,
     coins: 15,
     hint: 'มุมถ่ายรูปพระอาทิตย์ตกทะเล',
+    host: { name: 'ช่างเจมส์', role: 'ช่างภาพประจำหาด', line: 'ยิ้ม~ หันหน้าหาแสง อย่าหลับตาตอนแฟลชนะ เดี๋ยวได้ภาพผี', look: { gender: 'm', skin: 1, face: 0, hair: 'hair_short', hairColor: 1, top: 'top_hawaii', bottom: 'bot_jeans', head: 'head_cap' } },
+    price: 0,
   },
 }
 

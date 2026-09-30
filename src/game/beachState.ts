@@ -21,10 +21,12 @@ export interface BeachState {
   photos: string[]
   /** Banana-boat rides (and dunkings). */
   rides: number
+  /** Prepaid rounds left from ride packs, per game id. */
+  credits: Record<string, number>
 }
 
 export function defaultBeach(): BeachState {
-  return { visited: [], best: {}, plays: { day: '', n: {} }, chedis: 0, turtles: 0, trash: 0, fish: [], photos: [], rides: 0 }
+  return { visited: [], best: {}, plays: { day: '', n: {} }, chedis: 0, turtles: 0, trash: 0, fish: [], photos: [], rides: 0, credits: {} }
 }
 
 const num = (v: unknown, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : d)
@@ -52,5 +54,6 @@ export function normalizeBeach(raw: unknown): BeachState {
     fish: strList(r.fish),
     photos: strList(r.photos),
     rides: count(r.rides),
+    credits: Object.fromEntries(Object.entries(numMap(r.credits)).map(([k, v]) => [k, Math.max(0, Math.floor(v))])),
   }
 }
