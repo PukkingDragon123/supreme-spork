@@ -218,6 +218,7 @@ await step('7 quests and a daily reward', async () => {
   if (await page.locator('.bn-hole').count()) await tapHole()
   else await click(/เข้าใจแล้ว/)
   await waitStep('npc')
+  await dismissModals()
   await page.locator('.win-x').last().click()
 })
 
@@ -258,6 +259,7 @@ await step('10 shop free gift', async () => {
   await shot('shop-gift')
   await tapHole() // รับฟรี
   await waitStep('home')
+  await dismissModals()
   await page.locator('.win-x').last().click()
 })
 

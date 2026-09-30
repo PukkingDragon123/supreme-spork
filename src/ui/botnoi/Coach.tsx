@@ -129,6 +129,9 @@ function resolve(t: Target, pr: DOMRect, step: string): Box | null {
   const b = worldBox(wx, wy, ww, wh, pr)
   if (!b) return null
   b.act = act
+  // A window or sheet in front of the map hides world targets.
+  const hit = document.elementFromPoint(pr.left + b.x + b.w / 2, pr.top + b.y + b.h / 2)
+  if (hit && !hit.closest('.bn-root') && !(hit instanceof HTMLCanvasElement && hit.parentElement?.parentElement?.classList.contains('phone'))) return null
   if (!inView(b, pr)) {
     // Off screen on this map: pan the camera to it once.
     const key = `${step}:${wx},${wy}`

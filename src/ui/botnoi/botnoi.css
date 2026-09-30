@@ -450,12 +450,17 @@
   border-image: var(--sk-bubble) 4 fill / 6px repeat;
 }
 .bn-choices {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
 .bn-choices .btn {
   width: 100%;
+}
+.bn-choices .btn:first-child,
+.bn-choices .btn:only-child,
+.bn-choices .btn:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
 }
 .bn-quests {
   display: flex;
