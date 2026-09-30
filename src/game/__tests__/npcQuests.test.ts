@@ -54,6 +54,9 @@ describe('quest data', () => {
         expect(n, q.id).toBeTruthy()
         expect(n!.map, q.id).toBe(q.map)
         expect(n!.name, q.id).toBe(q.npcName)
+      } else if (q.giver.startsWith('bot:')) {
+        // Floating helper givers (Bot Noi) are not on a map.
+        expect(q.npcName, q.id).toBeTruthy()
       } else {
         expect(q.giver.startsWith('shop:'), q.id).toBe(true)
         const shop = PLACE_SHOPS[q.giver.slice(5)]

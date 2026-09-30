@@ -27,6 +27,7 @@ import { Window } from './components/kit'
 import { QuestHost } from './quest/QuestDialog'
 import { QuestTracker } from './quest/QuestTracker'
 import { OnlineChat, OnlineHost } from './online/OnlineHost'
+import { BotnoiHost } from './botnoi/BotnoiHost'
 
 const SCREEN: Partial<Record<Tab, { title: string; icon: string }>> = {
   quests: { title: 'ภารกิจ', icon: 'scroll' },
@@ -103,6 +104,7 @@ export function App() {
             {profileOpen.value && <ProfileSheet />}
             <OnlineHost />
             <QuestHost />
+            <BotnoiHost />
           </>
         )}
         <Overlays />

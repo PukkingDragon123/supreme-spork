@@ -3298,7 +3298,30 @@ function drawHeadAccNew(b: Buf, r: Res, key: string, view: DollView, dy: number,
     }
   }
   void r
-  return drawSouvenirHead(b, key, view, dy, stage) || drawV4Head(b, r, key, view, dy, stage)
+  return drawSouvenirHead(b, key, view, dy, stage) || drawV4Head(b, r, key, view, dy, stage) || drawExtraHead(b, key, view, dy, stage)
+}
+
+/** Head accessories drawn from pixel rows by other modules (e.g. Bot Noi's antenna headband, art/botnoi.ts). */
+export interface DollHeadRows {
+  front: { x: number; y: number; rows: string[] }
+  back?: { x: number; y: number; rows: string[] }
+  pal: Record<string, string>
+  /** Edge line colour where it overlaps the hair. */
+  line?: string
+}
+const EXTRA_HEAD: Record<string, DollHeadRows> = {}
+
+export function registerDollHeadAcc(key: string, art: DollHeadRows) {
+  EXTRA_HEAD[key] = art
+}
+
+function drawExtraHead(b: Buf, key: string, view: DollView, dy: number, stage: 'under' | 'over'): boolean {
+  const a = EXTRA_HEAD[key]
+  if (!a) return false
+  if (stage !== 'over') return true
+  const part = view === 'back' ? (a.back ?? a.front) : a.front
+  commit(b, mapLayer(part.rows, part.x, part.y + dy, a.pal), a.line ?? null, TAG.deco)
+  return true
 }
 
 /** Surgical mask – drawn after the face, before the front hair. */

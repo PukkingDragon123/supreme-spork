@@ -32,9 +32,18 @@ export interface QuestDialogReq {
 export const questDialog = signal<QuestDialogReq | null>(null)
 let seq = 0
 
+/** Givers that are not standing on a map (e.g. Bot Noi `bot:botnoi`) and open their own UI. */
+const floatingGivers = new Map<string, () => void>()
+
+export function registerFloatingGiver(giver: string, open: () => void) {
+  floatingGivers.set(giver, open)
+}
+
 /** Open the conversation sheet with a quest giver (`npc:<id>` / `shop:<id>`). */
 export function openQuestDialog(giver: string, quest?: string) {
   arrived.value = null
+  const floating = floatingGivers.get(giver)
+  if (floating) return floating()
   questDialog.value = { giver, quest, n: ++seq }
 }
 
@@ -179,6 +188,8 @@ function placeOpen(root: string): boolean {
 /** Go to a hotspot on any map: walk if here, change room, or travel there. */
 export function goToSpot(map: string, hotspot: string | null) {
   closeUi()
+  const floating = hotspot ? floatingGivers.get(hotspot) : undefined
+  if (floating) return floating()
   if (mode.value === 'world' && mapId.value === map) return walkTo(hotspot)
   if (mode.value === 'world' && rootOf(mapId.value) === rootOf(map) && hasMap(map)) {
     pendingNav = { map, hotspot }

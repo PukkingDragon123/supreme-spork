@@ -3,7 +3,9 @@
 //   node scripts/smoke.mjs [baseUrl] [screenshotDir]
 import { chromium } from 'playwright'
 
-const base = process.argv[2] ?? 'http://localhost:5173/'
+// `?notutorial` keeps Bot Noi's tutorial and tips from popping up (scripts/tutorial.mjs covers them).
+const baseArg = process.argv[2] ?? 'http://localhost:5173/'
+const base = baseArg + (baseArg.includes('?') ? '&' : '?') + 'notutorial'
 const shots = process.argv[3]
 const errors = []
 const browser = await chromium.launch()

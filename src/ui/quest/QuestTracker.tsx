@@ -10,7 +10,20 @@ import { sfx, haptic } from '../../engine/audio'
 import { Icon } from '../components/common'
 import { mapId, tab } from '../store'
 import { goToSpot, navigateQuest, questDialog, questTab } from './questUi'
+import { BOTNOI_GIVER } from '../../game/data/npcQuests/botnoi'
+import { botnoiHeadIcon } from '../../art/botnoi'
+import { spriteDataUrl } from '../../engine/sprite'
 import './quest.css'
+
+/** Bot Noi's quests show his face instead of the "!" (he floats with you: no walking back). */
+function Mark({ bot, ready }: { bot: boolean; ready: boolean }) {
+  if (!bot) return <span class="qt-mark">{ready ? '?' : '!'}</span>
+  return (
+    <span class="qt-mark bot">
+      <img class="px" src={spriteDataUrl(botnoiHeadIcon(ready ? 'love' : 'happy'), 2)} alt="บอทน้อย" width={30} height={26} />
+    </span>
+  )
+}
 
 export function QuestTracker() {
   void game.value
@@ -45,10 +58,10 @@ export function QuestTracker() {
         }}
         aria-label={`เควสต์ ${def.title}`}
       >
-        <span class="qt-mark">{ready ? '?' : '!'}</span>
+        <Mark bot={def.giver === BOTNOI_GIVER} ready={ready} />
         <span class="qt-body">
           <span class="qt-title">{def.title}</span>
-          <span class="qt-step">{ready ? `กลับไปหา${def.npcName}รับรางวัล` : `${step?.text ?? ''}${count}`}</span>
+          <span class="qt-step">{ready ? (def.giver === BOTNOI_GIVER ? 'แตะบอทน้อยเพื่อรับรางวัล' : `กลับไปหา${def.npcName}รับรางวัล`) : `${step?.text ?? ''}${count}`}</span>
           <span class="qt-bar">
             <i style={{ width: `${pct}%` }} />
           </span>
@@ -72,8 +85,10 @@ export function QuestTracker() {
 function QuestHint() {
   const s = game.value
   const here = mapId.value
-  const def = NPC_QUESTS.find((q) => q.map === here && questStatus(q, s) === 'available')
+  // Someone on this map first; else Bot Noi's next quest (he is everywhere).
+  const def = NPC_QUESTS.find((q) => q.map === here && q.giver !== BOTNOI_GIVER && questStatus(q, s) === 'available') ?? NPC_QUESTS.find((q) => q.giver === BOTNOI_GIVER && questStatus(q, s) === 'available')
   if (!def) return null
+  const bot = def.giver === BOTNOI_GIVER
   return (
     <div class="qt-pill hint">
       <button
@@ -85,9 +100,9 @@ function QuestHint() {
         }}
         aria-label={`${def.npcName}มีเควสต์ให้`}
       >
-        <span class="qt-mark">!</span>
+        <Mark bot={bot} ready={false} />
         <span class="qt-body">
-          <span class="qt-title">มีคนรอให้ช่วย · ได้ {def.reward.coins} เหรียญ</span>
+          <span class="qt-title">{bot ? 'บอทน้อยมีภารกิจ' : 'มีคนรอให้ช่วย'} · ได้ {def.reward.coins} เหรียญ</span>
           <span class="qt-step">
             {def.npcName} · {def.title}
           </span>
