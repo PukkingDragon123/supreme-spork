@@ -83,7 +83,7 @@ export class BrassScene extends JobScene {
     this.baseY = Math.round(this.top + this.playH * 0.7)
     this.bg = bakeBrassTable(this.w, this.h, this.tableY)
     // The player stands behind the table, waist at its back edge.
-    const feet = this.tableY + 19
+    const feet = this.tableY + 13
     if (!this.worker) this.worker = new Worker(this.cx + 30, feet)
     else if (this.phase === 'ready') this.worker.place(this.cx + 30, feet)
     this.worker.goTo(this.worker.tx, feet)
@@ -99,7 +99,7 @@ export class BrassScene extends JobScene {
       this.hardT = fast ? this.hardT + dt : Math.max(0, this.hardT - dt * 2)
       // Lean toward the rag, sway with the strokes.
       wk.follow = 9
-      wk.goTo(Math.max(18, Math.min(this.w - 18, d.x + 10)), this.tableY + 19 + (fast && Math.sin(this.t * 24) > 0 ? 1 : 0))
+      wk.goTo(Math.max(18, Math.min(this.w - 18, d.x + 10)), this.tableY + 13 + (fast && Math.sin(this.t * 24) > 0 ? 1 : 0))
       const sx = wk.x + 7.5
       const sy = wk.feetY - 26
       wk.pose = reachPose('front', 'R', Math.atan2(d.y - sy, d.x - sx), 9, fast ? 'open' : 'smile', { w: [10, 37] })
