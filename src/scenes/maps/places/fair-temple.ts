@@ -5,7 +5,8 @@
 // tank, the claw machines and the prize booth, the game booths (ปาเป้า,
 // โยนห่วง, ยิงปืนจุก, ตักปลา), the likay stage and the ธิดาลูกชิ้น contest,
 // the bumper cars and the ramwong floor, the ferris wheel and the carousel,
-// and the lit ubosot with its ขอพร corner. Fireworks every three minutes.
+// and, by the poster fence at the back, the ขอพร tree. Fireworks every three
+// minutes.
 //
 // Hotspots `fair:*` open src/activities/fair (see fair/hotspots.ts); moving
 // and tappable things live in fair-temple-life.ts.
@@ -13,12 +14,11 @@
 import type { MapDef, PlacedProp, WorldScene } from '../../world'
 import type { Surface } from '../../../engine/pixel'
 import { rand, pick } from '../../../engine/rng'
-import * as T from '../../../art/temple'
 import * as G from '../../../art/garden'
 import * as F from '../../../art/templeprops'
 import { avatarSprite, type AvatarLook, type Pose } from '../../../art/avatar'
 import { drawShadow } from '../../../art/props'
-import { CloudShadows, Flames, Smoke, Traffic, type Life } from '../../life'
+import { CloudShadows, Smoke, Traffic, type Life } from '../../life'
 import { FairLights, Gags, type Gag } from '../../gags'
 import { concrete, noticeBoard, hooksAt, INK, eatTable, stool, tiles, type Pt } from '../../../art/places/hub-kit'
 import {
@@ -42,6 +42,8 @@ import {
   speakerStack,
   wishAltar,
   wishTree,
+  fairBillboard,
+  fairFence,
   type CartKind,
   type LitProp,
 } from '../../../art/places/fair'
@@ -57,47 +59,49 @@ import '../../../art/places/fair-motifs'
 export const FAIR_MAP_ID = 'fair_temple'
 const ID = FAIR_MAP_ID
 const W = 400
-const H = 1560
+const H = 1410
 const CX = 200
-const HALL = { x: CX, y: 250 }
-const WISH = { x: 54, y: 262 }
-const ALTAR = { x: 104, y: 290 }
-const WHEEL = { x: 86, y: 372, r: 56 }
-const CAROUSEL = { x: 314, y: 462 }
-const BUMPER = { x: 14, y: 516, w: 144, h: 92 }
-const RAMWONG = { x: 312, y: 568, rx: 58, ry: 28 }
-const STAGE = { x: 88, y: 716 }
-const CONTEST = { x: 314, y: 712 }
-const BOOTH_Y = 872
+/** Ground line of the back fence (the top edge of the walkable fair). */
+const FENCE_Y = 96
+const WISH = { x: 54, y: 112 }
+const ALTAR = { x: 104, y: 140 }
+const DONATION = { x: 160, y: 128 }
+const WHEEL = { x: 86, y: 222, r: 56 }
+const CAROUSEL = { x: 314, y: 312 }
+const BUMPER = { x: 14, y: 366, w: 144, h: 92 }
+const RAMWONG = { x: 312, y: 418, rx: 58, ry: 28 }
+const STAGE = { x: 88, y: 566 }
+const CONTEST = { x: 314, y: 562 }
+const BOOTH_Y = 722
 const BOOTHS = [
   { id: 'darts', x: 46, w: 68 },
   { id: 'rings', x: 126, w: 68 },
   { id: 'cork', x: 274, w: 68 },
   { id: 'scoop', x: 354, w: 68 },
 ] as const
-const CLAW_Y = 972
+const CLAW_Y = 822
 const CLAWS = [26, 52, 78, 104]
-const PRIZES = { x: 314, y: 972 }
-const MC = { x: 150, y: 950 }
-const DUNK = { x: 50, y: 1112 }
-const RING = { x: 124, y: 1118 }
-const GHOST = { x: 316, y: 1124 }
+const PRIZES = { x: 314, y: 822 }
+const MC = { x: 150, y: 800 }
+const DUNK = { x: 50, y: 962 }
+const RING = { x: 124, y: 968 }
+const GHOST = { x: 316, y: 974 }
 const CARTS: { kind: CartKind; x: number; y: number }[] = [
-  { kind: 'popcorn', x: 30, y: 1236 },
-  { kind: 'quail', x: 86, y: 1236 },
-  { kind: 'lookchin', x: 142, y: 1236 },
-  { kind: 'squid', x: 258, y: 1236 },
-  { kind: 'tokyo', x: 314, y: 1236 },
-  { kind: 'takoyaki', x: 370, y: 1236 },
-  { kind: 'saimai', x: 30, y: 1340 },
-  { kind: 'icepop', x: 86, y: 1340 },
-  { kind: 'redsoda', x: 314, y: 1340 },
-  { kind: 'pressed', x: 370, y: 1340 },
+  { kind: 'popcorn', x: 30, y: 1086 },
+  { kind: 'quail', x: 86, y: 1086 },
+  { kind: 'lookchin', x: 142, y: 1086 },
+  { kind: 'squid', x: 258, y: 1086 },
+  { kind: 'tokyo', x: 314, y: 1086 },
+  { kind: 'takoyaki', x: 370, y: 1086 },
+  { kind: 'saimai', x: 30, y: 1190 },
+  { kind: 'icepop', x: 86, y: 1190 },
+  { kind: 'redsoda', x: 314, y: 1190 },
+  { kind: 'pressed', x: 370, y: 1190 },
 ]
-const GATE = { x: CX, y: 1474 }
-const ROAD_Y = 1482
-const SELLER = { x: 104, y: 1426 }
-const BOARD = { x: 316, y: 1428 }
+const GATE = { x: CX, y: 1324 }
+const ROAD_Y = 1332
+const SELLER = { x: 104, y: 1276 }
+const BOARD = { x: 316, y: 1278 }
 
 /** Place shop behind each cart (hubShops.ts) and what the vendor shouts. */
 const CART_INFO: Record<CartKind, { shop: string; name: string; hint: string; icon: string; lines: string[] }> = {
@@ -114,39 +118,40 @@ const CART_INFO: Record<CartKind, { shop: string; name: string; hint: string; ic
 }
 
 const POLES: [number, number][] = [
-  [6, 300],
-  [394, 300],
-  [6, 486],
-  [394, 486],
-  [6, 784],
-  [394, 784],
-  [6, 1150],
-  [394, 1150],
+  [6, 150],
+  [394, 150],
+  [6, 336],
+  [394, 336],
+  [6, 634],
+  [394, 634],
+  [6, 1000],
+  [394, 1000],
 ]
 
 function bake(g: Surface, night: boolean) {
-  G.treeLine(g, 64, W, G.LEAVES.far, 81)
-  G.treeLine(g, 78, W, G.LEAVES.deep, 83)
-  // Temple grounds: packed earth, grass round the ubosot, a paved path.
-  concrete(g, 0, 92, W, ROAD_Y - 92, 23, night ? '#8a7a68' : '#c8b490', 0)
-  G.lawn(g, 0, 96, 110, 190, 3)
-  G.lawn(g, 290, 96, 110, 190, 5)
-  tiles(g, 174, 272, 52, ROAD_Y - 272, 8, night ? '#a09080' : '#d8c8a8', night ? '#968678' : '#cdbd9d', 4)
+  // Temple grounds: packed earth and a paved midway, closed at the back by
+  // the poster fence (the fair ends there).
+  concrete(g, 0, FENCE_Y, W, ROAD_Y - FENCE_Y, 23, night ? '#8a7a68' : '#c8b490', 0)
+  tiles(g, 174, FENCE_Y + 30, 52, ROAD_Y - FENCE_Y - 30, 8, night ? '#a09080' : '#d8c8a8', night ? '#968678' : '#cdbd9d', 4)
+  // A grassy verge along the fence (the foliage kit dresses it).
+  G.lawn(g, 0, FENCE_Y, 150, 14, 3)
+  G.lawn(g, 250, FENCE_Y, 150, 14, 5)
+  fairFence(g, W, FENCE_Y - 32, FENCE_Y, night)
   // Cross aisles (worn paths).
   for (const [y, h] of [
-    [470, 24],
-    [776, 20],
-    [890, 20],
-    [1000, 22],
-    [1152, 30],
-    [1252, 26],
-    [1360, 30],
+    [320, 24],
+    [626, 20],
+    [740, 20],
+    [850, 22],
+    [1002, 30],
+    [1102, 26],
+    [1210, 30],
   ])
     tiles(g, 8, y, W - 16, h, 8, night ? '#97877a' : '#d0c0a0', night ? '#8d7d70' : '#c8b898', y)
   // Mats: likay audience, the contest crowd, the picnic corner of the food court.
-  for (let i = 0; i < 3; i++) mat(g, 28, 724 + i * 12, 120, 10, i % 2 ? '#3d63b5' : '#e8514a', i % 2 ? '#5a8de0' : '#ff8a70')
-  mat(g, 238, 1286, 150, 20, '#43905a', '#6cc36a')
-  mat(g, 10, 1386, 70, 14, '#e8514a', '#ff8a70')
+  for (let i = 0; i < 3; i++) mat(g, 28, 574 + i * 12, 120, 10, i % 2 ? '#3d63b5' : '#e8514a', i % 2 ? '#5a8de0' : '#ff8a70')
+  mat(g, 238, 1136, 150, 20, '#43905a', '#6cc36a')
+  mat(g, 10, 1236, 70, 14, '#e8514a', '#ff8a70')
   ramwongFloor(g, RAMWONG.x, RAMWONG.y, RAMWONG.rx, RAMWONG.ry)
   bumperFloor(g, BUMPER.x, BUMPER.y, BUMPER.w, BUMPER.h)
   // Side rails of the bumper arena (the top and bottom ones are props).
@@ -181,25 +186,25 @@ class Crowd implements Life {
   constructor(private s: WorldScene) {
     const F = (o: Partial<AvatarLook>) => look(o)
     this.fans = [
-      { lk: F({ gender: 'f', hair: 'hair_bun', hairColor: 6, top: 'top_floral', neck: 'neck_money_garland', hand: 'hand_fan' }), x: 42, y: 732 },
-      { lk: F({ gender: 'f', hair: 'hair_bob', hairColor: 6, top: 'top_lace', hand: 'hand_fan' }), x: 64, y: 734 },
-      { lk: F({ gender: 'm', hair: 'hair_buzz', hairColor: 6, top: 'top_mohom' }), x: 88, y: 732 },
-      { lk: F({ gender: 'f', hair: 'hair_long', top: 'top_tee_white' }), x: 112, y: 734 },
-      { lk: F({ gender: 'f', hair: 'hair_bun', hairColor: 6, top: 'top_thaisilk', neck: 'neck_money_garland' }), x: 52, y: 746 },
-      { lk: F({ gender: 'm', hair: 'hair_short', top: 'top_tee_boon' }), x: 100, y: 746 },
-      { lk: F({ gender: 'f', hair: 'hair_twin', top: 'top_pe' }), x: 124, y: 748 },
-      { lk: F({ gender: 'f', hair: 'hair_bun', hairColor: 6, top: 'top_floral' }), x: 76, y: 758 },
-      { lk: F({ gender: 'm', hair: 'hair_short', hairColor: 6, top: 'top_raj' }), x: 136, y: 758 },
+      { lk: F({ gender: 'f', hair: 'hair_bun', hairColor: 6, top: 'top_floral', neck: 'neck_money_garland', hand: 'hand_fan' }), x: 42, y: 582 },
+      { lk: F({ gender: 'f', hair: 'hair_bob', hairColor: 6, top: 'top_lace', hand: 'hand_fan' }), x: 64, y: 584 },
+      { lk: F({ gender: 'm', hair: 'hair_buzz', hairColor: 6, top: 'top_mohom' }), x: 88, y: 582 },
+      { lk: F({ gender: 'f', hair: 'hair_long', top: 'top_tee_white' }), x: 112, y: 584 },
+      { lk: F({ gender: 'f', hair: 'hair_bun', hairColor: 6, top: 'top_thaisilk', neck: 'neck_money_garland' }), x: 52, y: 596 },
+      { lk: F({ gender: 'm', hair: 'hair_short', top: 'top_tee_boon' }), x: 100, y: 596 },
+      { lk: F({ gender: 'f', hair: 'hair_twin', top: 'top_pe' }), x: 124, y: 598 },
+      { lk: F({ gender: 'f', hair: 'hair_bun', hairColor: 6, top: 'top_floral' }), x: 76, y: 608 },
+      { lk: F({ gender: 'm', hair: 'hair_short', hairColor: 6, top: 'top_raj' }), x: 136, y: 608 },
     ]
     this.dancers = Array.from({ length: 10 }, (_, i) => ({
       lk: look(i % 2 ? { gender: 'f', top: pick(['top_sabai', 'top_thaisilk', 'top_lace']), bottom: 'bot_sin_mudmee' } : { gender: 'm', top: pick(['top_raj', 'top_mohom', 'top_phraratchathan']), bottom: 'bot_khaki' }),
       a: (i / 10) * Math.PI * 2,
     }))
     this.watchers = [
-      { lk: F({}), x: 280, y: 758 },
-      { lk: F({ head: 'head_catears' }), x: 298, y: 762 },
-      { lk: F({ hand: 'hand_phone' }), x: 332, y: 760 },
-      { lk: F({}), x: 350, y: 764 },
+      { lk: F({}), x: 280, y: 608 },
+      { lk: F({ head: 'head_catears' }), x: 298, y: 612 },
+      { lk: F({ hand: 'hand_phone' }), x: 332, y: 610 },
+      { lk: F({}), x: 350, y: 614 },
     ]
   }
   update(dt: number) {
@@ -212,8 +217,8 @@ class Crowd implements Life {
   }
   sorted(add: (y: number, draw: () => void) => void, t: number) {
     const g = () => this.s.gfx
-    if (this.s.onScreen(STAGE.x, 740, 40)) for (const f of this.fans) add(f.y, () => drawSeated(g(), f.lk, f.x, f.y, t + f.x, this.hype > 0 || Math.floor(t * 0.4 + f.x) % 5 === 0))
-    if (this.s.onScreen(CONTEST.x, 760, 40))
+    if (this.s.onScreen(STAGE.x, 590, 40)) for (const f of this.fans) add(f.y, () => drawSeated(g(), f.lk, f.x, f.y, t + f.x, this.hype > 0 || Math.floor(t * 0.4 + f.x) % 5 === 0))
+    if (this.s.onScreen(CONTEST.x, 610, 40))
       for (const w of this.watchers)
         add(w.y, () => {
           const cheer = this.hypeC > 0 || Math.floor(t * 0.5 + w.x) % 6 === 0
@@ -242,13 +247,13 @@ class Crowd implements Life {
       setTimeout(() => fairSfx.ching(), 250)
       return true
     }
-    if (x > 24 && x < 152 && y > 718 && y < 764) {
+    if (x > 24 && x < 152 && y > 568 && y < 614) {
       this.hype = 3
       this.s.say(pick(['กรี๊ดดด พระเอก!', 'แม่ยกมาแล้วจ้า!', 'คล้องมาลัยให้พระเอกหน่อย', 'เสียงดีมากกก']), x, y - 30, 2)
       sfx.sparkle()
       return true
     }
-    if (x > 266 && x < 362 && y > 740 && y < 768) {
+    if (x > 266 && x < 362 && y > 590 && y < 618) {
       this.hypeC = 3
       this.s.say(pick(['เชียร์ลุงเป็ด!', 'ยายศรีสู้ ๆ!', 'แมวส้มต้องชนะ!!']), x, y - 30, 1.8)
       sfx.sparkle()
@@ -413,11 +418,11 @@ function gags(): Gag[] {
         g.px(p.x + 4, p.y - 19, '#8c8187')
       },
     }),
-    giverGag(hero, 164, 692, ['โอ้ละหนอ~ แม่ยกคนงาม', 'พระเอกลิเกคณะดาวเลื่อมครับ', 'ช่วยเป็นกำลังใจให้พี่หน่อย'], { over: sequins }),
+    giverGag(hero, 164, 542, ['โอ้ละหนอ~ แม่ยกคนงาม', 'พระเอกลิเกคณะดาวเลื่อมครับ', 'ช่วยเป็นกำลังใจให้พี่หน่อย'], { over: sequins }),
     personGag(heroine, STAGE.x - 26, STAGE.y - 8, ['โอ้ละหนอ พี่จ๋า~', 'น้องรอพี่มาทั้งคืน', 'ร้องเพลงลิเกให้ฟัง~'], { z: 12, over: sequins, walk: { x0: STAGE.x - 40, x1: STAGE.x - 10, speed: 5 } }),
     personGag(villain, STAGE.x + 28, STAGE.y - 8, ['ฮ่า ฮ่า ฮ่า! ข้าคือยักษ์!', 'ยอมแพ้ซะดี ๆ', '(ยักษ์ใจดีนะจริง ๆ)'], { z: 12, view: 'front', walk: { x0: STAGE.x + 10, x1: STAGE.x + 44, speed: 6 } }),
-    personGag(barker, 262, 1138, ['กล้าเข้าไหม~ บ้านผีสิงสุดสยอง!', 'คนละยี่สิบ ถ้ากรี๊ดไม่คืนเงิน!', 'ผีในบ้านใจดีนะ (มั้ง)', 'เดินครบทุกห้องได้ใบประกาศ!'], { view: 'front' }),
-    personGag(teddyGuy, 200, 1010, ['ได้หมีตัวใหญ่มาแล้ว!', 'หนักกว่าที่คิดอีก 555', 'ใครจะช่วยถือบ้าง'], {
+    personGag(barker, 262, 988, ['กล้าเข้าไหม~ บ้านผีสิงสุดสยอง!', 'คนละยี่สิบ ถ้ากรี๊ดไม่คืนเงิน!', 'ผีในบ้านใจดีนะ (มั้ง)', 'เดินครบทุกห้องได้ใบประกาศ!'], { view: 'front' }),
+    personGag(teddyGuy, 200, 860, ['ได้หมีตัวใหญ่มาแล้ว!', 'หนักกว่าที่คิดอีก 555', 'ใครจะช่วยถือบ้าง'], {
       walk: { x0: 180, x1: 230, speed: 10 },
       over: (g, p) => {
         const x = p.x + (p.flip ? -6 : 6)
@@ -429,8 +434,8 @@ function gags(): Gag[] {
         g.px(x + 1, p.y - 20, INK)
       },
     }),
-    personGag(granny, 214, 1300, ['ลูกชิ้นไม้ที่สามแล้วจ้า', 'สมัยยายสาว ๆ งานวัดสนุกกว่านี้อีก', 'หลานไปรำวงกับยายไหม'], { view: 'front' }),
-    personGag(selfie, 232, 440, ['ถ่ายกับชิงช้าสวรรค์หน่อย!', 'ไฟสวยมาก ลงไอจีเลย', 'ยิ้ม~ แชะ!'], {
+    personGag(granny, 214, 1150, ['ลูกชิ้นไม้ที่สามแล้วจ้า', 'สมัยยายสาว ๆ งานวัดสนุกกว่านี้อีก', 'หลานไปรำวงกับยายไหม'], { view: 'front' }),
+    personGag(selfie, 232, 290, ['ถ่ายกับชิงช้าสวรรค์หน่อย!', 'ไฟสวยมาก ลงไอจีเลย', 'ยิ้ม~ แชะ!'], {
       walk: { x0: 190, x1: 240, speed: 8 },
       react: (s, x, y) => {
         s.particles.sparkles(x + 6, y - 28, 8, '#ffffff', 6)
@@ -448,13 +453,12 @@ function gags(): Gag[] {
     ...[0, 1, 2].map((i) =>
       personGag(look(i === 1 ? { gender: 'f', hair: 'hair_twin', hand: 'hand_bubbletea' } : i === 2 ? { head: 'head_catears' } : {}), WHEEL.x + 26 + i * 11, WHEEL.y + WHEEL.r + 26, [['ต่อคิวชิงช้าสวรรค์จ้า', 'อีกสองรอบถึงเรา!'], ['กลัวความสูงนิดนึง…', 'ขอนั่งกระเช้าสีชมพูนะ'], ['ถ่ายรูปบนยอดต้องสวยแน่', 'พลุขึ้นตอนเราอยู่บนยอดทีเถอะ']][i], { view: 'back' }),
     ),
-    tradePairGag(236, 1026, { hair: 'hair_bob', top: 'top_tee_black' }, { hair: 'hair_ponytail', top: 'top_hoodie_over' }, ['แลกปลาทองกับพวงกุญแจผีไหม', 'ได้ตั๋วตั้งแปดใบ! 🎟️', 'ดีลลล 🤝']),
+    tradePairGag(236, 876, { hair: 'hair_bob', top: 'top_tee_black' }, { hair: 'hair_ponytail', top: 'top_hoodie_over' }, ['แลกปลาทองกับพวงกุญแจผีไหม', 'ได้ตั๋วตั้งแปดใบ! 🎟️', 'ดีลลล 🤝']),
   ]
 }
 
 export function fairMap(): MapDef {
-  const hall = T.hallSprite({ roof: T.ROOF.orange, roof2: T.ROOF.red })
-  const hallN = T.hallSprite({ roof: T.ROOF.orange, roof2: T.ROOF.red, night: true })
+  const billboard = fairBillboard()
   const stage = likayStage()
   const contest = contestStage()
   const dunk = dunkTank()
@@ -471,29 +475,27 @@ export function fairMap(): MapDef {
   const carts = CARTS.map((c) => ({ ...c, sprite: fairCart(c.kind) }))
   const lamp = F.thaiLampSprite(true)
   const LAMPS: [number, number][] = [
-    [140, 296],
-    [260, 296],
-    [158, 1440],
-    [242, 1440],
+    [140, 146],
+    [260, 146],
+    [158, 1290],
+    [242, 1290],
   ]
   const LANTERN_POLES: [number, number][] = [
-    [168, 640],
-    [232, 640],
-    [168, 1060],
-    [232, 1060],
+    [168, 490],
+    [232, 490],
+    [168, 910],
+    [232, 910],
   ]
   const seat = hooksAt(dunk.base, 'seat', DUNK.x, DUNK.y)[0]
   const target = hooksAt(dunk.base, 'target', DUNK.x, DUNK.y)[0]
   const lit = (p: LitProp, x: number, y: number, a?: number): NeonItem => ({ sprite: p.lit, x, y, a })
   const props: PlacedProp[] = [
-    { sprite: hall, night: hallN, x: HALL.x, y: HALL.y, z: -28 },
-    { sprite: F.urnSprite(), x: 166, y: 282, shadow: [10, 2] },
-    { sprite: F.donationSprite(), x: 246, y: 278, shadow: [6, 2] },
-    { sprite: F.candleStandSprite(), x: 150, y: 278 },
+    { sprite: billboard.base, x: CX, y: FENCE_Y + 2, z: -40 },
+    { sprite: F.donationSprite(), x: DONATION.x, y: DONATION.y, shadow: [6, 2] },
     { sprite: tree.base, x: WISH.x, y: WISH.y },
     { sprite: altar.base, x: ALTAR.x, y: ALTAR.y },
-    { sprite: G.frangipani(1), x: 338, y: 250 },
-    { sprite: G.frangipani(0), x: 378, y: 276 },
+    { sprite: G.frangipani(1), x: 338, y: 100 },
+    { sprite: G.frangipani(0), x: 378, y: 126 },
     { sprite: stage.base, x: STAGE.x, y: STAGE.y },
     { sprite: contest.base, x: CONTEST.x, y: CONTEST.y },
     { sprite: judgesTable(), x: CONTEST.x - 4, y: CONTEST.y + 22 },
@@ -510,11 +512,11 @@ export function fairMap(): MapDef {
     { sprite: boxingRingFront(), x: RING.x, y: RING.y },
     { sprite: ghost.base, x: GHOST.x, y: GHOST.y },
     ...carts.map((c) => ({ sprite: c.sprite.base, x: c.x, y: c.y })),
-    { sprite: eatTable('#fffaf0', '#e8514a'), x: 150, y: 1310 },
-    { sprite: eatTable('#fffaf0', '#5a8de0'), x: 150, y: 1344 },
-    { sprite: eatTable('#ffe27a', '#6cc36a'), x: 258, y: 1344 },
-    { sprite: stool('#e8514a'), x: 30, y: 1300 },
-    { sprite: stool('#5a8de0'), x: 50, y: 1302 },
+    { sprite: eatTable('#fffaf0', '#e8514a'), x: 150, y: 1160 },
+    { sprite: eatTable('#fffaf0', '#5a8de0'), x: 150, y: 1194 },
+    { sprite: eatTable('#ffe27a', '#6cc36a'), x: 258, y: 1194 },
+    { sprite: stool('#e8514a'), x: 30, y: 1150 },
+    { sprite: stool('#5a8de0'), x: 50, y: 1152 },
     { sprite: balloonStand(), x: SELLER.x, y: SELLER.y },
     { sprite: board, x: BOARD.x, y: BOARD.y, shadow: [12, 3] },
     { sprite: gate.base, x: GATE.x, y: GATE.y },
@@ -523,6 +525,7 @@ export function fairMap(): MapDef {
   ]
   const bulbs = [
     ...hooksAt(gate.base, 'bulbs', GATE.x, GATE.y),
+    ...hooksAt(billboard.base, 'bulbs', CX, FENCE_Y + 2),
     ...booths.flatMap((b) => hooksAt(b.sprite.base, 'bulbs', b.x, BOOTH_Y)),
     ...hooksAt(prizes.base, 'bulbs', PRIZES.x, PRIZES.y),
     ...hooksAt(stage.base, 'bulbs', STAGE.x, STAGE.y),
@@ -539,6 +542,7 @@ export function fairMap(): MapDef {
     lit(ringBack, RING.x, RING.y, 0.8),
     ...carts.map((c) => lit(c.sprite, c.x, c.y, 0.7)),
     lit(gate, GATE.x, GATE.y, 0.9),
+    lit(billboard, CX, FENCE_Y + 2, 0.9),
     lit(tree, WISH.x, WISH.y, 0.8),
     lit(altar, ALTAR.x, ALTAR.y, 0.9),
     ...LANTERN_POLES.map(([x, y]) => lit(lantern, x, y, 0.9)),
@@ -567,21 +571,14 @@ export function fairMap(): MapDef {
     bake,
     props,
     obstacles: [
-      { x: 0, y: 0, w: W, h: 96 },
-      // The ubosot, stairs left open up to the door.
-      { x: 122, y: 110, w: 156, h: 114 },
-      { x: 122, y: 224, w: 66, h: 17 },
-      { x: 212, y: 224, w: 66, h: 17 },
-      { x: 172, y: 238, w: 11, h: 12 },
-      { x: 217, y: 238, w: 11, h: 12 },
-      { x: 156, y: 274, w: 20, h: 9 },
-      { x: 239, y: 270, w: 14, h: 9 },
-      { x: 144, y: 272, w: 12, h: 7 },
+      // The back fence: the fair ends here.
+      { x: 0, y: 0, w: W, h: FENCE_Y + 4 },
+      { x: DONATION.x - 7, y: DONATION.y - 8, w: 14, h: 9 },
       // The ขอพร corner.
       { x: WISH.x - 14, y: WISH.y - 12, w: 28, h: 13 },
       { x: ALTAR.x - 20, y: ALTAR.y - 16, w: 40, h: 17 },
-      { x: 335, y: 246, w: 6, h: 5 },
-      { x: 375, y: 272, w: 6, h: 5 },
+      { x: 335, y: 96, w: 6, h: 5 },
+      { x: 375, y: 122, w: 6, h: 5 },
       // Rides.
       { x: WHEEL.x - 44, y: WHEEL.y + WHEEL.r + 4, w: 88, h: 18 },
       { x: CAROUSEL.x - 46, y: CAROUSEL.y - 16, w: 92, h: 20 },
@@ -603,9 +600,9 @@ export function fairMap(): MapDef {
       { x: GHOST.x - 48, y: GHOST.y - 56, w: 96, h: 57 },
       // Food court.
       ...CARTS.map((c) => ({ x: c.x - 19, y: c.y - 26, w: 38, h: 27 })),
-      { x: 136, y: 1300, w: 28, h: 10 },
-      { x: 136, y: 1334, w: 28, h: 10 },
-      { x: 244, y: 1334, w: 28, h: 10 },
+      { x: 136, y: 1150, w: 28, h: 10 },
+      { x: 136, y: 1184, w: 28, h: 10 },
+      { x: 244, y: 1184, w: 28, h: 10 },
       { x: SELLER.x - 7, y: SELLER.y - 7, w: 14, h: 8 },
       { x: BOARD.x - 14, y: BOARD.y - 11, w: 28, h: 11 },
       // Gate, walls and the road.
@@ -619,14 +616,13 @@ export function fairMap(): MapDef {
       ...LANTERN_POLES.map(([x, y]) => ({ x: x - 2, y: y - 3, w: 4, h: 4 })),
     ],
     hotspots: [
-      { id: 'hall', label: 'อุโบสถวัดศรีบุญดี', hint: 'กราบพระก่อนเที่ยวงาน สวดมนต์ ปิดทอง', icon: 'temple', rect: { x: 128, y: 100, w: 144, h: 150 }, at: { x: HALL.x, y: HALL.y + 6 }, face: 'up', marker: { x: HALL.x + 1, y: 84 }, beacon: true, near: 16 },
-      hs('incense', 'มุมขอพรต้นไม้ศักดิ์สิทธิ์', 'จุดธูปขอพร ผูกผ้าแพร เขียนคำอธิษฐาน', 'incense', { x: 20, y: 184, w: 106, h: 108 }, { x: ALTAR.x, y: ALTAR.y + 12 }, { marker: { x: WISH.x, y: WISH.y - 88 } }),
-      hs('donation', 'ตู้ทำบุญงานวัด', 'ร่วมทำบุญบำรุงวัด', 'coin', { x: 238, y: 252, w: 16, h: 28 }, { x: 246, y: 292 }, { marker: { x: 246, y: 250 } }),
-      hs('fair:wheel', 'ชิงช้าสวรรค์', 'ขึ้นไปดูวิวงานวัดและพลุจากยอดชิงช้า', 'sparkle', { x: 30, y: 312, w: 112, h: 136 }, { x: WHEEL.x, y: 458 }, { marker: { x: WHEEL.x, y: 306 } }),
-      hs('fair:carousel', 'ม้าหมุน', 'ขี่ม้าหมุน คว้าห่วงทอง', 'star', { x: 270, y: 394, w: 88, h: 72 }, { x: CAROUSEL.x, y: CAROUSEL.y + 16 }, { marker: { x: CAROUSEL.x, y: 386 } }),
+      hs('incense', 'มุมขอพรต้นไม้ศักดิ์สิทธิ์', 'จุดธูปขอพร ผูกผ้าแพร เขียนคำอธิษฐาน', 'incense', { x: 20, y: 34, w: 106, h: 108 }, { x: ALTAR.x, y: ALTAR.y + 12 }, { marker: { x: WISH.x, y: WISH.y - 88 } }),
+      hs('donation', 'ตู้ทำบุญงานวัด', 'ร่วมทำบุญบำรุงวัด', 'coin', { x: DONATION.x - 8, y: DONATION.y - 26, w: 16, h: 28 }, { x: DONATION.x, y: DONATION.y + 14 }, { marker: { x: DONATION.x, y: DONATION.y - 28 } }),
+      hs('fair:wheel', 'ชิงช้าสวรรค์', 'ขึ้นไปดูวิวงานวัดและพลุจากยอดชิงช้า', 'sparkle', { x: 30, y: 162, w: 112, h: 136 }, { x: WHEEL.x, y: 308 }, { marker: { x: WHEEL.x, y: 156 } }),
+      hs('fair:carousel', 'ม้าหมุน', 'ขี่ม้าหมุน คว้าห่วงทอง', 'star', { x: 270, y: 244, w: 88, h: 72 }, { x: CAROUSEL.x, y: CAROUSEL.y + 16 }, { marker: { x: CAROUSEL.x, y: 236 } }),
       hs('fair:bumper', 'รถบั๊มพ์ซิ่งสายฟ้า', 'ขับรถบั๊มพ์ชนให้มันส์ รับตั๋วแลกรางวัล', 'bolt', { x: BUMPER.x, y: BUMPER.y - 20, w: BUMPER.w, h: BUMPER.h + 22 }, { x: BUMPER.x + BUMPER.w / 2, y: BUMPER.y + BUMPER.h + 16 }, { marker: { x: BUMPER.x + BUMPER.w / 2, y: BUMPER.y - 24 } }),
       hs('fair:ramwong', 'ลานรำวง', 'รำวงตามจังหวะกับชาวบ้าน (และผู้เล่นจริง)', 'music', { x: RAMWONG.x - 58, y: RAMWONG.y - 40, w: 116, h: 70 }, { x: RAMWONG.x, y: RAMWONG.y + 40 }, { marker: { x: RAMWONG.x, y: RAMWONG.y - 48 } }),
-      hs('fair:likay', 'เวทีลิเกคณะดาวเลื่อม', 'นั่งดูลิเก เชียร์พระเอกตอนเก๊กท่า', 'mic', { x: STAGE.x - 62, y: STAGE.y - 86, w: 124, h: 88 }, { x: STAGE.x, y: 770 }, { marker: { x: STAGE.x, y: STAGE.y - 92 } }),
+      hs('fair:likay', 'เวทีลิเกคณะดาวเลื่อม', 'นั่งดูลิเก เชียร์พระเอกตอนเก๊กท่า', 'mic', { x: STAGE.x - 62, y: STAGE.y - 86, w: 124, h: 88 }, { x: STAGE.x, y: 620 }, { marker: { x: STAGE.x, y: STAGE.y - 92 } }),
       ...BOOTHS.map((b) =>
         hs(
           `fair:${b.id}`,
@@ -646,28 +642,26 @@ export function fairMap(): MapDef {
         return hs(`fair:eat:${info.shop}`, info.name, info.hint, info.icon, { x: c.x - 18, y: c.y - 46, w: 36, h: 46 }, { x: c.x, y: c.y + 10 }, { marker: { x: c.x, y: c.y - 50 } })
       }),
       hs('npc:fair_mc', 'พี่โบ๊ท', 'พิธีกรงานวัด · สายเกม', 'friends', { x: MC.x - 8, y: MC.y - 30, w: 16, h: 32 }, { x: MC.x, y: MC.y + 14 }, { marker: { x: MC.x, y: MC.y - 42 }, near: 14 }),
-      hs('npc:fair_likay', 'พระเอกเพชร', 'พระเอกลิเกคณะดาวเลื่อม', 'friends', { x: 156, y: 662, w: 16, h: 32 }, { x: 164, y: 706 }, { marker: { x: 164, y: 650 }, near: 14 }),
+      hs('npc:fair_likay', 'พระเอกเพชร', 'พระเอกลิเกคณะดาวเลื่อม', 'friends', { x: 156, y: 512, w: 16, h: 32 }, { x: 164, y: 556 }, { marker: { x: 164, y: 500 }, near: 14 }),
       hs(`board:${ID}`, 'บอร์ดงานวัด', 'ตารางการแสดง · พลุรอบหน้า · คะแนนสด · ตั๋วของฉัน', 'scroll', { x: BOARD.x - 16, y: BOARD.y - 34, w: 32, h: 34 }, { x: BOARD.x, y: BOARD.y + 12 }, { marker: { x: BOARD.x, y: BOARD.y - 36 } }),
       hs('gate', 'ซุ้มทางออกงานวัด', 'กลับบ้าน หรือไปที่อื่น', 'map', { x: GATE.x - 30, y: GATE.y - 66, w: 60, h: 68 }, { x: GATE.x, y: GATE.y - 8 }, { face: 'down', marker: { x: GATE.x, y: GATE.y - 72 }, near: 12 }),
     ],
     spawn: { x: GATE.x, y: GATE.y - 20, face: 'up' },
     entries: { 'fair_temple:ghost': { x: GHOST.x, y: GHOST.y + 16, face: 'down' } },
     pickupSpots: [
-      { x: 30, y: 300 },
-      { x: 300, y: 300 },
-      { x: 200, y: 470 },
-      { x: 30, y: 640 },
-      { x: 250, y: 640 },
-      { x: 200, y: 900 },
-      { x: 150, y: 1010 },
-      { x: 60, y: 1160 },
-      { x: 360, y: 1160 },
-      { x: 200, y: 1380 },
+      { x: 30, y: 150 },
+      { x: 300, y: 150 },
+      { x: 200, y: 320 },
+      { x: 30, y: 490 },
+      { x: 250, y: 490 },
+      { x: 200, y: 750 },
+      { x: 150, y: 860 },
+      { x: 60, y: 1010 },
+      { x: 360, y: 1010 },
+      { x: 200, y: 1230 },
     ],
     lights: [
-      { x: HALL.x, y: 212, r: 40, color: '#ffcf7a' },
-      { x: HALL.x - 57, y: 214, r: 12 },
-      { x: HALL.x + 57, y: 214, r: 12 },
+      { x: CX, y: FENCE_Y - 30, r: 46, color: '#ff9a7a' },
       { x: ALTAR.x, y: ALTAR.y - 14, r: 22, color: '#ffcf7a' },
       { x: WISH.x, y: WISH.y - 50, r: 30, color: '#ff9a7a' },
       ...LAMPS.map(([x, y]) => ({ x, y: y - 29, r: 22 })),
@@ -699,39 +693,39 @@ export function fairMap(): MapDef {
         new CartVendors(s, cartSpots),
         new ClawRow(s, glass),
         new Balloons(s, SELLER, [
-          { x0: 176, x1: 224, y: 1200 },
-          { x0: 60, x1: 150, y: 1168 },
-          { x0: 250, x1: 340, y: 1378 },
-          { x0: 186, x1: 216, y: 620 },
+          { x0: 176, x1: 224, y: 1050 },
+          { x0: 60, x1: 150, y: 1018 },
+          { x0: 250, x1: 340, y: 1228 },
+          { x0: 186, x1: 216, y: 470 },
         ]),
         new FairLights(s, [
-          { x0: 6, y0: 302, x1: 394, y1: 302, n: 38, sag: 14 },
-          { x0: 6, y0: 488, x1: 394, y1: 488, n: 38, sag: 16 },
-          { x0: 6, y0: 786, x1: 394, y1: 786, n: 38, sag: 14 },
-          { x0: 6, y0: 1152, x1: 394, y1: 1152, n: 38, sag: 12 },
-          { x0: 6, y0: 302, x1: 6, y1: 488, n: 12, sag: 0 },
-          { x0: 394, y0: 302, x1: 394, y1: 488, n: 12, sag: 0 },
-          { x0: 6, y0: 786, x1: 6, y1: 1152, n: 20, sag: 0 },
-          { x0: 394, y0: 786, x1: 394, y1: 1152, n: 20, sag: 0 },
+          { x0: 0, y0: FENCE_Y - 31, x1: W, y1: FENCE_Y - 31, n: 40, sag: 3 },
+          { x0: 6, y0: 152, x1: 394, y1: 152, n: 38, sag: 14 },
+          { x0: 6, y0: 338, x1: 394, y1: 338, n: 38, sag: 16 },
+          { x0: 6, y0: 636, x1: 394, y1: 636, n: 38, sag: 14 },
+          { x0: 6, y0: 1002, x1: 394, y1: 1002, n: 38, sag: 12 },
+          { x0: 6, y0: 152, x1: 6, y1: 338, n: 12, sag: 0 },
+          { x0: 394, y0: 152, x1: 394, y1: 338, n: 12, sag: 0 },
+          { x0: 6, y0: 636, x1: 6, y1: 1002, n: 20, sag: 0 },
+          { x0: 394, y0: 636, x1: 394, y1: 1002, n: 20, sag: 0 },
         ]),
         new Lanterns(s, [
-          { x0: 168, x1: 232, y: 612, n: 7, sag: 8 },
-          { x0: 168, x1: 232, y: 1032, n: 7, sag: 8 },
-          { x0: 8, x1: 160, y: 1180, n: 11, sag: 10, color: '#fffaf0' },
-          { x0: 240, x1: 392, y: 1180, n: 11, sag: 10 },
-          { x0: 176, x1: 224, y: 1398, n: 5, sag: 6, color: '#ffd23f' },
-          { x0: 150, x1: 250, y: 360, n: 9, sag: 12 },
-          { x0: 150, x1: 250, y: 850, n: 9, sag: 10, color: '#fffaf0' },
+          { x0: 168, x1: 232, y: 462, n: 7, sag: 8 },
+          { x0: 168, x1: 232, y: 882, n: 7, sag: 8 },
+          { x0: 8, x1: 160, y: 1030, n: 11, sag: 10, color: '#fffaf0' },
+          { x0: 240, x1: 392, y: 1030, n: 11, sag: 10 },
+          { x0: 176, x1: 224, y: 1248, n: 5, sag: 6, color: '#ffd23f' },
+          { x0: 150, x1: 250, y: 210, n: 9, sag: 12 },
+          { x0: 150, x1: 250, y: 700, n: 9, sag: 10, color: '#fffaf0' },
         ]),
         new Neon(s, neon, bulbs),
         new Gags(s, gags()),
         new OrangeCats(s, [
-          { x: 380, y: 1400, pose: 'sleep' },
-          { x: 176, y: 300, pose: 'loaf' },
-          { x: 64, y: 1372, pose: 'sit' },
+          { x: 380, y: 1250, pose: 'sleep' },
+          { x: 176, y: 150, pose: 'loaf' },
+          { x: 64, y: 1222, pose: 'sit' },
         ]),
-        new Smoke(s, [{ x: 166, y: 268 }, { x: ALTAR.x - 13, y: ALTAR.y - 32 }], 6),
-        Flames.candles(s, 150, 278),
+        new Smoke(s, [{ x: ALTAR.x - 13, y: ALTAR.y - 32 }], 6),
         new FireworkShow(s, MC, 90),
         new FairLive(s, {
           darts: bothAt(BOOTHS[0], BOOTH_Y),
@@ -760,27 +754,26 @@ export function fairMap(): MapDef {
       if (Math.random() < dt * 1.2 && s.onScreen(WISH.x, WISH.y - 40, 20)) s.particles.add({ kind: 'petal', x: WISH.x + rand(-26, 26), y: WISH.y - rand(40, 64), vx: rand(-4, 4), vy: rand(4, 10), max: 2, color: pick(['#e8514a', '#ffd23f']), color2: '#fffaf0' })
     },
     wander: [
-      { x: 178, y: 300, w: 44, h: 1150 },
-      { x: 20, y: 472, w: 360, h: 20 },
-      { x: 20, y: 778, w: 360, h: 16 },
-      { x: 20, y: 892, w: 360, h: 16 },
-      { x: 20, y: 1002, w: 360, h: 18 },
-      { x: 20, y: 1154, w: 360, h: 26 },
-      { x: 20, y: 1254, w: 360, h: 22 },
-      { x: 20, y: 1362, w: 360, h: 26 },
+      { x: 178, y: 150, w: 44, h: 1150 },
+      { x: 20, y: 322, w: 360, h: 20 },
+      { x: 20, y: 628, w: 360, h: 16 },
+      { x: 20, y: 742, w: 360, h: 16 },
+      { x: 20, y: 852, w: 360, h: 18 },
+      { x: 20, y: 1004, w: 360, h: 26 },
+      { x: 20, y: 1104, w: 360, h: 22 },
+      { x: 20, y: 1212, w: 360, h: 26 },
     ],
     pois: [
       ...BOOTHS.map((b) => ({ x: b.x, y: BOOTH_Y + 10, face: 'up' as const })),
       ...CARTS.map((c) => ({ x: c.x, y: c.y + 10, face: 'up' as const })),
-      { x: HALL.x - 10, y: 294, face: 'up' },
-      { x: HALL.x + 10, y: 294, face: 'up' },
+      { x: DONATION.x, y: DONATION.y + 14, face: 'up' },
       { x: ALTAR.x + 10, y: ALTAR.y + 12, face: 'up' },
-      { x: WHEEL.x + 24, y: 462, face: 'up' },
-      { x: CAROUSEL.x - 30, y: 482, face: 'up' },
+      { x: WHEEL.x + 24, y: 312, face: 'up' },
+      { x: CAROUSEL.x - 30, y: 332, face: 'up' },
       { x: BUMPER.x + 40, y: BUMPER.y + BUMPER.h + 16, face: 'up' },
       { x: RAMWONG.x - 20, y: RAMWONG.y + 40, face: 'up' },
-      { x: 60, y: 774, face: 'up' },
-      { x: 300, y: 776, face: 'up' },
+      { x: 60, y: 624, face: 'up' },
+      { x: 300, y: 626, face: 'up' },
       { x: 65, y: CLAW_Y + 12, face: 'up' },
       { x: PRIZES.x, y: PRIZES.y + 12, face: 'up' },
       { x: DUNK.x + 30, y: DUNK.y + 12, face: 'up' },
