@@ -162,6 +162,32 @@ const PLUSH: Record<string, PlushDraw> = {
     k.fx(23, 11, p.main.d)
     tag(k, 3, 19)
   },
+  monkey(k, p) {
+    // ลิงแสม (Khao Sam Muk): big side ears, pale heart-shaped face, stolen sunglasses.
+    k.form(p.main, (m) => m.thick(20, 20, 24, 13, 1.1, '#000'), 'ball', { lightAt: 0.5, spec: false })
+    body(k, p, p.acc)
+    for (const x of [4.6, 21.4]) {
+      puff(k, x, 10, 2.4, 2.6, p.main)
+      k.ball(x, 10.2, 1.2, 1.4, p.acc, { spec: false })
+    }
+    head(k, p.main, 13, 10, 8, 6.4)
+    k.form(p.acc, (m) => {
+      m.ell(10.5, 10.5, 3.2, 3, '#000')
+      m.ell(15.5, 10.5, 3.2, 3, '#000')
+      m.ell(13, 13.4, 3.8, 2.4, '#000')
+    }, 'ball', { spec: false, rim: false })
+    k.rect(7, 8, 5, 2, p.det.m)
+    k.rect(14, 8, 5, 2, p.det.m)
+    k.hline(12, 14, 8, p.det.m)
+    k.px(8, 8, p.det.l)
+    k.px(15, 8, p.det.l)
+    k.px(12, 13, EYE)
+    k.px(14, 13, EYE)
+    k.hline(12, 14, 14, p.acc.s)
+    blush(k, 7, 12)
+    blush(k, 19, 12)
+    tag(k)
+  },
   teddy(k, p) {
     // หมี: round ears, big muzzle, red bow tie.
     body(k, p, p.acc)

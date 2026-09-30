@@ -73,7 +73,10 @@ function lineBox(size: number, weight: number, family?: string, thai = true) {
 }
 
 export function renderPixelText(text: string, st: PixelTextStyle = {}): Rendered {
-  const size = st.size ?? 13
+  // The game font is drawn on a 14 px grid; rendering it at nearby sizes
+  // resamples the pixels (a 9 turns into an 8), so snap those to the grid.
+  const want = st.size ?? 13
+  const size = !st.family && want >= 12 && want <= 16 ? 14 : want
   const weight = st.weight ?? 500
   const color = st.color ?? '#3b2616'
   const outline = st.outline ?? null
