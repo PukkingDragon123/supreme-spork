@@ -132,29 +132,25 @@ export class Juice {
 // Atmosphere
 
 const vigCache = new Map<string, HTMLCanvasElement>()
-/** Dithered dark edges that pull the eye to the middle. */
+/** Soft dark edges that pull the eye to the middle. */
 export function vignette(g: Surface, color = '#1b1026', strength = 0.55) {
   const { w, h } = g
   const k = `${w}:${h}:${color}:${strength}`
   let c = vigCache.get(k)
   if (!c) {
     c = bake(w, h, (s) => {
-      for (let y = 0; y < h; y++)
-        for (let x = 0; x < w; x++) {
-          const dx = (x - w / 2) / (w / 2)
-          const dy = (y - h / 2) / (h / 2)
-          const d = Math.sqrt(dx * dx * 1.1 + dy * dy * 0.75)
-          const t = (d - 0.72) * strength * 2.2
-          if (t > 0 && ((x * 7 + y * 13) % 16) / 16 < t) s.px(x, y, color)
-        }
+      const [r, gg, b] = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16))
+      const R = Math.hypot(w, h) / 2
+      const grad = s.ctx.createRadialGradient(w / 2, h / 2, R * 0.45, w / 2, h / 2, R)
+      grad.addColorStop(0, `rgba(${r},${gg},${b},0)`)
+      grad.addColorStop(1, `rgba(${r},${gg},${b},${Math.min(0.85, strength)})`)
+      s.ctx.fillStyle = grad
+      s.ctx.fillRect(0, 0, w, h)
     })
     if (vigCache.size > 12) vigCache.clear()
     vigCache.set(k, c)
   }
-  g.ctx.save()
-  g.ctx.globalAlpha = 0.5
   g.ctx.drawImage(c, 0, 0)
-  g.ctx.restore()
 }
 
 /** Slowly turning soft light rays from a point (behind a Buddha, a deity...). */
@@ -177,6 +173,23 @@ export function godRays(g: Surface, cx: number, cy: number, r: number, t: number
     ctx.fill()
   }
   ctx.restore()
+}
+
+/** Smooth radial glow (no dither), for light sources overlapping faces. */
+export function softGlow(g: Surface, x: number, y: number, r: number, strength = 1, color = '#ffcf7a') {
+  if (strength <= 0 || r <= 0) return
+  const [cr, cg, cb] = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16))
+  const cx = x - g.ox
+  const cy = y - g.oy
+  const grad = g.ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
+  grad.addColorStop(0, `rgba(${cr},${cg},${cb},${0.5 * Math.min(1, strength)})`)
+  grad.addColorStop(0.45, `rgba(${cr},${cg},${cb},${0.18 * Math.min(1, strength)})`)
+  grad.addColorStop(1, `rgba(${cr},${cg},${cb},0)`)
+  g.ctx.save()
+  g.ctx.globalCompositeOperation = 'lighter'
+  g.ctx.fillStyle = grad
+  g.ctx.fillRect(Math.round(cx - r), Math.round(cy - r), r * 2, r * 2)
+  g.ctx.restore()
 }
 
 /** Warm light pool on the floor. */
@@ -238,7 +251,7 @@ export function drawHeldCandle(g: Surface, x: number, y: number, t: number, lit 
   const f = Math.sin(t * 13) > 0 ? 1 : 0
   g.rect(x - (s > 1 ? 1 : 0), y - 8 * s - f, Math.max(1, s), 2 * s, '#ffd54f')
   g.px(x - (s > 1 ? 1 : 0), y - 8 * s - f - 1, '#fff3a6')
-  drawGlow(g, x, y - 8 * s, 6 * s, 0.9, '#ffcf7a')
+  softGlow(g, x, y - 8 * s, 8 * s, 0.9, '#ffcf7a')
 }
 
 /** A closed pink lotus bud. */
