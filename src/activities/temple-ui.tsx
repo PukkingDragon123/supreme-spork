@@ -211,7 +211,9 @@ export function TempleResult({ r, onDone, again }: { r: TempleResultData; onDone
                 </span>
               ))}
             </div>
-            <PT text={STAR_WORDS[shown]} size={12} weight={600} color="#8e3a5c" />
+            <span style={{ visibility: shown >= (r.stars ?? 0) ? 'visible' : 'hidden', lineHeight: 0 }}>
+              <PT text={STAR_WORDS[r.stars ?? 0]} size={12} weight={600} color="#8e3a5c" />
+            </span>
           </>
         )}
         <div class="row" style={{ justifyContent: 'center', flexWrap: 'wrap' }}>
