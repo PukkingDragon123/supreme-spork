@@ -21,12 +21,15 @@ import { questMarkerFor } from '../game/npcQuests'
 import { openQuestDialog } from './quest/questUi'
 import { track } from '../game/actions'
 import { PLACE_BY_ID } from '../game/data/places'
+import { attachNet } from './online/worldNet'
+import { OnlineLayer } from './online/OnlineLayer'
+import { cardPeer, emotePose } from './online/onlineStore'
 
 let current: WorldScene | null = null
 let autoOpen: string | null = null
 /** Map we just left through a door (picks the matching entry point). */
 let prevMap: string | null = null
-let presenceTimer: ReturnType<typeof setInterval> | undefined
+let detachNet: (() => void) | undefined
 
 /** Walk to a hotspot and open its main activity on arrival. */
 export function travelTo(hotspotId: string) {
@@ -94,7 +97,11 @@ function SpeechLayer({ stage }: { stage: { current: Stage | null } }) {
           if (!tg) return
           const [x, y] = st.toCss(tg.x, tg.y)
           const txt = tg.level ? `${tg.name} · Lv.${tg.level}` : tg.name
-          if (d.textContent !== txt) d.textContent = txt
+          // Real online players get a green "online" tag (plus what they're doing).
+          const cls = tg.real ? `nametag real${tg.guest ? ' guest' : ''}` : 'nametag'
+          if (d.className !== cls) d.className = cls
+          const full = tg.real && tg.doing ? `${txt}\n${tg.doing}` : txt
+          if (d.textContent !== full) d.textContent = full
           d.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) translate(-50%, -100%)`
         })
         const bs = sc.speechBubbles()
@@ -132,6 +139,8 @@ export function TempleView({ active }: { active: boolean }) {
       stage.current?.destroy()
       stage.current = null
       current = null
+      detachNet?.()
+      detachNet = undefined
     }
   }, [])
 
@@ -179,14 +188,26 @@ export function TempleView({ active }: { active: boolean }) {
     const scene = new WorldScene(
       map,
       s.player.look,
-      { onArrive, onMove: () => (arrived.value = null), onPickup: collect, onSay: () => undefined },
+      {
+        onArrive,
+        onMove: () => (arrived.value = null),
+        onPickup: collect,
+        onSay: () => undefined,
+        // Tapping a real online player opens their card; simulated ones walk on by.
+        onPlayer: (id) => {
+          if (!scene.nameTags().some((t) => t.id === id && t.real)) return false
+          sfx.open()
+          cardPeer.value = id
+          return true
+        },
+      },
       { companion: s.companion, pet: s.pet, spawn: entry, pickups: map.indoor ? [] : todaysPickups(map.id, map.pickupSpots) },
     )
     prevMap = null
-    const others = () => (game.value.settings.showOthers === false ? [] : presence().playersOn(map.id, { code: game.value.player.friendCode, friends: game.value.social.friends }))
-    scene.setRemotePlayers(others())
-    clearInterval(presenceTimer)
-    presenceTimer = setInterval(() => current === scene && scene.setRemotePlayers(others()), 60_000)
+    const others = () => presence().playersOn(map.id, { code: game.value.player.friendCode, friends: game.value.social.friends })
+    detachNet?.()
+    detachNet = attachNet(scene, others, () => game.value.settings.showOthers === false)
+    scene.playerPose = () => emotePose('me', Date.now())
     current = scene
     scene.setMarkers(questMarkerFor)
     stage.current!.setScene(scene)
@@ -234,6 +255,7 @@ export function TempleView({ active }: { active: boolean }) {
     <>
       <div class="stage-host" ref={host} />
       <SpeechLayer stage={stage} />
+      <OnlineLayer stage={stage} />
       <div class={`map-fade ${fade ? 'on' : ''}`} />
     </>
   )

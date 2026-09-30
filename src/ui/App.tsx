@@ -26,6 +26,7 @@ import { Panels, useReminderTicker } from './views/Panels'
 import { Window } from './components/kit'
 import { QuestHost } from './quest/QuestDialog'
 import { QuestTracker } from './quest/QuestTracker'
+import { OnlineChat, OnlineHost } from './online/OnlineHost'
 
 const SCREEN: Partial<Record<Tab, { title: string; icon: string }>> = {
   quests: { title: 'ภารกิจ', icon: 'scroll' },
@@ -84,6 +85,7 @@ export function App() {
           <>
             <Hud />
             {m === 'world' && <QuestTracker />}
+            {m === 'world' && <OnlineChat />}
             <Hotbar />
           </>
         )}
@@ -99,6 +101,7 @@ export function App() {
             {mapOpen.value && <MapModal />}
             {settingsOpen.value && <SettingsSheet />}
             {profileOpen.value && <ProfileSheet />}
+            <OnlineHost />
             <QuestHost />
           </>
         )}
