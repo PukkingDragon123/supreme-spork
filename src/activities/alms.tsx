@@ -1,7 +1,7 @@
 // ตักบาตร – monks walk by on their alms round (or paddle up by boat at the
 // riverside temple). You stand barefoot on the mat, lift each offering from
-// your chest and place it in the monk's bowl, then kneel and pour water
-// (กรวดน้ำ) while the monks chant the blessing.
+// your chest and place it in the monk's bowl, then kneel with your hands in a
+// wai while the monks chant the blessing.
 
 import { useEffect, useRef, useState } from 'preact/hooks'
 import type { Scene } from '../engine/stage'
@@ -281,7 +281,7 @@ class AlmsScene implements Scene {
   }
 
   private playerPose(): { pose: Parameters<typeof drawPlayer>[2]; hold: 'chest' | 'reach' | 'scoop' | null } {
-    if (this.blessing) return { pose: this.blessT < 3.4 ? 'kruat' : 'kneelWai', hold: null }
+    if (this.blessing) return { pose: 'kneelWai', hold: null }
     if (this.giving) return this.giving.t < 0.3 ? { pose: 'alms_hold', hold: 'chest' } : { pose: 'alms_give', hold: this.giving.landed ? null : 'reach' }
     if (this.scoop !== null) return { pose: 'alms_scoop', hold: 'scoop' }
     if (this.current()) return { pose: 'alms_hold', hold: null }
@@ -325,7 +325,6 @@ class AlmsScene implements Scene {
     const bob = pose === 'stand' ? 0 : pose === 'alms_hold' && !this.giving ? Math.round(Math.sin(this.t * 3) * 0.6) : 0
     const pl = drawPlayer(g, this.look, pose, 'front', this.playerX, gy, { scale: S, t: this.t, barefoot: true, bob })
     this.drawHeld(g, pl, hold)
-    if (this.blessing && pose === 'kruat') this.drawKruat(g, pl)
     this.particles.render(g)
     if (this.blessing) godRays(g, w * 0.7, gy - 60, h * 0.6, this.t, '#fff3c4', 0.06 * Math.min(1, this.blessT), 10)
     vignette(g, '#1b1026', 0.45)
@@ -364,27 +363,6 @@ class AlmsScene implements Scene {
       if (f > SCOOP_HI) for (let i = 0; i < 2; i++) this.particles.add({ kind: 'dot', x: tx + rand(-3, 6), y: ty - 3, vy: rand(10, 30), g: 120, max: 0.6, color: '#fffaf0' })
       if (f >= SCOOP_LO && f <= SCOOP_HI) softGlow(g, tx + 2, ty - 3, 8, 0.8, '#fff3a6')
     }
-  }
-
-  /** กรวดน้ำ: a little silver vessel pouring a thin stream into a cup. */
-  private drawKruat(g: Surface, pl: Placed) {
-    const [lx, ly] = handAt(pl, 1)
-    const [rx, ry] = handAt(pl, -1)
-    const x = Math.round((lx + rx) / 2)
-    const y = Math.round((ly + ry) / 2)
-    g.ellipse(x + 1, y - 2, 4, 3.5, '#c8ccd8')
-    g.ellipse(x, y - 3, 2.5, 1.5, '#eef0f6')
-    g.rect(x - 1, y - 7, 3, 2, '#aeb3c2')
-    g.line(x + 4, y - 3, x + 8, y - 5, '#aeb3c2')
-    const cupY = this.groundY - 4
-    const pouring = this.blessT > 0.6
-    if (pouring) {
-      for (let yy = y - 5; yy < cupY - 2; yy++) g.px(x + 8 + Math.round(Math.sin(yy * 0.7 + this.t * 20) * 0.4), yy, yy % 3 ? '#9fe3f2' : '#e6fbff')
-      if (Math.random() < 0.3) this.particles.add({ kind: 'drop', x: x + 8, y: cupY - 3, vx: rand(-12, 12), vy: rand(-20, -8), g: 120, max: 0.4, color: '#bfefff' })
-    }
-    g.ellipse(x + 8, cupY, 5, 2, '#aeb3c2')
-    g.rect(x + 4, cupY - 3, 9, 3, '#c8ccd8')
-    g.ellipse(x + 8, cupY - 3, 4.5, 1.2, pouring ? '#78d2e2' : '#8a8f9e')
   }
 
   private drawBoat(g: Surface, x: number, y: number, x1 = x + 16) {
@@ -625,7 +603,7 @@ export function AlmsActivity({ req }: { req: ActivityRequest }) {
       {phase === 'bless' && (
         <div class="act-bottom">
           <div class="panel act-tip blessing">
-            <div class="small muted">พระสงฆ์ให้พร · คุกเข่ากรวดน้ำ แล้วพนมมือรับพร</div>
+            <div class="small muted">พระสงฆ์ให้พร · คุกเข่าพนมมือรับพร</div>
             <div class="bless-text">{ALMS_BLESSING}</div>
           </div>
         </div>
