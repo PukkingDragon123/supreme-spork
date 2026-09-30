@@ -8,6 +8,7 @@ import { riverMap } from './river'
 import { mountainMap } from './mountain'
 import { PLACE_MAPS } from './places'
 import { martMap } from './mart'
+import { withFoliage } from './foliage'
 
 const builders: Record<string, () => MapDef> = {
   wat: watMap,
@@ -27,7 +28,7 @@ export function hasMap(id: string): boolean {
 export function mapFor(id: string): MapDef {
   let m = cache.get(id)
   if (!m) {
-    m = (builders[id] ?? builders.wat)()
+    m = withFoliage((builders[id] ?? builders.wat)())
     cache.set(id, m)
   }
   return m
