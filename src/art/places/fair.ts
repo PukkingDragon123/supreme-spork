@@ -6,7 +6,8 @@
 // Rides and moving things live in fair-rides.ts, fireworks in
 // fair-fireworks.ts, the haunted house interior in fair-ghost.ts.
 
-import type { Color, Surface } from '../../engine/pixel'
+import { createCanvas, type Color, type Surface } from '../../engine/pixel'
+import { outlineCanvas, type Sprite } from '../../engine/sprite'
 import { avatarSprite, type AvatarLook } from '../avatar'
 import { drawShadow } from '../props'
 import { drawMiniHippo, hprop, hsh, INK, mix, ramp, type HubProp, type Pt } from './hub-kit'
@@ -925,4 +926,43 @@ export function lanternPole(): LitProp {
     g.vline(5, 18, 21, '#ffd23f')
     g.px(4, 12, '#ffb0a0')
   })
+}
+
+/**
+ * A crisp little name tag (UI font snapped to hard pixels, outlined) for
+ * real players at the fair. Not cached: callers keep the sprite themselves
+ * (names come from the network, so a global cache could grow without end).
+ */
+export function nameTag(text: string, maxW = 60, color: Color = '#fffaf0', outline: Color = '#2a1d3a'): Sprite {
+  const size = 9
+  const probe = createCanvas(4, 4).getContext('2d')!
+  probe.font = `600 ${size}px "Mali", sans-serif`
+  let t = text
+  while (t.length > 1 && probe.measureText(t).width > maxW - 4) t = t.slice(0, -1)
+  if (t !== text) t = t.slice(0, -1) + '…'
+  const w = Math.max(1, Math.ceil(probe.measureText(t).width) + 4)
+  const h = size * 2 + 2
+  const c = createCanvas(w, h)
+  const ctx = c.getContext('2d')!
+  ctx.font = probe.font
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = color
+  ctx.fillText(t, 2, h / 2 + 1)
+  const d = ctx.getImageData(0, 0, w, h)
+  let y0 = h
+  let y1 = 0
+  for (let i = 3; i < d.data.length; i += 4) {
+    const on = d.data[i] > 96
+    d.data[i] = on ? 255 : 0
+    if (on) {
+      const y = Math.floor((i >> 2) / w)
+      y0 = Math.min(y0, y)
+      y1 = Math.max(y1, y)
+    }
+  }
+  ctx.putImageData(d, 0, 0)
+  if (y1 < y0) return outlineCanvas(c, outline, true)
+  const crop = createCanvas(w, y1 - y0 + 1)
+  crop.getContext('2d')!.drawImage(c, 0, -y0)
+  return outlineCanvas(crop, outline, true)
 }

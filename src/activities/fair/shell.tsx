@@ -93,6 +93,7 @@ export function FairGoalCard({ def, onStart, onClose, again }: { def: FairGameDe
       <div class="fairx-best small muted">
         สถิติสูงสุด {best} คะแนน · มีตั๋ว <TicketIcon size={11} /> {game.value.hubs.tickets} ใบ
       </div>
+      <LiveBoard game={def.id} />
     </Window>
   )
 }

@@ -14,13 +14,14 @@ import { dollSprite, type DollPose } from '../../art/doll'
 import { avatarSprite, type AvatarLook, type Pose } from '../../art/avatar'
 import { randomVisitorLook } from '../../scenes/world'
 import { drawShadow } from '../../art/props'
-import { BULBS } from '../../art/places/fair'
+import { BULBS, nameTag } from '../../art/places/fair'
+import type { Sprite } from '../../engine/sprite'
 import { mix } from '../../art/places/hub-kit'
 import '../../art/poses/fair'
 import { JobScene, type JobSummary } from '../jobs/base'
 import { fairSfx } from './sound'
 import { GOOD_WIN, judgeTap, notePoints, RAMWONG_BPM, RAMWONG_LEAD, ramwongChart, ramwongTarget, type Grade, type Note, type Side } from './rules'
-import { fairPlayers, onDanceStep, safeName, sendDanceStep, type DanceStep } from './live'
+import { ensureFairNet, fairPlayers, onDanceStep, safeName, sendDanceStep, type DanceStep } from './live'
 
 const SONG = 34
 const MELODY = [523, 587, 659, 784, 659, 587, 523, 440, 523, 659, 784, 880, 784, 659, 587, 523]
@@ -37,6 +38,7 @@ interface Remote {
   side: Side
   at: number
   seen: number
+  tag: Sprite
 }
 
 export class RamwongScene extends JobScene {
@@ -95,7 +97,9 @@ export class RamwongScene extends JobScene {
     let r = this.remotes.get(from)
     if (!r) {
       if (this.remotes.size >= 3) return
-      r = { id: from, name: safeName(p?.name), look: p?.look ?? randomVisitorLook(), side: st.side, at: this.t, seen: this.t }
+      const name = safeName(p?.name)
+      const look = p?.look && typeof p.look === 'object' ? p.look : randomVisitorLook()
+      r = { id: from, name, look, side: st.side, at: this.t, seen: this.t, tag: nameTag(name, Math.max(30, this.cx - 46)) }
       this.remotes.set(from, r)
       this.say(this.cx, this.top + 30, `${r.name} มารำด้วย!`, 'good', 1.6)
     }
@@ -157,6 +161,8 @@ export class RamwongScene extends JobScene {
   }
 
   protected tick(dt: number) {
+    // Follow the transport if it connects (or drops) while you dance.
+    ensureFairNet()
     this.poseT = Math.max(0, this.poseT - dt)
     this.flashL = Math.max(0, this.flashL - dt)
     this.flashR = Math.max(0, this.flashR - dt)
@@ -254,6 +260,14 @@ export class RamwongScene extends JobScene {
       g.px(Math.round(x), this.bottom - sp.h - 2, '#ff6f91')
       g.px(Math.round(x) - 1, this.bottom - sp.h - 3, '#ff6f91')
       g.px(Math.round(x) + 1, this.bottom - sp.h - 3, '#ff6f91')
+      // Their name above the rings (the flowers fall inside, nearer the middle).
+      const ring = this.ring(i === 0 ? 'L' : 'R')
+      const tx = Math.round(Math.max(2, Math.min(w - r.tag.w - 2, x - r.tag.w / 2)))
+      const ty = ring.y - 14 - r.tag.h
+      g.draw(r.tag.canvas, tx, ty)
+      g.alpha(0.5)
+      for (let yy = ty + r.tag.h + 2; yy < this.bottom - sp.h - 3; yy += 3) g.px(Math.round(x), yy, '#ff9fc0')
+      g.alpha(1)
     })
     // Target rings at your hands.
     for (const side of ['L', 'R'] as const) {

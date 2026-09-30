@@ -930,7 +930,9 @@ export class FairLive implements Life {
   ) {
     liveScene = this
   }
-  update() {
+  /** Seconds until the next shout (one at a time so bubbles don't pile up). */
+  wait = 0
+  update(dt: number) {
     ensureFairNet()
     if (!liveWired) {
       liveWired = true
@@ -938,13 +940,19 @@ export class FairLive implements Life {
         if (liveScene && liveScene.queue.length < 8) liveScene.queue.push(sc)
       })
     }
+    this.wait -= dt
+    if (this.wait > 0) return
     const sc = this.queue.shift()
     if (!sc) return
     const at = this.booths[sc.game]
     const name = FAIR_GAMES[sc.game]?.name ?? 'ซุ้มเกม'
     if (at && this.s.onScreen(at.x, at.y, 20)) {
-      this.s.say(`${sc.name} ได้ ${'★'.repeat(sc.stars) || '☆'} ${sc.score} แต้ม ที่${name}!`, at.x, at.y - 60, 2.8)
+      // Keep the bubble inside the view (the dart booth hugs the map edge).
+      const half = Math.min(70, this.s.vw / 2 - 4)
+      const x = Math.max(this.s.camX + half, Math.min(this.s.camX + this.s.vw - half, at.x))
+      this.s.say(`${sc.name} ${'★'.repeat(sc.stars) || '☆'} ${sc.score} แต้ม ${name}!`, x, at.y - 60, 2.6)
       this.s.particles.sparkles(at.x, at.y - 50, 8, '#ffe27a', 10)
+      this.wait = 2.4
     }
   }
 }
