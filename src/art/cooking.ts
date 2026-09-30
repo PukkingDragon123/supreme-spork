@@ -709,6 +709,71 @@ export function dishSprite(dishId: string): Sprite {
 // Kitchen backdrop
 
 /** Bake the kitchen wall and countertop for a w×h stage; the counter starts at `counterY`. */
+/** Where the animated kitchen extras sit for a given layout. */
+export function kitchenSpots(w: number, counterY: number) {
+  const wx = Math.round(w * 0.1)
+  const ww = Math.min(74, Math.round(w * 0.42))
+  const tileTop = counterY - 44
+  const wy = Math.max(26, tileTop - 72)
+  const wh = tileTop - wy - 12
+  return {
+    /** Window sill (a cat naps here). */
+    sill: [wx + ww - 16, wy + wh + 3] as [number, number],
+    /** Back-burner pot rim (steam rises from here). */
+    pot: [16, counterY - 13] as [number, number],
+    /** Rice cooker vent. */
+    cooker: [w - 16, counterY - 17] as [number, number],
+  }
+}
+
+/** Back counter extras: a gas ring with a simmering pot, a rice cooker, a mortar and a jar of chilli. */
+function drawBackCounter(g: Surface, w: number, counterY: number) {
+  // Shelf ledge along the backsplash.
+  g.rect(0, counterY - 4, w, 4, '#9a6440')
+  g.hline(0, w - 1, counterY - 4, '#c28e5c')
+  // Gas ring and a steel pot of stock.
+  const px = 16
+  g.rect(px - 11, counterY - 7, 23, 4, INK)
+  g.rect(px - 10, counterY - 6, 21, 2, '#5a5a68')
+  g.rect(px - 9, counterY - 6, 3, 1, '#e8514a')
+  g.rect(px - 10, counterY - 17, 21, 11, INK)
+  g.rect(px - 9, counterY - 16, 19, 9, STEEL.b)
+  g.rect(px - 9, counterY - 16, 5, 9, STEEL.l)
+  g.rect(px + 6, counterY - 16, 3, 9, STEEL.d)
+  g.hline(px - 9, px + 9, counterY - 16, STEEL.hi)
+  g.ellipse(px, counterY - 16, 9, 2, INK)
+  g.ellipse(px, counterY - 16, 8, 1.3, '#e8c48e')
+  for (const hx of [px - 12, px + 11]) g.rect(hx, counterY - 14, 2, 2, INK)
+  // Rice cooker (หม้อหุงข้าว) with a flower print.
+  const cx = w - 16
+  g.rect(cx - 9, counterY - 18, 19, 14, INK)
+  g.rect(cx - 8, counterY - 17, 17, 12, '#fffaf0')
+  g.rect(cx - 8, counterY - 17, 17, 3, '#ffb8cf')
+  g.rect(cx + 5, counterY - 14, 4, 9, '#ecdcd0')
+  g.circle(cx - 2, counterY - 10, 2, '#ff9fc0')
+  g.px(cx - 2, counterY - 10, '#ffd23f')
+  g.rect(cx + 1, counterY - 9, 3, 2, '#6cc36a')
+  g.px(cx + 1, counterY - 20, INK)
+  g.rect(cx - 1, counterY - 21, 3, 3, INK)
+  g.px(cx, counterY - 20, '#5a5a68')
+  // Stone mortar (ครก) with a pestle, and a jar of dried chillies.
+  const mx = w - 40
+  if (mx > px + 28) {
+    g.ellipse(mx, counterY - 6, 7, 4, INK)
+    g.ellipse(mx, counterY - 7, 6, 3, '#a8a8b8')
+    g.ellipse(mx, counterY - 8, 4, 1.4, '#6d6d7a')
+    g.thickLine(mx + 1, counterY - 9, mx + 5, counterY - 16, 3, INK)
+    g.line(mx + 1, counterY - 9, mx + 5, counterY - 16, '#c28e5c')
+    const jx = mx - 16
+    if (jx > px + 16) {
+      g.rect(jx - 4, counterY - 14, 9, 10, INK)
+      g.rect(jx - 3, counterY - 13, 7, 8, '#dff4ff')
+      for (const [dx, dy] of [[-1, -6], [1, -8], [2, -5], [-2, -9]]) g.rect(jx + dx, counterY + dy, 1, 2, FOOD.chili)
+      g.rect(jx - 4, counterY - 16, 9, 2, '#e8514a')
+    }
+  }
+}
+
 export function bakeKitchen(w: number, h: number, counterY: number): HTMLCanvasElement {
   return bake(w, h, (g) => {
     // Upper wall: warm cream with a soft stripe.
@@ -845,6 +910,7 @@ export function bakeKitchen(w: number, h: number, counterY: number): HTMLCanvasE
       g.rect(4, y + 1, 2, 3, y % 8 ? FOOD.chili : FOOD.chiliD)
     }
 
+    drawBackCounter(g, w, counterY)
     // Countertop: teak planks with a soft shadow under the backsplash.
     g.rect(0, counterY, w, h - counterY, '#e8c48e')
     for (let y = counterY + 10; y < h; y += 14) g.hline(0, w - 1, y, '#d6ad74')

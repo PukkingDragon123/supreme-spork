@@ -10,6 +10,7 @@ import { avatarSprite } from '../../art/avatar'
 import { bakeEntrance, drawAt, drawShoePair, drawShoeRack, shadow, shoeSize, shoeSprite, SHOE_STYLES, TOURIST_LOOKS, type ShoeStyle } from '../../art/jobs'
 import { Drag, JobScene, type JobSummary } from './base'
 import { Worker } from './worker'
+import { Life } from './life'
 import { WP } from '../../art/poses/work'
 import { glow, motes } from '../../art/workFx'
 
@@ -96,6 +97,7 @@ export class ShoeScene extends JobScene {
     for (const it of this.items) if (it.slot < 0) this.clamp(it)
     const hx = Math.round(w * 0.5)
     const hy = this.floorY + 36
+    if (!this.life) this.life = new Life().pigeons(3, [24, this.floorY + 50, w - 24, this.bottom - 16]).cat(24, this.floorY + 6, [20, this.floorY + 4, 34, this.floorY + 8], { state: 'sleep', color: '#6d6070' })
     if (!this.worker) this.worker = new Worker(hx, hy)
     else if (this.phase === 'ready') this.worker.place(hx, hy)
   }
@@ -382,6 +384,7 @@ export class ShoeScene extends JobScene {
       const y = it.fy + (sy - it.fy) * k - Math.sin(k * Math.PI) * 8
       drawShoePair(g, it.style, x, y, false)
     }
+    this.life?.drawGround(g)
     // Floor items and tourists, y-sorted.
     const floor = this.items.filter((o) => o.slot < 0 && o !== this.held)
     const drawables: { y: number; fn: () => void }[] = []

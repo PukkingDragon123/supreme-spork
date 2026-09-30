@@ -150,9 +150,15 @@ export function cook(recipeId: string, stars: number): CookResult | null {
   return { ...out, recipe: r, stars: st }
 }
 
+/** First dish of the day doubles the cooking merit (the จานแรกของวัน deal). */
+export const FIRST_COOK_MULT = 2
+
 /** A little merit for the care put into cooking for the monks (diminishes after 5 a day). */
 export function rewardCooking(stars: number): number {
-  return addMerit(3 + Math.max(1, Math.min(3, stars)) * 3, { key: 'cook', free: 5 })
+  const base = 3 + Math.max(1, Math.min(3, stars)) * 3
+  // cook() has already counted this dish, so 1 means it was the first today.
+  const first = (game.value.daily.counts['cooked'] ?? 0) === 1
+  return addMerit(first ? base * FIRST_COOK_MULT : base, { key: 'cook', free: 5 })
 }
 
 /** How many dishes (any kind) the player holds — handy for an alms hint. */

@@ -260,6 +260,20 @@ export function bakeCourtyard(w: number, h: number, top: number): HTMLCanvasElem
     for (let x = -10; x < w + 16; x += 13) blobs.push([x, top - 2 + ((x * 7) % 9) - 4, 14 + ((x * 13) % 5)])
     for (let x = -4; x < w + 10; x += 17) blobs.push([x + 6, top + 10 + ((x * 3) % 5), 9 + ((x * 11) % 4)])
     canopy(g, blobs, LEAVES.bodhi, 7)
+    // Kerb-side lanterns, marigold pots and a sprinkle of fallen blossoms.
+    for (let y = top + 70; y < h - 40; y += 96) {
+      drawStoneLantern(g, 11, y)
+      drawMarigoldPot(g, w - 11, y + 40)
+    }
+    for (let i = 0; i < 40; i++) {
+      const x = 8 + hash(i, 41) * (w - 16)
+      const y = top + 40 + hash(i, 42) * (h - top - 40)
+      if (hash(i, 43) > 0.6) g.px(x, y, hash(i, 44) > 0.5 ? '#ffd6e0' : '#fff3a6')
+      else if (hash(i, 43) > 0.4) {
+        g.px(x, y, '#9aa878')
+        g.px(x + 1, y, '#b4c090')
+      }
+    }
     // Trunk peeking at the right.
     g.rect(w - 22, 0, 9, top + 4, '#8b6a55')
     g.rect(w - 21, 0, 2, top + 4, '#b08a6e')
@@ -274,6 +288,159 @@ export function bakeCourtyard(w: number, h: number, top: number): HTMLCanvasElem
       9,
     )
   })
+}
+
+
+// ---------------------------------------------------------------------------
+// Detail props shared by the job backdrops
+
+/** Terracotta pot of marigolds (ดาวเรือง) with a soft shadow. */
+export function drawMarigoldPot(g: Surface, x: number, y: number, s = 1) {
+  shadow(g, x, y + 1, 7 * s, 2)
+  const w = Math.round(5 * s)
+  g.rect(x - w - 1, y - 7, w * 2 + 3, 8, INK)
+  g.rect(x - w, y - 6, w * 2 + 1, 6, '#c9703f')
+  g.rect(x - w, y - 6, w * 2 + 1, 1, '#e8a070')
+  g.rect(x + w - 1, y - 5, 2, 5, '#a0522e')
+  canopy(g, [[x - 3, y - 9, 3.5], [x + 3, y - 9, 3.5], [x, y - 12, 3.5]], LEAVES.green, x * 3 + y)
+  for (const [fx, fy] of [[-3, -12], [2, -14], [4, -10], [-1, -9]]) {
+    g.circle(x + fx, y + fy, 1.8, '#d0661f')
+    g.circle(x + fx, y + fy, 1.2, '#ff9a2a')
+    g.px(x + fx, y + fy, '#ffc24a')
+  }
+}
+
+/** Stone lotus-bud lantern post. */
+export function drawStoneLantern(g: Surface, x: number, y: number) {
+  shadow(g, x, y + 1, 6, 2)
+  g.rect(x - 4, y - 5, 9, 6, INK)
+  g.rect(x - 3, y - 4, 7, 4, P.stone)
+  g.rect(x - 2, y - 16, 5, 12, INK)
+  g.rect(x - 1, y - 15, 3, 11, P.stoneL)
+  g.rect(x - 5, y - 21, 11, 6, INK)
+  g.rect(x - 4, y - 20, 9, 4, P.stone)
+  g.rect(x - 3, y - 19, 3, 2, '#fff3c8')
+  g.poly([[x - 4, y - 21], [x + 0.5, y - 27], [x + 5, y - 21]], INK)
+  g.poly([[x - 3, y - 21], [x + 0.5, y - 25.5], [x + 4, y - 21]], P.stoneL)
+  g.px(x + 1, y - 7, '#9aa878')
+  g.px(x - 1, y - 2, '#9aa878')
+}
+
+/** Floor cushion (อาสนะ) seen from above-front. */
+export function drawCushion(g: Surface, x: number, y: number, c = '#e9a53a') {
+  g.rect(x - 7, y - 3, 15, 7, INK)
+  g.rect(x - 6, y - 2, 13, 5, c)
+  g.hline(x - 6, x + 6, y - 2, mixHex(c, '#ffffff', 0.4))
+  g.hline(x - 6, x + 6, y + 2, mixHex(c, INK, 0.3))
+  g.px(x, y, mixHex(c, INK, 0.4))
+}
+
+/** Wooden donation box (ตู้บริจาค) with a gold slot. */
+export function drawDonationBox(g: Surface, x: number, y: number) {
+  shadow(g, x, y + 1, 8, 2)
+  g.rect(x - 7, y - 16, 15, 17, INK)
+  g.rect(x - 6, y - 15, 13, 15, '#9a6440')
+  g.rect(x - 6, y - 15, 13, 3, '#c28e5c')
+  g.rect(x - 3, y - 14, 7, 1, INK)
+  g.rect(x - 4, y - 10, 9, 6, '#fffaf0')
+  g.hline(x - 3, x + 3, y - 8, '#e8514a')
+  g.hline(x - 3, x + 1, y - 6, '#9a6440')
+  g.rect(x + 5, y - 12, 1, 10, '#6e4a35')
+}
+
+/** Standing electric fan (พัดลม) with spinning blades. */
+export function drawFan(g: Surface, x: number, y: number, t: number) {
+  shadow(g, x, y + 1, 6, 2)
+  g.ellipse(x, y, 6, 2, INK)
+  g.ellipse(x, y - 0.5, 5, 1.4, '#5a8de0')
+  g.rect(x - 1, y - 18, 3, 18, INK)
+  g.vline(x, y - 17, y - 1, '#d0d0da')
+  g.circle(x, y - 22, 7, INK)
+  g.circle(x, y - 22, 6, '#dff4ff')
+  const a = t * 20
+  for (let i = 0; i < 3; i++) {
+    const ang = a + (i * Math.PI * 2) / 3
+    g.line(x, y - 22, x + Math.cos(ang) * 5, y - 22 + Math.sin(ang) * 5, '#9fd0ff')
+  }
+  g.circle(x, y - 22, 1.5, '#5a8de0')
+}
+
+/** Jasmine and marigold garland (พวงมาลัย) hanging from (x, y). */
+export function drawGarland(g: Surface, x: number, y: number, len = 14) {
+  g.vline(x, y, y + 2, '#e8514a')
+  for (let i = 0; i < len; i += 2) {
+    g.rect(x - 1, y + 2 + i, 3, 2, INK)
+    g.px(x, y + 2 + i, i % 4 ? '#fffaf0' : '#fff3c8')
+  }
+  const b = y + len + 3
+  g.circle(x, b, 2.4, INK)
+  g.circle(x, b, 1.7, '#e8514a')
+  g.px(x, b - 1, '#ff9a86')
+  g.vline(x - 1, b + 2, b + 5, '#e8514a')
+  g.vline(x + 1, b + 2, b + 6, '#ff7a24')
+}
+
+/** Clump of reeds / cattails at the water's edge. */
+export function drawReeds(g: Surface, x: number, y: number, n = 5, seed = 0) {
+  for (let i = 0; i < n; i++) {
+    const rx = x + (i - n / 2) * 3 + hash(i, seed) * 2
+    const h = 12 + hash(i, seed, 2) * 10
+    const lean = (hash(i, seed, 3) - 0.5) * 4
+    g.line(rx, y, rx + lean, y - h, INK)
+    g.line(rx + 1, y, rx + lean + 1, y - h, i % 2 ? '#5eae55' : '#86c95f')
+    if (i % 2 === 0) {
+      g.rect(Math.round(rx + lean) - 1, Math.round(y - h) - 1, 3, 5, INK)
+      g.vline(Math.round(rx + lean), Math.round(y - h), Math.round(y - h) + 3, '#8a5a32')
+    }
+  }
+}
+
+/** Pink lotus flower on the water. */
+export function drawLotus(g: Surface, x: number, y: number) {
+  const petals: [number, number][] = [[-3, 0], [3, 0], [0, -2], [-1.5, -3], [1.5, -3]]
+  g.ellipse(x, y + 1, 6, 2.5, '#3f8a4f')
+  for (const [dx, dy] of petals) g.ellipse(x + dx, y + dy, 2, 2.6, INK)
+  for (const [dx, dy] of petals) g.ellipse(x + dx, y + dy, 1.4, 2, dy < -2 ? P.pinkL : P.pink)
+  g.px(x, y - 1, '#ffd54f')
+}
+
+/** Floating water hyacinth (ผักตบชวา) clump. */
+export function drawHyacinth(g: Surface, x: number, y: number, seed = 0) {
+  canopy(g, [[x - 3, y, 3], [x + 2, y - 1, 3.5], [x + 5, y + 1, 2.5]], LEAVES.green, seed)
+  g.circle(x + 1, y - 4, 1.6, INK)
+  g.px(x + 1, y - 4, '#c8a0f0')
+  g.px(x + 2, y - 5, '#e2d2ff')
+}
+
+/** Saffron robes drying on a line (ตากผ้าไตร). */
+export function drawRobeLine(g: Surface, x0: number, x1: number, y: number) {
+  const sag = (x: number) => Math.round(y + Math.sin(((x - x0) / Math.max(1, x1 - x0)) * Math.PI) * 3)
+  for (let x = x0; x <= x1; x++) g.px(x, sag(x), '#6e4a35')
+  const mid = (x0 + x1) / 2
+  for (const [cx, w, h] of [[mid - 12, 11, 14], [mid + 4, 13, 17]] as [number, number, number][]) {
+    const top = sag(cx)
+    g.rect(cx - 1, top, w + 2, h + 1, INK)
+    g.rect(cx, top, w, h, '#f58f35')
+    g.rect(cx, top, w, 2, '#ffb366')
+    g.rect(cx + w - 3, top + 2, 2, h - 2, '#d0661f')
+    for (let yy = top + 4; yy < top + h; yy += 4) g.hline(cx + 1, cx + w - 4, yy, '#e87a28')
+  }
+}
+
+/** Long-tail boat (เรือหางยาว) far away on the river. */
+export function drawLongtail(g: Surface, x: number, y: number, t: number) {
+  const b = Math.round(Math.sin(t * 2) * 0.6)
+  g.poly([[x - 14, y - 2 + b], [x + 12, y - 2 + b], [x + 16, y - 6 + b], [x + 9, y + 1 + b], [x - 11, y + 1 + b]], INK)
+  g.poly([[x - 13, y - 2 + b], [x + 11, y - 2 + b], [x + 14, y - 5 + b], [x + 8, y + b], [x - 10, y + b]], '#8a5a32')
+  g.hline(x - 12, x + 11, y - 2 + b, '#c28e5c')
+  for (const [cx, c] of [[-10, '#e8514a'], [-6, '#ffd23f'], [-2, '#5a8de0']] as [number, string][]) {
+    g.px(x + cx, y - 1 + b, c)
+    g.px(x + cx, y + b, c)
+  }
+  g.rect(x + 2, y - 7 + b, 2, 5, '#fffaf0')
+  g.px(x + 2, y - 8 + b, '#3b2f40')
+  g.line(x - 14, y - 1 + b, x - 22, y + 2 + b, INK)
+  for (let i = 0; i < 3; i++) g.px(x - 22 - i * 2, y + 2 + b + (i % 2), '#e6f2d8')
 }
 
 // ---------------------------------------------------------------------------
@@ -327,6 +494,16 @@ export function bakeHallFloor(w: number, h: number, wallY: number): HTMLCanvasEl
       g.px(dx + 7, y, P.gold)
       g.px(dx + 20, y, P.gold)
     }
+    // Hanging lanterns along the wall.
+    for (const lx of [Math.round(w * 0.22), Math.round(w * 0.78)]) {
+      g.vline(lx, 0, 6, INK)
+      g.rect(lx - 3, 6, 7, 8, INK)
+      g.rect(lx - 2, 7, 5, 6, '#ffd23f')
+      g.rect(lx - 2, 7, 2, 6, '#fff3a6')
+      g.px(lx, 15, '#e8514a')
+    }
+    // A row of floor cushions by the wall.
+    for (let x = 22; x < w - 22; x += 18) if (Math.abs(x - w / 2) > 18) drawCushion(g, x, wallY + 8, x % 36 < 18 ? '#e9a53a' : '#e8514a')
     // Pillars at the sides.
     for (const px of [0, w - 12]) {
       g.rect(px, 0, 12, wallY + 6, '#b8343f')
@@ -541,6 +718,17 @@ export function bakePond(w: number, h: number, deckY: number): HTMLCanvasElement
         g.px(x + 2, y + 2, P.stoneD)
       }
     }
+    // Reeds and lotus flowers round the edges, weed shadows underwater.
+    for (let i = 0; i < 18; i++) {
+      const x = 10 + hash(i, 61) * (w - 20)
+      const y = 20 + hash(i, 62) * (h - 40)
+      if (ditherOn(Math.round(x), Math.round(y), 0.5)) g.ellipse(x, y, 5 + hash(i, 63) * 4, 2, 'rgba(20,70,90,0.35)')
+    }
+    drawReeds(g, 12, Math.min(h, deckY) - 6, 6, 1)
+    drawReeds(g, w - 12, Math.min(h, deckY) - 10, 5, 2)
+    drawReeds(g, w - 10, 70, 4, 3)
+    drawLotus(g, w - 22, 90)
+    drawLotus(g, 24, Math.min(h, deckY) - 40)
     // Wooden deck at the bottom.
     if (deckY < h) {
       g.rect(0, deckY - 1, w, 1, INK)
@@ -737,6 +925,7 @@ export function bakeRiver(w: number, h: number, horizon: number, pierY: number):
       g.hline(x, x + L, y, hash(i, 4) > 0.5 ? '#a8c488' : '#5e7e44')
     }
     g.hline(0, w, horizon, '#c8e0a8')
+    for (let i = 0; i < 6; i++) drawHyacinth(g, 10 + hash(i, 71) * (w - 20), horizon + 10 + hash(i, 72) * (pierY - horizon - 40), i)
     // Pier: posts, planks and a rope.
     const py = pierY
     for (let x = 8; x < w; x += 44) {
@@ -1110,6 +1299,7 @@ export function bakeEntrance(w: number, h: number, floorY: number): HTMLCanvasEl
         g.rect(ox + 4, y + 1, 3, 1, P.goldD)
         g.px(ox + 5, y + 2, P.gold)
       }
+    for (const gx of [dx + 6, dx + dw - 6]) drawGarland(g, gx, 0, 16)
     // Pillars.
     for (const px of [6, w - 18]) {
       g.rect(px - 1, 0, 14, floorY, INK)
@@ -1176,6 +1366,7 @@ export function bakeShrine(w: number, h: number, tableY: number): HTMLCanvasElem
         g.px(px + 5, y + 1, P.gold)
       }
     }
+    for (const gx of [10, w - 10]) drawGarland(g, gx, Math.max(8, tableY - 90), 20)
     // Principal Buddha on a tiered base.
     const cx = Math.round(w / 2)
     const seat = tableY - 30
@@ -1365,6 +1556,7 @@ export function bakeKutiGarden(w: number, h: number, ledgeY: number): HTMLCanvas
     }
     g.rect(wx - 4, wy + 30, 48, 3, INK)
     g.rect(wx - 3, wy + 30, 46, 2, '#c28e5c')
+    drawRobeLine(g, 6, Math.max(40, wx - 20), Math.round(ledgeY * 0.2))
     // Eaves shadow at the top.
     g.rect(0, 0, w, 6, 'rgba(40,20,10,0.35)')
     // Brick ledge.
@@ -1871,6 +2063,7 @@ export function bakeShrineShelf(w: number, h: number, shelfY: number): HTMLCanva
       '#b8343f',
     )
     g.circle(cx, top - 5, 2, P.gold)
+    for (const gx of [x0 + 20, cx, x1 - 20]) drawGarland(g, gx, top + 2, 10)
     // Shelf board and skirt.
     g.rect(x0 - 5, shelfY - 1, x1 - x0 + 10, 7, INK)
     g.rect(x0 - 4, shelfY, x1 - x0 + 8, 5, P.goldD)

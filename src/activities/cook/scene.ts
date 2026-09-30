@@ -7,7 +7,10 @@ import type { PointerInfo, Scene } from '../../engine/stage'
 import { Particles } from '../../engine/particles'
 import { rand } from '../../engine/rng'
 import { sfx } from '../../engine/audio'
-import { bakeKitchen, drawBits, drawPot, drawStove, drawFlames } from '../../art/cooking'
+import { bakeKitchen, drawBits, drawPot, drawStove, drawFlames, kitchenSpots } from '../../art/cooking'
+import { catPoseSprite } from '../../art/characters'
+import { drawAt } from '../../art/jobs'
+import { drawGecko, drawZzz } from '../../art/workLife'
 import type { Bit, CookRecipe, Vessel } from '../../game/data/recipes'
 import { chefFeet, makeGame, type Kitchen, type StepGame } from './games'
 import { Worker } from '../jobs/worker'
@@ -202,8 +205,15 @@ export class KitchenScene implements Scene, Kitchen {
       this.bgBack = this.backY
     }
     g.draw(this.bg, 0, 0)
-    // Warm window light and the player behind the counter.
+    // Warm window light, a cat napping on the sill, a gecko, steam from the back pots.
     glow(g, w * 0.3, this.backY - 60, 70, 0.22, '#fff3c8')
+    const k = kitchenSpots(w, this.backY)
+    const catPose = Math.sin(this.t * 0.35) > 0.6 ? 'groom' : 'sleep'
+    drawAt(g, catPoseSprite(catPose, '#f5a55a', true), k.sill[0], k.sill[1])
+    if (catPose === 'sleep') drawZzz(g, k.sill[0] + 5, k.sill[1] - 9, this.t)
+    drawGecko(g, w - 8, this.backY - 70 + Math.sin(this.t * 0.3) * 6, this.t)
+    if (Math.random() < 0.15) this.particles.add({ kind: 'smoke', x: k.pot[0] + rand(-6, 6), y: k.pot[1] - 4, vx: rand(-3, 3), vy: rand(-14, -8), max: rand(0.9, 1.4), color: '#ffffff', size: 2, drag: 0.5 })
+    if (Math.random() < 0.06) this.particles.add({ kind: 'smoke', x: k.cooker[0], y: k.cooker[1] - 4, vx: rand(-2, 2), vy: rand(-16, -10), max: 1.1, color: '#ffffff', size: 1, drag: 0.5 })
     this.chef?.draw(g)
     const sx = this.shakeAmp ? Math.round(rand(-this.shakeAmp, this.shakeAmp)) : 0
     const sy = this.shakeAmp ? Math.round(rand(-this.shakeAmp, this.shakeAmp) * 0.5) : 0

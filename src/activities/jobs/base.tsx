@@ -9,6 +9,7 @@ import { rand } from '../../engine/rng'
 import type { GameEvent } from '../../game/data/quests'
 import { starsFor, type JobStars } from '../../game/jobs'
 import type { Worker } from './worker'
+import type { Life } from './life'
 import { wsfx } from './workSfx'
 
 export interface JobSummary {
@@ -67,6 +68,8 @@ export abstract class JobScene implements Scene {
   bestCombo = 0
   /** The player's avatar doing the job (set by scenes that show it). */
   worker: Worker | null = null
+  /** Ambient critters and onlookers (set by scenes that have them). */
+  life: Life | null = null
   onDone?: (stars: JobStars, summary: JobSummary) => void
   protected shakeT = 0
   protected shakeMag = 1
@@ -177,6 +180,7 @@ export abstract class JobScene implements Scene {
       if (this.doneT <= 0) this.onDone?.(this.stars(), this.summary())
     }
     this.worker?.update(dt, this.particles)
+    this.life?.update(dt, this.worker)
     this.shakeT = Math.max(0, this.shakeT - dt)
     this.flashT = Math.max(0, this.flashT - dt)
     for (const b of this.bubbles) b.t -= dt
@@ -217,6 +221,7 @@ export abstract class JobScene implements Scene {
   /** Big praise pop-up in the middle of the screen. */
   praise(text: string, tone: PraiseTone = 'gold', life = 1.3) {
     this.praises = [...this.praises.filter((p) => p.text !== text).slice(-1), { id: ++this.praiseSeq, text, tone, t: life }]
+    this.life?.cheer()
     wsfx.praise()
   }
 

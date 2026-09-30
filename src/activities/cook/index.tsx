@@ -140,7 +140,8 @@ export function CookActivity({ req }: { req: ActivityRequest }) {
 
   // Deep link straight into a recipe (e.g. from a hotspot).
   useEffect(() => {
-    if (want && !locked && canCook(want)) setTimeout(() => start(want), 50)
+    // A deep link opens that recipe's brief (prices and deals) first; `go` starts it straight away.
+    if (want && !locked && canCook(want) && req.params?.go) setTimeout(() => start(want), 50)
   }, [])
 
   const backToBook = () => {
