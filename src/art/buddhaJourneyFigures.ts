@@ -485,28 +485,6 @@ export function drawSprite(g: Surface, s: Sprite, x: number, y: number, flip = f
   g.draw(s.canvas, Math.round(x - s.w / 2), Math.round(y - s.h), flip)
 }
 
-/** Baby Siddhattha: a small gold child pointing up to the sky. */
-export function babySprite(): Sprite {
-  return spr('baby', [
-    '....o....',
-    '...oyo...',
-    '..ogggo..',
-    '.ogGGGgo.',
-    '.ogGdGgo.',
-    '.ogGGGgo.',
-    '..ogggo..',
-    '..oyggo.o',
-    '.oygggooy',
-    'oyggggggo',
-    'oggoggo..',
-    '.oogggo..',
-    '..ogggo..',
-    '..ogdgo..',
-    '..og.go..',
-    '..oo.oo..',
-  ])
-}
-
 /** Queen Māyā standing, right arm raised to hold a branch. */
 export function mayaSprite(): Sprite {
   return spr('maya', [
@@ -554,23 +532,31 @@ export function attendantSprite(c = 'b'): Sprite {
   ])
 }
 
-/** A deva (เทวดา) floating on a cloud with a flower offering. */
-export function devaSprite(): Sprite {
-  return spr('deva', [
-    '....o.....',
-    '...ogo....',
-    '...ogo....',
-    '..ogggo...',
-    '..osSso...',
-    '..ossso.o.',
-    '.oddgdo.op',
-    'oeeggeeoso',
-    'oeeseeeoo.',
-    '.oeeeeo...',
-    '.orrrrro..',
-    'oorrrrroo.',
-    '..ooooo...',
-  ])
+/**
+ * A deva (เทวดา) floating on a cloud with a flower offering. `indra` gives
+ * the green skin Thai art uses for Indra (พระอินทร์).
+ */
+export function devaSprite(indra = false): Sprite {
+  const pal = indra ? { ...BASE, s: '#4fa86a', S: '#2f7a4a', e: J.red, r: '#2b4a8a' } : BASE
+  return spr(
+    indra ? 'deva:indra' : 'deva',
+    [
+      '....o.....',
+      '...ogo....',
+      '...ogo....',
+      '..ogggo...',
+      '..osSso...',
+      '..ossso.o.',
+      '.oddgdo.op',
+      'oeeggeeoso',
+      'oeeseeeoo.',
+      '.oeeeeo...',
+      '.orrrrro..',
+      'oorrrrroo.',
+      '..ooooo...',
+    ],
+    pal,
+  )
 }
 
 /** An old man bent over his cane (เทวทูต: ความแก่). */
@@ -759,80 +745,6 @@ export function sotthiyaSprite(): Sprite {
       '..owwwo..ooo..',
       '..os.so.......',
       '..oo.oo.......',
-    ],
-    pal,
-  )
-}
-
-/** Mae Thorani (พระแม่ธรณี) wringing the water from her long hair. */
-export function thoraniSprite(): Sprite {
-  const pal = { ...BASE, s: '#f0c89a', S: '#c9966a', k: '#1a1418' }
-  return spr(
-    'thorani',
-    [
-      '......o.......',
-      '.....ogo......',
-      '.....ogo......',
-      '....ogggo.....',
-      '....oGgGo.....',
-      '...okssskoo...',
-      '...oksSskkko..',
-      '...okssskoko..',
-      '...oddgddoko..',
-      '..ogeeeeegoko.',
-      '.osseeeeesskko',
-      '.osoeegeeoosko',
-      '..o.eeeee.okko',
-      '...oeeEeeo.oko',
-      '...oeeeeeo.oko',
-      '..oeeeEeeeo.o.',
-      '..oeeeeEeeo...',
-      '..oeeeeeeeo...',
-      '.oeeeeeEeeeo..',
-      '.oeeEeeeeeeo..',
-      '.oggggggggggo.',
-      '..oooooooooo..',
-    ],
-    pal,
-  )
-}
-
-/** Mae Thorani, larger: crowned, wringing her long hair over her right shoulder. */
-export function thoraniBigSprite(): Sprite {
-  const pal = { ...BASE, s: '#f4d2a8', S: '#d4a478', k: '#1c1418', K: '#3a2c30', e: '#3f9a62', E: '#2a6e46', w: '#dff4ff' }
-  return spr(
-    'thorani2',
-    [
-      '.........o..........',
-      '........oyo.........',
-      '........ogo.........',
-      '.......ogGgo........',
-      '.......oGgGo........',
-      '.......ogrgo........',
-      '......odgGgdo.......',
-      '......okkkkkoo......',
-      '.....okssssskko.....',
-      '.....oksdsdskKko....',
-      '.....okssssskkKo....',
-      '......osSSSokkkKo...',
-      '.......osssokkkko...',
-      '......oddgddookKko..',
-      '.....oGsseessoKkko..',
-      '....osseeeeessokkKo.',
-      '...ossoeegeeosssKko.',
-      '...oso.oeeeeoossskko',
-      '...oo..oeeeeo.ossKko',
-      '.......oeeEeeo.okkko',
-      '......oeeeeeeo..okwo',
-      '......oeeEeeeo..owo.',
-      '.....oeeeeEeeeo..o..',
-      '.....oeeeeeEeeo.....',
-      '.....oeEeeeeeeo.....',
-      '....oeeeEeeeeeeo....',
-      '....oeeeeeeEeeeo....',
-      '....oggggggggggo....',
-      '...ogdgdgdgdgdgdo...',
-      '....oooooooooooo....',
     ],
     pal,
   )

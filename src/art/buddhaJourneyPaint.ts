@@ -694,20 +694,6 @@ export function paintRoad(g: Surface, road: RoadSamples, y0: number, y1: number,
   }
 }
 
-/** Wooden plank bridge across a river where the road crosses. */
-export function bridge(g: Surface, x: number, y: number, len: number, night = false) {
-  const plank = night ? '#6a4a3a' : '#a8743e'
-  const plankL = night ? '#8a6a52' : '#c9924e'
-  const post = night ? '#3a2620' : '#6a4028'
-  g.rect(x - 8, y - len / 2 - 1, 16, len + 2, J.ink)
-  for (let i = 0; i < len; i++) g.rect(x - 7, y - len / 2 + i, 14, 1, i % 3 === 0 ? J.ink : i % 3 === 1 ? plankL : plank)
-  for (const side of [-1, 1]) {
-    g.rect(x + side * 8 - 1, y - len / 2 - 3, 3, len + 5, J.ink)
-    g.rect(x + side * 8, y - len / 2 - 2, 1, len + 3, post)
-    for (let k = 0; k <= len; k += 6) g.rect(x + side * 8 - 1, y - len / 2 + k - 2, 3, 3, post)
-  }
-}
-
 // ---------------------------------------------------------------------------
 // สินเทา: the zigzag band that separates mural scenes
 

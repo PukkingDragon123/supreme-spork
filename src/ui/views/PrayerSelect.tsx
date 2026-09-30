@@ -433,7 +433,7 @@ function StoryCard({ ch, i, art: mapArt, onClose, onGo }: { ch: JourneyChapterId
     const art = mapArt ?? journeyArt(195)
     const L = art.layout
     const b = L.bands[JOURNEY.indexOf(c)]
-    const [a0, u0, a1, u1] = sc.box
+    const [a0, u0, a1, u1] = sc.view ?? sc.box
     const pad = 4
     const x = L.cx + a0 - pad
     const y = b.bottom - u1 - pad
@@ -446,8 +446,9 @@ function StoryCard({ ch, i, art: mapArt, onClose, onGo }: { ch: JourneyChapterId
     ctx.drawImage(isNight() ? journeyNight(art) : art.day, x, y, ww, hh, 0, 0, ww, hh)
     // Whole-pixel zoom that fits the card.
     const availW = (el.parentElement?.clientWidth ?? 300) - 4
-    const availH = Math.max(120, window.innerHeight * 0.34)
-    const k = Math.max(1, Math.min(4, Math.floor(Math.min(availW / ww, availH / hh))))
+    const availH = Math.max(140, window.innerHeight * 0.38)
+    const fit = Math.min(availW / ww, availH / hh)
+    const k = Math.max(1, Math.min(4, fit >= 2 ? Math.floor(fit) : fit))
     el.style.width = `${ww * k}px`
     el.style.height = `${hh * k}px`
   }, [ch, i])

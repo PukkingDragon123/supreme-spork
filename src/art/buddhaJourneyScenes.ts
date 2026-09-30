@@ -12,7 +12,6 @@ import {
   aureole,
   bamboo,
   banana,
-  bridge,
   bush,
   canopy,
   flowerDots,
@@ -328,7 +327,6 @@ function bridges(c: PaintCtx) {
         c.g.px(Math.round(x + nx * 8), Math.round(y + ny * 8), rail)
       }
     }
-  void bridge
 }
 
 function lotusPatch(c: PaintCtx, pts: [number, number, number][]) {
@@ -399,7 +397,7 @@ function moon(c: PaintCtx, dx: number, up: number, r: number) {
     g.circle(x + r * 0.35, y + r * 0.3, r * 0.22, '#efe2c4')
     g.px(Math.round(x + r * 0.1), Math.round(y - r * 0.55), '#efe2c4')
   })
-  c.light(dx, up, r * 3, '#dfe8ff', 0.5)
+  c.light(dx, up, r * 2.4, '#dfe8ff', 0.22)
   c.addFx(glowFx(x, y, r * 2.4, 0.12, '#dfe8ff', 0.6, 1.2))
 }
 
@@ -704,7 +702,7 @@ const renounce: ScenePainter = {
     const ix = -60
     const iy = 190
     muralCloud(g, c.X(ix), c.Y(iy - 12), 26, '#5a6498', '#3a4274')
-    sprite(c, devaSprite(), ix - 5, iy - 10, false, true)
+    sprite(c, devaSprite(true), ix - 5, iy - 10, false, true)
     c.both((gg) => {
       gg.rect(c.X(ix + 3), c.Y(iy + 2), 8, 6, J.ink)
       gg.rect(c.X(ix + 4), c.Y(iy + 1), 6, 4, J.goldM)
