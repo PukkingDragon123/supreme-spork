@@ -20,6 +20,8 @@ import { BotMenu, openBotQuests } from './BotMenu'
 import { BotFace } from './BotBubble'
 import { botMenu, openBotMenu, popupsAllowed } from './botStore'
 import { installTutorial } from './tutorialCtl'
+import { GiftReveal } from './GiftReveal'
+import { BagHint } from './BagHint'
 import './botnoi.css'
 
 installTutorial()
@@ -46,6 +48,8 @@ export function BotnoiHost() {
       <Coach />
       <TipHost />
       <BotMenu />
+      <BagHint />
+      <GiftReveal />
       {tutCelebrate.value && <Celebrate />}
     </>
   )

@@ -8,7 +8,8 @@ import { game } from '../../game/state'
 import { onTrack } from '../../game/actions'
 import { dayKey } from '../../game/time'
 import { currentStep, type TutUi } from '../../game/botnoiTutorial'
-import { onTutorialStep, startTutorial, tutorialInput } from '../../game/botnoi'
+import { giveTutorialGift, onTutorialStep, startTutorial, tutorialInput } from '../../game/botnoi'
+import { botGift } from './GiftReveal'
 import { houseEditing, mapId, mapOpen, mode, panel, prayStage, tab } from '../store'
 import { worldScene } from '../TempleView'
 import { botFocus, botSay, popupsAllowed } from './botStore'
@@ -145,6 +146,9 @@ export function installTutorial() {
   onTutorialStep((from, to) => {
     botFocus.value = null
     if (to === 'walk') walkSpot = null
+    // Bot Noi hands out what the next step needs (a new save's bag is empty).
+    const gift = giveTutorialGift(to)
+    if (gift) botGift.value = gift
     if (!from || !to) return
     const praise = STEP_UI[from]?.praise
     if (praise) {

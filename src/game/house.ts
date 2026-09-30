@@ -101,11 +101,17 @@ export function starterLayout(room: RoomId): RoomLayout {
   }
 }
 
-/** A cosy starter room: bed under the altar shelf, a reed mat, a plant and the workbench. */
+/** Furniture a brand-new bedroom keeps: the bed and the workbench (crafting); the rest comes from บอทน้อย, quests and crafting. */
+export const NEW_SAVE_FURNITURE = ['bed_simple', 'workbench']
+
+/** A bare starter room: built-ins, the bed and the workbench. */
 export function defaultHouse(): HouseState {
+  const base = starterLayout('bedroom')
+  const fixed = new Set(fixedLayout('bedroom').map((p) => p.uid))
   return {
-    ...starterLayout('bedroom'),
-    storage: { cushion_khwan: 1 },
+    ...base,
+    placed: base.placed.filter((p) => fixed.has(p.uid) || NEW_SAVE_FURNITURE.includes(p.id)),
+    storage: {},
     surfaces: [...WALLPAPERS.filter((w) => w.starter).map((w) => w.id), ...FLOORS.filter((f) => f.starter).map((f) => f.id)],
     room: 'bedroom',
     rooms: {},

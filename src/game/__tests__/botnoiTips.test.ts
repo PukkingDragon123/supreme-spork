@@ -3,7 +3,11 @@ import { TIPS, TIP_BY_ID, pickTip, tipLine } from '../botnoiTips'
 import { NPC_QUESTS } from '../data/npcQuests'
 import { BOTNOI_GIVER } from '../data/npcQuests/botnoi'
 import { OUTFIT_BY_ID } from '../data/outfits'
-import { TUT_REWARD } from '../botnoiTutorial'
+import { TUT_REWARD, TUT_GIFTS, giftFor } from '../botnoiTutorial'
+import { defaultState, migrate } from '../state'
+import { ITEM_BY_ID } from '../data/items'
+import { FURNITURE_BY_ID } from '../data/furniture'
+import { normalizeBotnoi } from '../botnoiState'
 
 describe('bot noi feature tips', () => {
   it('covers every system from the brief with 1-3 bubbles', () => {
@@ -49,5 +53,47 @@ describe('bot noi quests and reward', () => {
     expect(o).toBeTruthy()
     expect(o.slot).toBe('head')
     expect(o.exclusive).toBeTruthy()
+  })
+})
+
+describe('empty start and Bot Noi gifts', () => {
+  it('a new save starts with nothing extra', () => {
+    const s = defaultState()
+    expect(s.inventory).toEqual({})
+    expect(s.coins).toBe(0)
+    expect(s.pets).toEqual([])
+    expect(s.house.storage).toEqual({})
+    // Only hair styles plus the plain clothes being worn.
+    const clothes = s.outfits.filter((id) => OUTFIT_BY_ID[id]?.slot !== 'hair')
+    expect(clothes.sort()).toEqual([s.player.look.top, s.player.look.bottom].sort())
+    // The old freebies are no longer free.
+    for (const id of ['top_school_m', 'bot_jeans', 'shoes_school']) expect(OUTFIT_BY_ID[id].price).toBeGreaterThan(0)
+  })
+
+  it('existing saves keep what they own', () => {
+    const old = migrate({ onboarded: true, outfits: ['top_school_m', 'shoes_school'], inventory: { rice: 3 }, coins: 77 })
+    expect(old.outfits).toContain('top_school_m')
+    expect(old.inventory.rice).toBe(3)
+    expect(old.coins).toBe(77)
+  })
+
+  it('gifts real things, each once, before the step that needs them', () => {
+    for (const g of TUT_GIFTS) {
+      for (const id of Object.keys(g.items ?? {})) expect(ITEM_BY_ID[id], `${g.id} ${id}`).toBeTruthy()
+      for (const id of Object.keys(g.furniture ?? {})) expect(FURNITURE_BY_ID[id], `${g.id} ${id}`).toBeTruthy()
+    }
+    expect(giftFor('incense', [])?.items?.incense).toBeGreaterThan(0)
+    expect(giftFor('bag', [])?.items?.fish_food).toBeGreaterThan(0)
+    expect(giftFor('decorate', [])?.furniture).toBeTruthy()
+    expect(giftFor('incense', ['incense'])).toBeNull()
+    expect(giftFor('npc', [])).toBeNull()
+    expect(normalizeBotnoi({ gifts: ['alms', 3, 'alms'] }).gifts).toEqual(['alms'])
+  })
+
+  it('Bot Noi quests are an early source of items', () => {
+    const first = NPC_QUESTS.find((q) => q.id === 'bn_1')!
+    expect(Object.keys(first.reward.items ?? {}).length).toBeGreaterThan(0)
+    const daily = NPC_QUESTS.find((q) => q.id === 'bn_daily')!
+    expect(Object.keys(daily.reward.items ?? {}).length).toBeGreaterThan(0)
   })
 })

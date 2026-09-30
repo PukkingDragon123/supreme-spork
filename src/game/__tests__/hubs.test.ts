@@ -195,6 +195,7 @@ describe('fair tickets', () => {
   })
 
   it('charges for a second round and refuses when broke', () => {
+    game.value = { ...game.value, coins: 100 }
     const coins = game.value.coins
     expect(startFairRound('darts')).toBe(true)
     expect(game.value.coins).toBe(coins)

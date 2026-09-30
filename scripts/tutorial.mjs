@@ -48,10 +48,33 @@ const readBubble = async () => {
     await page.waitForTimeout(120)
   }
 }
+/** Accept Bot Noi's gift card ("บอทน้อยให้ของขวัญ!") if one is up. */
+let gifts = 0
+const acceptGift = async () => {
+  if (!(await page.locator('.bn-gift').count())) return
+  const btn = page.getByRole('button', { name: 'ขอบใจนะบอทน้อย!' })
+  await btn.waitFor({ timeout: 4000 })
+  await page.waitForTimeout(300)
+  if (!gifts++) await shot('gift')
+  await btn.click()
+  await page.waitForTimeout(250)
+}
+/** Wait for the coach mark, accepting any gift card on the way. */
+const waitHole = async (timeout = 10000) => {
+  const t0 = Date.now()
+  while (Date.now() - t0 < timeout) {
+    await acceptGift()
+    if (await page.locator('.bn-hole').count()) return
+    await page.waitForTimeout(200)
+  }
+  throw new Error(`no coach mark at step ${await tutStep()}`)
+}
 /** Tap the middle of the highlighted target (like a player would). */
 const tapHole = async () => {
+  await page.waitForTimeout(250)
+  await acceptGift()
   const hole = page.locator('.bn-hole')
-  await hole.waitFor({ timeout: 10000 })
+  await waitHole()
   await page.waitForTimeout(350)
   const b = await hole.boundingBox()
   await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2)
@@ -89,6 +112,13 @@ await step('new save: intro, sign up, dress up', async () => {
   await click('ไปวัดกันเลย')
 })
 
+await step('0 new save starts empty', async () => {
+  const s = await page.evaluate(() => ({ inv: window.__boondee.game.value.inventory, pets: window.__boondee.game.value.pets }))
+  const n = Object.values(s.inv).reduce((a, b) => a + b, 0)
+  if (n > 0) throw new Error(`bag not empty: ${JSON.stringify(s.inv)}`)
+  if (s.pets.length) throw new Error('free pet')
+})
+
 await step('1 greeting card', async () => {
   await page.waitForSelector('.bn-card.hello', { timeout: 10000 })
   await page.waitForTimeout(900)
@@ -99,7 +129,10 @@ await step('1 greeting card', async () => {
 })
 
 await step('2 walk to the ring', async () => {
-  await page.waitForSelector('.bn-hole')
+  await page.waitForSelector('.bn-gift', { timeout: 5000 })
+  await acceptGift()
+  if ((await page.evaluate(() => window.__boondee.game.value.coins)) < 50) throw new Error('welcome coins missing')
+  await waitHole()
   await page.waitForTimeout(700)
   await shot('walk')
   await tapHole()
@@ -136,7 +169,7 @@ await step('3 light incense', async () => {
 })
 
 await step('4 open the bag', async () => {
-  await page.waitForSelector('.bn-hole')
+  await waitHole()
   await page.waitForTimeout(500)
   await shot('bag')
   await tapHole()
@@ -150,7 +183,7 @@ await step('4 open the bag', async () => {
 })
 
 await step('5 feed the koi', async () => {
-  await page.waitForSelector('.bn-hole', { timeout: 10000 })
+  await waitHole(10000)
   await page.waitForTimeout(600)
   await shot('merit')
   await tapHole()
@@ -177,7 +210,7 @@ await step('5 feed the koi', async () => {
 })
 
 await step('6 pray stage 1', async () => {
-  await page.waitForSelector('.bn-hole', { timeout: 10000 })
+  await waitHole(10000)
   await page.waitForTimeout(400)
   await shot('pray')
   await tapHole()
@@ -206,7 +239,7 @@ await step('6 pray stage 1', async () => {
 })
 
 await step('7 quests and a daily reward', async () => {
-  await page.waitForSelector('.bn-hole', { timeout: 10000 })
+  await waitHole(10000)
   await page.waitForTimeout(500)
   await shot('quests-menu')
   await tapHole() // เมนู
@@ -223,7 +256,7 @@ await step('7 quests and a daily reward', async () => {
 })
 
 await step('8 talk to a quest NPC', async () => {
-  await page.waitForSelector('.bn-hole', { timeout: 10000 })
+  await waitHole(10000)
   await page.waitForTimeout(700)
   await shot('npc')
   await tapHole()
@@ -235,7 +268,7 @@ await step('8 talk to a quest NPC', async () => {
 })
 
 await step('9 Thailand map', async () => {
-  await page.waitForSelector('.bn-hole', { timeout: 10000 })
+  await waitHole(10000)
   await page.waitForTimeout(400)
   await shot('map')
   await tapHole()
@@ -249,7 +282,7 @@ await step('9 Thailand map', async () => {
 })
 
 await step('10 shop free gift', async () => {
-  await page.waitForSelector('.bn-hole', { timeout: 10000 })
+  await waitHole(10000)
   await page.waitForTimeout(400)
   await shot('shop')
   await tapHole() // เมนู
@@ -264,7 +297,7 @@ await step('10 shop free gift', async () => {
 })
 
 await step('11 go home and decorate', async () => {
-  await page.waitForSelector('.bn-hole', { timeout: 10000 })
+  await waitHole(10000)
   await page.waitForTimeout(400)
   await shot('home')
   await tapHole()

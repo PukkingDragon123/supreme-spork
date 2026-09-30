@@ -94,6 +94,34 @@ export const TUT_LAST: TutStepId = 'finish'
 export const TUT_REWARD = { coins: 300, merit: 30, outfit: 'head_botnoi_antenna' } as const
 export const TUT_REPLAY_REWARD = { coins: 30 } as const
 
+/**
+ * What Bot Noi hands out as the tutorial goes (a new save starts with an
+ * empty bag): each gift pops up when its step begins, once per save.
+ */
+export interface TutGift {
+  id: string
+  /** Given when this step starts. */
+  step: TutStepId
+  coins?: number
+  items?: Record<string, number>
+  /** Furniture put into the house storage. */
+  furniture?: Record<string, number>
+  /** What Bot Noi says on the reveal card. */
+  line: string
+}
+
+export const TUT_GIFTS: TutGift[] = [
+  { id: 'welcome', step: 'walk', coins: 50, line: 'กระเป๋ายังว่างอยู่ใช่ไหมครับ? ผมให้ค่าขนมไว้ใช้ก่อนนะ!' },
+  { id: 'incense', step: 'incense', items: { incense: 3, garland: 1 }, line: 'ธูป 3 ดอกกับพวงมาลัย เอาไว้จุดธูปขอพรกันครับ' },
+  { id: 'alms', step: 'bag', items: { rice: 2, curry: 1, banana: 1, water: 1, fish_food: 12 }, line: 'ชุดใส่บาตรกับอาหารปลา ใส่กระเป๋าให้แล้วครับ!' },
+  { id: 'furniture', step: 'decorate', furniture: { plant_monstera: 1, rug_mat: 1 }, line: 'ต้นไม้กับเสื่อผืนแรก เอาไปแต่งห้องกันครับ ^^' },
+]
+
+/** The gift to hand out as `step` begins (null if none or already given). */
+export function giftFor(step: TutStepId | null, given: string[]): TutGift | null {
+  return TUT_GIFTS.find((g) => g.step === step && !given.includes(g.id)) ?? null
+}
+
 export type TutInput =
   | { kind: 'start'; replay?: boolean }
   | { kind: 'event'; event: GameEvent }

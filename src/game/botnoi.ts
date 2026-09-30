@@ -3,9 +3,10 @@
 // Pure logic lives in botnoiTutorial.ts / botnoiTips.ts; the UI in src/ui/botnoi/.
 
 import { game, mutate } from './state'
-import { addCoins, addMerit, grantOutfit } from './actions'
+import { addCoins, addItems, addMerit, grantOutfit } from './actions'
+import { addToStorage } from './house'
 import { defaultBotnoi, type BotnoiState } from './botnoiState'
-import { currentStep, tutReduce, tutReward, type TutInput, type TutStepId } from './botnoiTutorial'
+import { currentStep, giftFor, tutReduce, tutReward, type TutGift, type TutInput, type TutStepId } from './botnoiTutorial'
 
 const bn = (s = game.value): BotnoiState => s.botnoi ?? defaultBotnoi()
 
@@ -65,6 +66,20 @@ export function declineTutorial() {
   mutate((d) => {
     d.botnoi = { ...bn(d), tut: bn(d).tut === 'offer' ? 'skipped' : bn(d).tut }
   })
+}
+
+/** Hand out the tutorial gift for a step (once per save). Returns what was given. */
+export function giveTutorialGift(step: TutStepId | null): TutGift | null {
+  const g = giftFor(step, bn().gifts)
+  if (!g) return null
+  mutate((d) => {
+    const b = bn(d)
+    d.botnoi = { ...b, gifts: [...b.gifts, g.id] }
+    for (const [id, n] of Object.entries(g.furniture ?? {})) d.house = addToStorage(d.house, id, n)
+  })
+  if (g.coins) addCoins(g.coins)
+  if (g.items) addItems(g.items)
+  return g
 }
 
 export function tipSeen(id: string, s = game.value): boolean {

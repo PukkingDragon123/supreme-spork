@@ -1,3 +1,4 @@
+import { OUTFIT_BY_ID } from '../data/outfits'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { game, defaultState, type GameState } from '../state'
 import * as I from '../inventory'
@@ -27,7 +28,8 @@ describe('collectInventory', () => {
     expect(kinds.material).toBe(3)
     expect(kinds.pet).toBe(2)
     expect(kinds.furniture).toBe(1)
-    expect(kinds.outfit).toBe(s.outfits.length)
+    // Starter basics (hair styles, plain clothes) are not listed as items.
+    expect(kinds.outfit).toBe(s.outfits.filter((id) => !OUTFIT_BY_ID[id]?.starter).length)
     const hat = list.find((e) => e.key === 'outfit:hat_elephant')!
     expect(hat.active).toBe(true)
     expect(hat.rarity).toBe('epic')

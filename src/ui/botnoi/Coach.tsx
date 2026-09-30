@@ -22,6 +22,7 @@ import { STEP_UI, type Target } from './tutorialSteps'
 import { ensureWalkSpot, tutStep } from './tutorialCtl'
 import { botFocus, botMenu } from './botStore'
 import { botSfx } from './botSfx'
+import { botGift } from './GiftReveal'
 import type { Line } from './botLines'
 import { signal } from '@preact/signals'
 
@@ -40,7 +41,7 @@ type Place = { kind: 'hidden' } | { kind: 'mini'; text: string } | { kind: 'targ
 
 /** Something is covering the game (a modal, dialog, ad, cutscene or Bot Noi's own sheet). */
 function covered(): boolean {
-  return !!document.querySelector('.modal-backdrop, .qd-backdrop, .ad-overlay, .cine, .bn-sheet-back, .stall')
+  return !!document.querySelector('.modal-backdrop, .qd-backdrop, .ad-overlay, .cine, .bn-sheet-back, .bn-gift, .stall')
 }
 
 function phoneRect(): DOMRect | null {
@@ -150,7 +151,7 @@ function resolve(t: Target, pr: DOMRect, step: string): Box | null {
 }
 
 function where(id: TutStepId): Place {
-  if (covered() || botMenu.value) return { kind: 'hidden' }
+  if (covered() || botMenu.value || (botGift.value && !activity.value && !prayStage.value)) return { kind: 'hidden' }
   const ui = STEP_UI[id]
   if (activity.value || prayStage.value) {
     const m = ui.mini?.()

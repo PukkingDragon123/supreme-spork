@@ -19,14 +19,14 @@ export const QUESTS: NpcQuestDef[] = [
     id: 'bn_1',
     title: 'ภารกิจบอทน้อย ๑: ทักทายวัด',
     stars: 1,
-    intro: ['ปิ๊บ! ภารกิจแรกของเราครับ: ทักทายวัดให้ครบทั้งกลิ่นและเสียง', 'จุดธูปขอพร แล้วไปตีระฆังให้ดังกังวานสัก 3 ครั้ง', 'เกร็ดบุญ: เสียงระฆังเตือนใจให้ตั้งสติ ไม่ใช่ปลุกผมตอนแบตหมดนะครับ ^^'],
+    intro: ['ปิ๊บ! ภารกิจแรกของเราครับ: ทักทายวัดให้ครบทั้งกลิ่นและเสียง ทำเสร็จผมมีของใส่กระเป๋าให้ด้วยนะ', 'จุดธูปขอพร แล้วไปตีระฆังให้ดังกังวานสัก 3 ครั้ง', 'เกร็ดบุญ: เสียงระฆังเตือนใจให้ตั้งสติ ไม่ใช่ปลุกผมตอนแบตหมดนะครับ ^^'],
     replies: { accept: 'จัดไปบอทน้อย!', decline: 'ไว้ก่อนนะ' },
     accepted: 'เย้! ผมจะนับให้เองครับ ปิ๊บ ปิ๊บ',
     steps: [
       { event: 'wish', target: 1, text: 'จุดธูปขอพร 1 ครั้ง', nav: 'incense' },
       { event: 'bell', target: 3, text: 'ตีระฆัง 3 ครั้ง', nav: 'bells' },
     ],
-    reward: { coins: 50, merit: 5 },
+    reward: { coins: 50, merit: 5, items: { incense: 3, fish_food: 6, rice: 2 } },
     done: 'หอมควันธูป เสียงระฆังใส ๆ วัดยิ้มรับเราแล้วครับ!',
   },
   {
@@ -38,7 +38,7 @@ export const QUESTS: NpcQuestDef[] = [
     intro: ['ด่านสวดมนต์ผ่านได้ ด่านถัดไปก็เปิด เหมือนเกมที่ผมชอบเลยครับ', 'ลองสวดให้ผ่านสักด่านนะครับ ผ่านแล้วได้ดาว ดาวเอาไว้ปลดล็อกวัดใหม่ ๆ'],
     replies: { accept: 'สวดเลย!', decline: 'ขอวอร์มเสียงก่อน' },
     steps: [{ event: 'prayer_pass', target: 1, text: 'สวดมนต์ผ่านด่าน 1 ด่าน' }],
-    reward: { coins: 70, merit: 8, items: { incense: 3 } },
+    reward: { coins: 70, merit: 8, items: { incense: 3, garland: 1 }, outfits: ['top_tee_white'] },
     done: 'เสียงสวดเพราะมากครับ ลำโพงผมสั่นเลย (สั่นด้วยความปลื้ม)',
   },
   {
@@ -52,7 +52,7 @@ export const QUESTS: NpcQuestDef[] = [
       { event: 'dog_pet', target: 1, text: 'ลูบหัวน้องหมาวัด 1 ตัว' },
       { event: 'koi_fed', target: 10, text: 'ให้อาหารปลาคาร์ฟ 10 เม็ด', nav: 'pond' },
     ],
-    reward: { coins: 60, merit: 6, items: { fish_food: 5 } },
+    reward: { coins: 60, merit: 6, items: { fish_food: 12, dog_food: 2 }, outfits: ['shoes_sneaker_white'] },
     done: 'น้องหมากระดิกหาง ปลาก็กระดิกหาง ผมไม่มีหางเลยกระดิกเสาอากาศแทนครับ!',
   },
   {
@@ -74,7 +74,7 @@ export const QUESTS: NpcQuestDef[] = [
     requires: ['bn_4'],
     intro: ['งานอาสาในวัดก็เป็นบุญครับ กวาดลาน รดน้ำต้นไม้ ได้ทั้งเหงื่อได้ทั้งบุญ', 'ลองรับงานอาสาสักงานนะครับ ตรงไหนมีไม้กวาดหรือบัวรดน้ำลอยอยู่ แตะได้เลย'],
     steps: [{ event: 'job', target: 1, text: 'ทำงานอาสาในวัด 1 งาน' }],
-    reward: { coins: 80, merit: 8 },
+    reward: { coins: 80, merit: 8, items: { gold_leaf: 1, banana: 2 }, outfits: ['bot_jeans'] },
     done: 'วัดสะอาดเอี่ยม ผมส่องด้วยเซนเซอร์แล้ว ฝุ่นเหลือศูนย์จุดศูนย์ครับ!',
   },
   {
@@ -175,7 +175,7 @@ export const QUESTS: NpcQuestDef[] = [
       { event: 'koi_fed', target: 5, text: 'ให้อาหารปลาคาร์ฟ 5 เม็ด', nav: 'pond' },
       { event: 'chant', target: 1, text: 'สวดมนต์ 1 บท' },
     ],
-    reward: { coins: 40, merit: 5 },
+    reward: { coins: 40, merit: 5, items: { incense: 3, fish_food: 6, rice: 1, dog_food: 1 } },
     done: 'ครบสามบุญแล้วครับ! พรุ่งนี้มาชวนใหม่นะ ผมตั้งนาฬิกาปลุกไว้แล้ว',
   },
 ]

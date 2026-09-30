@@ -162,7 +162,8 @@ export function collectInventory(s: GameState): InvEntry[] {
   const look = s.player.look as unknown as Record<string, string | null | undefined>
   for (const id of s.outfits) {
     const o = OUTFIT_BY_ID[id]
-    if (!o) continue
+    // Hair styles and the plain clothes everyone starts in aren't "items" (the wardrobe still has them).
+    if (!o || o.starter) continue
     add({ kind: 'outfit', id, name: o.name, desc: o.desc, count: 1, rarity: outfitRarity(o), sub: SLOT_LABEL[o.slot], active: look[o.slot] === id })
   }
   for (const id of s.pets) {

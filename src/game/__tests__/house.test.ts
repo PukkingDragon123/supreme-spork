@@ -78,10 +78,12 @@ describe('default house', () => {
     for (const p of h.placed) expect(canPlace(h, p.id, p.x, p.y, p.uid)).toBe(true)
   })
 
-  it('contains the built-ins and a cosy starter set', () => {
+  it('contains the built-ins, the bed and the workbench only (nothing extra at first)', () => {
     const h = defaultHouse()
     for (const f of FIXED_LAYOUT) expect(h.placed.some((p) => p.uid === f.uid)).toBe(true)
-    for (const id of ['bed_simple', 'rug_mat', 'plant_monstera', 'workbench']) expect(h.placed.some((p) => p.id === id)).toBe(true)
+    for (const id of ['bed_simple', 'workbench']) expect(h.placed.some((p) => p.id === id)).toBe(true)
+    for (const id of ['rug_mat', 'plant_monstera', 'side_table']) expect(h.placed.some((p) => p.id === id)).toBe(false)
+    expect(h.storage).toEqual({})
     expect(h.surfaces).toContain(h.wallpaper)
     expect(h.surfaces).toContain(h.floor)
   })
@@ -92,8 +94,11 @@ describe('default house', () => {
   })
 })
 
+/** The bedroom with its full starter furniture (geometry tests; a new save's bedroom is bare). */
+const cosy = (): HouseState => ({ ...defaultHouse(), placed: starterLayout('bedroom').placed })
+
 describe('canPlace', () => {
-  const h = defaultHouse()
+  const h = cosy()
 
   it('rejects out of bounds and fractional positions', () => {
     expect(canPlace(h, 'chair_rattan', -1, 5)).toBe(false)
@@ -162,7 +167,7 @@ describe('place / move / store', () => {
   })
 
   it('moves and flips items, but never built-ins', () => {
-    const h = defaultHouse()
+    const h = cosy()
     const plant = h.placed.find((p) => p.id === 'plant_monstera')!
     const m = moveFurniture(h, plant.uid, 0, 7, true)
     expect(m.placed.find((p) => p.uid === plant.uid)).toMatchObject({ x: 0, y: 7, flip: true })

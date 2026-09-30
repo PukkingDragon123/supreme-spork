@@ -109,7 +109,7 @@ function Sheet({ view: first }: { view: BotMenuView }) {
         )}
         {reward && view === 'quests' && ready && (
           <div class="bn-burst panel gold">
-            <PT text="ภารกิจสำเร็จ!" size={15} weight={600} {...TONE_TEXT.gold} />
+            <PT text="บอทน้อยให้ของขวัญ!" size={15} weight={600} {...TONE_TEXT.gold} />
             <div class="small">{reward.def.title}</div>
             <RewardChips r={{ coins: reward.got.coins, merit: reward.got.merit, items: reward.got.items, outfits: reward.got.outfits, pets: reward.got.pets, collectibles: reward.got.collectibles }} />
           </div>
