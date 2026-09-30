@@ -10,7 +10,7 @@ import { createCanvas, type Color, type Surface } from '../../engine/pixel'
 import { outlineCanvas, type Sprite } from '../../engine/sprite'
 import { avatarSprite, type AvatarLook } from '../avatar'
 import { drawShadow } from '../props'
-import { drawMiniHippo, hprop, hsh, INK, mix, ramp, type HubProp, type Pt } from './hub-kit'
+import { drawMiniHippo, hprop, hsh, INK, mix, pennants, ramp, type HubProp, type Pt } from './hub-kit'
 
 export { INK }
 
@@ -965,4 +965,87 @@ export function nameTag(text: string, maxW = 60, color: Color = '#fffaf0', outli
   const crop = createCanvas(w, y1 - y0 + 1)
   crop.getContext('2d')!.drawImage(c, 0, -y0)
   return outlineCanvas(crop, outline, true)
+}
+
+// ---------------------------------------------------------------------------
+// The back boundary of the fair: a zinc hoarding plastered with show posters,
+// a bunting line on top (the string lights are drawn by FairLights) and a big
+// lit billboard in the middle.
+
+/** Painted zinc fence across 0..w from y0 (top) to y1 (ground line). */
+export function fairFence(g: Surface, w: number, y0: number, y1: number, night: boolean) {
+  const h = y1 - y0
+  const zinc = night ? '#5a6478' : '#9aa6b8'
+  const zincL = mix(zinc, '#ffffff', 0.22)
+  const zincD = mix(zinc, INK, 0.28)
+  g.rect(0, y0, w, h, zinc)
+  for (let x = 0; x < w; x += 4) {
+    g.vline(x, y0, y1 - 1, zincL)
+    g.vline(x + 2, y0, y1 - 1, zincD)
+  }
+  // Rust streaks and the top rail.
+  for (let i = 0; i < 22; i++) {
+    const v = hsh(i, 5, 71)
+    g.vline(v % w, y0 + 3, y0 + 4 + ((v >> 3) % Math.max(2, h - 8)), night ? '#6a5a58' : '#b08a6e')
+  }
+  g.rect(0, y0, w, 2, night ? '#3a3048' : '#5a4a4e')
+  g.rect(0, y0 + 2, w, 1, zincD)
+  // Show posters (likay, boxing, the contest, a lottery ad) in pseudo lettering.
+  const POSTERS: Color[] = ['#e8514a', '#ffd23f', '#5a8de0', '#ff9fc0', '#6cc36a', '#c8a0ff', '#f58f35']
+  let i = 0
+  for (let x = 6; x < w - 20; x += 24 + (hsh(x, 1, 9) % 14)) {
+    i++
+    if (x > w / 2 - 66 && x < w / 2 + 50) continue
+    const c = POSTERS[i % POSTERS.length]
+    const pw = 14 + (hsh(i, 2, 9) % 6)
+    const ph = Math.min(h - 10, 15 + (hsh(i, 3, 9) % 5))
+    const py = y0 + 5 + (hsh(i, 4, 9) % 3)
+    g.rect(x, py, pw, ph, c)
+    g.rect(x, py + ph - 4, pw, 4, mix(c, INK, 0.25))
+    g.rect(x + 2, py + 2, pw - 4, Math.max(3, ph - 9), mix(c, '#fffaf0', 0.55))
+    g.circle(x + pw / 2, py + 2 + (ph - 9) / 2, 2, mix(c, INK, 0.1))
+    letters(g, x + 1, py + ph - 4, pw - 2, '#fffaf0', i + 40)
+    g.px(x + pw - 1, py, zinc)
+    g.px(x + pw - 2, py, zinc)
+    g.px(x + pw - 1, py + 1, zinc)
+  }
+  // Kick plate and its shadow on the ground.
+  g.rect(0, y1 - 3, w, 3, night ? '#3a3048' : '#6a5a5e')
+  g.alpha(0.3)
+  g.rect(0, y1, w, 3, INK)
+  g.alpha(1)
+  pennants(g, 0, y0 + 2, w / 2, y0 + 2, 4, BULBS)
+  pennants(g, w / 2, y0 + 2, w, y0 + 2, 4, BULBS)
+}
+
+/** Billboard over the back fence, "งานวัดศรีบุญดี ประจำปี" (anchor: centre bottom). Hooks: `bulbs`. */
+export function fairBillboard(): LitProp {
+  const W = 100
+  const H = 48
+  return litPair('fair:billboard', W, H, W / 2, H - 1, (g, hooks, lit) => {
+    if (!lit) {
+      for (const x of [16, W - 20]) {
+        g.rect(x, 32, 4, H - 32, '#5a4a4e')
+        g.vline(x, 32, H - 1, '#8a7a7e')
+      }
+    }
+    g.rect(2, 2, W - 4, 30, '#8a2335')
+    g.frame(2, 2, W - 4, 30, '#ffd54f')
+    g.frame(4, 4, W - 8, 26, '#e8514a')
+    letters(g, 22, 8, W - 44, '#fff6c8', 51)
+    letters(g, 26, 15, W - 52, '#ffd54f', 52)
+    letters(g, 34, 22, W - 68, '#ff9fc0', 53)
+    for (const x of [13, W - 13]) {
+      g.circle(x, 17, 5, '#ff9fc0')
+      g.circle(x, 16, 3, '#ffc4d8')
+      g.px(x, 12, '#fffaf0')
+      g.rect(x - 4, 22, 9, 2, '#6cc36a')
+    }
+    const bulbs: Pt[] = []
+    for (let x = 4; x < W - 2; x += 5) {
+      bulbs.push({ x, y: 1 })
+      bulbs.push({ x, y: 32 })
+    }
+    hooks.bulbs = bulbs
+  })
 }

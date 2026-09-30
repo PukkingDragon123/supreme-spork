@@ -307,7 +307,7 @@ export const HUB_QUESTS: NpcQuestDef[] = [
     intro: ['โอ้ละหนอ~ แม่ยกคนงามมาแล้ว', 'พี่จะขึ้นเวทีอีกสิบนาที แต่ยังหาแม่ยกคล้องมาลัยไม่ได้', 'ช่วยทำบุญหน้าวัดแล้วเล่นเกมเป็นกำลังใจให้พี่หน่อย'],
     replies: { accept: 'เป็นแม่ยกให้เลย!', decline: 'ไม่ใช่สายลิเก' },
     steps: [
-      { event: 'donate', target: 1, text: 'ทำบุญที่ตู้หน้าโบสถ์', map: 'fair_temple' },
+      { event: 'donate', target: 1, text: 'ทำบุญที่ตู้บุญงานวัด', map: 'fair_temple' },
       { event: 'fair_game', target: 2, text: 'เล่นเกมงานวัด 2 รอบ', map: 'fair_temple' },
     ],
     reward: { coins: 80, merit: 20, collectibles: { fair_likay_doll: 1 } },
