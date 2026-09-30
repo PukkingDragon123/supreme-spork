@@ -21,10 +21,12 @@ export interface HubsState {
   prizes: Record<string, number>
   /** Market passport reward claimed (all six hubs stamped). */
   passport: boolean
+  /** Prepaid fair rounds bought as deals (booth / `ride:<id>` key → rounds left). */
+  passes: Record<string, number>
 }
 
 export function defaultHubs(): HubsState {
-  return { visited: [], days: {}, visits: 0, tickets: 0, ticketsTotal: 0, best: {}, plays: { day: '', n: {} }, prizes: {}, passport: false }
+  return { visited: [], days: {}, visits: 0, tickets: 0, ticketsTotal: 0, best: {}, plays: { day: '', n: {} }, prizes: {}, passport: false, passes: {} }
 }
 
 const num = (v: unknown, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : d)
@@ -56,5 +58,6 @@ export function normalizeHubs(raw: unknown): HubsState {
     plays: { day: typeof plays.day === 'string' ? plays.day : '', n: numMap(plays.n) },
     prizes: numMap(r.prizes),
     passport: r.passport === true,
+    passes: Object.fromEntries(Object.entries(numMap(r.passes)).map(([k, v]) => [k, Math.max(0, Math.min(99, Math.floor(v)))])),
   }
 }

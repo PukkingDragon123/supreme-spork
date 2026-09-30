@@ -17,7 +17,7 @@ const RARITY_TH: Record<string, string> = { common: 'ธรรมดา', uncomm
 const RARITY_TONE: Record<string, string> = { common: '', uncommon: 'green', rare: 'blue', epic: 'pink', legendary: 'gold' }
 
 const iconUrls = new Map<string, string>()
-function iconUrl(motif: string) {
+export function prizeIconUrl(motif: string) {
   let u = iconUrls.get(motif)
   if (!u) {
     u = spriteDataUrl(prizeIcon(motif), 3)
@@ -34,7 +34,7 @@ function PrizeCard({ p }: { p: FairPrize }) {
   const col = p.kind === 'collectible' ? HUB_COLLECTIBLE_BY_ID[p.ref] : null
   return (
     <div class={`panel fairx-prize ${avail ? '' : 'owned'}`}>
-      <img class="px fairx-prize-img" src={iconUrl(p.art)} alt="" width={60} height={60} />
+      <img class="px fairx-prize-img" src={prizeIconUrl(p.art)} alt="" width={60} height={60} />
       <div class="fairx-name">{p.name}</div>
       {col && <span class={`chip small fairx-rar ${RARITY_TONE[col.rarity] ?? ''}`}>{RARITY_TH[col.rarity]}</span>}
       <div class="fairx-desc">{p.desc}</div>

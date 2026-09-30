@@ -8,9 +8,13 @@ import type { Surface } from '../../engine/pixel'
 import { rand, pick } from '../../engine/rng'
 import { haptic } from '../../engine/audio'
 import { JobScene, type JobSummary } from '../jobs/base'
-import { boothBackdrop, drawBulbs, drawCorkGun, drawCorkPrize, drawCrosshair, type CorkPrizeKind } from './art'
+import { boothBackdrop, drawBulbs, drawCorkPrize, drawCrosshair, type CorkPrizeKind } from './art'
+import { BoothDress } from './booth-dress'
+import { VENDORS } from './vendors'
+import { FAIR_GAMES } from '../../game/hubs'
 import { fairSfx } from './sound'
 import { CORK_PRIZES, CORK_TARGET, corkDamage } from './rules'
+import { drawHeldGun, drawPlayer, placePlayer } from './player'
 
 const CORKS = 10
 const FLIGHT = 0.12
@@ -39,6 +43,7 @@ interface Shot {
 }
 
 export class CorkScene extends JobScene {
+  private dress = new BoothDress(this, { vendor: VENDORS.cork, color: '#43905a', sign: FAIR_GAMES.cork.booth })
   duration = 40
   thresholds: [number, number, number] = [4 / CORK_TARGET, 9 / CORK_TARGET, 1]
   score = 0
@@ -84,6 +89,7 @@ export class CorkScene extends JobScene {
     this.shelves = [0.26, 0.44, 0.62].map((f) => Math.round(this.top + h * f))
     this.rail = Math.round(this.top + h * 0.74)
     this.bg = boothBackdrop(this.w, this.h, this.top + 20, '#43905a', '#2a4a3a')
+    this.dress.anchor(this.top + 20)
     if (!this.aiming) this.aim = { x: this.cx, y: this.shelves[1] - 8 }
   }
 
@@ -121,6 +127,18 @@ export class CorkScene extends JobScene {
     return { kind: 'duck', x, y: -1, hp: 1, color: '#ffd23f', lean: 0, falling: 0, fvx: 0, fvy: 0, dy: 0, gone: false }
   }
 
+  /** Where the gun is held (between your hands) and where its muzzle points. */
+  private grip() {
+    // Shouldered on the right, beside your cheek.
+    const p = placePlayer('act_f_aim', this.cx, this.bottom)
+    return { x: p.x + 27, y: p.y + 24 }
+  }
+  private muzzle(s: { x: number; y: number }) {
+    const b = this.grip()
+    const a = Math.atan2(s.y - b.y, s.x - b.x)
+    return { x: b.x + Math.cos(a) * 24, y: b.y + Math.sin(a) * 24 }
+  }
+
   private baseY(p: Prize) {
     return p.kind === 'duck' ? this.rail : this.shelves[p.y]
   }
@@ -141,13 +159,15 @@ export class CorkScene extends JobScene {
       const s = this.sight()
       this.corks--
       this.recoil = 1
-      this.shots.push({ x0: this.cx, y0: this.bottom - 30, x1: s.x, y1: s.y, t: 0 })
+      const m = this.muzzle(s)
+      this.shots.push({ x0: m.x, y0: m.y, x1: s.x, y1: s.y, t: 0 })
       fairSfx.cork()
       this.shake(0.08, 1)
     } else if (e.type === 'cancel') this.aiming = false
   }
 
   protected tick(dt: number) {
+    this.dress.update(dt)
     this.recoil = Math.max(0, this.recoil - dt * 5)
     for (const p of [...this.prizes, ...this.ducks]) {
       p.lean *= Math.exp(-dt * 6)
@@ -191,6 +211,7 @@ export class CorkScene extends JobScene {
         this.say(p.x, by - d.h - 8, p.kind === 'teddy' ? `หมียักษ์ตก! +${d.pts}` : p.kind === 'duck' ? `เป็ด! +${d.pts}` : `ตก! +${d.pts}`, 'good', 1)
         fairSfx.knock()
         haptic(16)
+        this.dress.cheer(p.kind === 'teddy' || p.kind === 'duck' || p.kind === 'hippo')
         if (p.kind === 'teddy') this.flash(0.15)
       } else {
         this.say(p.x, by - d.h - 8, p.kind === 'teddy' ? pick(['หมีโยก!', 'อีกนิด!', 'เล็งหัว!']) : 'โยก!', 'info', 0.8)
@@ -200,12 +221,14 @@ export class CorkScene extends JobScene {
     }
     // Missed: the cork bounces off the back wall.
     for (let i = 0; i < 4; i++) this.particles.add({ kind: 'dot', x, y, vx: rand(-20, 20), vy: rand(-30, -10), g: 90, max: 0.5, color: '#c8a878' })
+    this.dress.oops()
     if (Math.random() < 0.4) this.say(x, y - 10, pick(['วืด!', 'พลาด!', 'จุกเบี้ยว!']), 'warn', 0.8)
     fairSfx.miss()
   }
 
   protected draw(g: Surface) {
     if (this.bg) g.draw(this.bg, 0, 0)
+    this.dress.drawBack(g, this.t)
     drawBulbs(g, this.w, this.top + 6, this.t)
     for (const y of this.shelves) {
       g.rect(12, y, this.w - 24, 3, '#c8a878')
@@ -230,7 +253,14 @@ export class CorkScene extends JobScene {
     }
     const sight = this.sight()
     if (this.playing) drawCrosshair(g, sight.x, sight.y, this.t, this.aiming)
-    drawCorkGun(g, this.cx, this.bottom - 12, sight.x, sight.y, this.recoil)
+    this.dress.drawPeople(g, this.t)
+    // You, from behind, the cork gun shouldered and kicking back on each shot.
+    const done = this.corks <= 0 && this.shots.length === 0
+    drawPlayer(g, done ? (this.hits >= 5 ? 'act_f_cheer' : 'act_f_oops') : 'act_f_aim', this.cx, this.bottom, { dy: Math.round(this.recoil * 2) })
+    if (!done) {
+      const b = this.grip()
+      drawHeldGun(g, b.x, b.y + Math.round(this.recoil * 2), sight.x, sight.y, this.recoil)
+    }
     for (let i = 0; i < this.corks; i++) {
       g.circle(10 + i * 5, this.bottom - 8, 1.8, '#c8a878')
       g.px(10 + i * 5, this.bottom - 9, '#e8d8b8')

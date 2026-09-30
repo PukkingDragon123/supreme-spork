@@ -17,7 +17,7 @@ const W = '#fffaf0'
 const SKIN = '#f0bd90'
 const SKIN_D = '#d6966c'
 
-interface MP {
+export interface MP {
   m: Color
   mL: Color
   mD: Color
@@ -44,7 +44,7 @@ function ramp(pal: [string, string, string]): MP {
   }
 }
 
-type Motif = (g: Surface, p: MP) => void
+export type Motif = (g: Surface, p: MP) => void
 
 // Small helpers ---------------------------------------------------------------
 
@@ -1276,6 +1276,11 @@ const MOTIFS: Record<string, Motif> = {
 const ALIAS: Record<string, string> = { lotus: 'flower', fish: 'betta', temple: 'sala', hippo_bite: 'hippo', orange: 'citrus', stupa: 'chedi', cup: 'boba' }
 
 export const MOTIF_NAMES = Object.keys(MOTIFS)
+
+/** Add motifs from other systems (e.g. the temple fair's goldfish and teddy). Existing names win. */
+export function registerMotifs(extra: Record<string, Motif>) {
+  for (const [k, fn] of Object.entries(extra)) if (!MOTIFS[k]) MOTIFS[k] = fn
+}
 
 export function hasMotif(m: string): boolean {
   return !!MOTIFS[m] || !!ALIAS[m]

@@ -9,8 +9,12 @@ import { rand, pick } from '../../engine/rng'
 import { haptic } from '../../engine/audio'
 import { JobScene, type JobSummary } from '../jobs/base'
 import { BALLOON_COLORS, boothBackdrop, drawBalloon, drawBulbs, drawDart, type BalloonKind } from './art'
+import { BoothDress } from './booth-dress'
+import { VENDORS } from './vendors'
+import { FAIR_GAMES } from '../../game/hubs'
 import { fairSfx } from './sound'
 import { balloonPoints, DART_TARGET } from './rules'
+import { drawPlayer, placePlayer } from './player'
 
 const DARTS = 12
 const FLIGHT = 0.22
@@ -42,6 +46,7 @@ interface Flying {
 }
 
 export class DartsScene extends JobScene {
+  private dress = new BoothDress(this, { vendor: VENDORS.darts, color: '#e8514a', sign: FAIR_GAMES.darts.booth })
   duration = 35
   thresholds: [number, number, number] = [6 / DART_TARGET, 12 / DART_TARGET, 1]
   score = 0
@@ -54,6 +59,8 @@ export class DartsScene extends JobScene {
   stuck: { x: number; y: number; ang: number }[] = []
   hippo: { x: number; y: number; dir: 1 | -1; alive: boolean } | null = null
   private hippoT = 5
+  /** Seconds left of the follow-through pose after a throw. */
+  private throwT = 0
   private bg: HTMLCanvasElement | null = null
   private boardTop = 60
   private boardBot = 260
@@ -82,6 +89,7 @@ export class DartsScene extends JobScene {
     this.boardX0 = 12
     this.boardX1 = this.w - 12
     this.bg = boothBackdrop(this.w, this.h, this.boardTop - 4, '#e8514a', '#e8d0a8')
+    this.dress.anchor(this.boardTop - 4)
     const n = this.rows.length || 5
     const gap = (this.boardBot - this.boardTop - 30) / n
     this.rows.forEach((r, i) => (r.y = Math.round(this.boardTop + 30 + gap * i + gap / 2)))
@@ -126,11 +134,16 @@ export class DartsScene extends JobScene {
     if (e.type !== 'down' || this.darts <= 0) return
     if (e.y > this.boardBot + 10 || e.y < this.boardTop - 6) return
     this.darts--
-    this.flying.push({ x0: this.cx, y0: this.bottom - 22, x1: e.x, y1: e.y, t: 0 })
+    // The dart leaves your raised hand.
+    const h = placePlayer('act_f_throw', this.cx + 14, this.bottom).hand
+    this.flying.push({ x0: h.x, y0: h.y, x1: e.x, y1: e.y, t: 0 })
+    this.throwT = 0.25
     fairSfx.tick()
   }
 
   protected tick(dt: number) {
+    this.dress.update(dt)
+    this.throwT = Math.max(0, this.throwT - dt)
     const width = this.boardX1 - this.boardX0
     for (const r of this.rows) {
       r.offset += r.dir * r.speed * dt * (this.playing ? 1 : 0.4)
@@ -185,6 +198,7 @@ export class DartsScene extends JobScene {
           this.say(x, y - 10, pick(['ป๊อง!', 'ลูกโป่งเหล็ก!', 'แตกยากกว่าใจแฟนเก่า']), 'warn', 1)
           fairSfx.knock()
           this.shake(0.12, 1)
+          this.dress.oops()
           return
         }
         b.alive = false
@@ -198,6 +212,7 @@ export class DartsScene extends JobScene {
     if (f.y1 > this.boardTop && f.y1 < this.boardBot) this.stuck.push({ x: f.x1, y: f.y1, ang })
     if (this.stuck.length > 14) this.stuck.shift()
     fairSfx.thunk()
+    this.dress.oops()
     if (Math.random() < 0.4) this.say(f.x1, f.y1 - 10, pick(['พลาด!', 'เกือบแล้ว!', 'อีกนิด!']), 'info', 0.8)
   }
 
@@ -214,6 +229,7 @@ export class DartsScene extends JobScene {
     this.particles.sparkles(x, y, kind === 'normal' ? 4 : 10, kind === 'gold' ? '#fff3a6' : '#ffffff', 10)
     const txt = kind === 'hippo' ? `หมูดึ๋ง! +${pts}` : kind === 'gold' ? `ทอง! +${pts}` : this.combo >= 3 ? `คอมโบ ${this.combo}! +${pts}` : `+${pts}`
     this.say(x, y - 12, txt, 'good', 0.9)
+    this.dress.cheer(kind !== 'normal' || this.combo >= 5)
     fairSfx.pop()
     haptic(12)
     if (kind !== 'normal') this.flash(0.12)
@@ -221,6 +237,7 @@ export class DartsScene extends JobScene {
 
   protected draw(g: Surface) {
     if (this.bg) g.draw(this.bg, 0, 0)
+    this.dress.drawBack(g, this.t)
     drawBulbs(g, this.w, this.boardTop - 16, this.t)
     // Board frame rails.
     for (const r of this.rows) g.hline(this.boardX0, this.boardX1, r.y + 12, '#c8a878')
@@ -250,12 +267,11 @@ export class DartsScene extends JobScene {
       const ny = f.y0 + (f.y1 - f.y0) * Math.min(1, k + 0.05) - Math.sin(Math.min(1, k + 0.05) * Math.PI) * 10
       drawDart(g, x, y, Math.atan2(ny - y, nx - x), 10)
     }
-    // The thrower's hand with the next dart, and the darts left.
-    const hx = this.cx
-    const hy = this.bottom - 14
-    if (this.darts > 0) drawDart(g, hx + 2, hy - 14, -Math.PI / 2 - 0.15, 12)
-    g.circle(hx, hy, 5, '#f0bd90')
-    g.circle(hx + 2, hy - 3, 2.5, '#f0bd90')
+    this.dress.drawPeople(g, this.t)
+    // You, from behind: dart cocked by your ear, then the follow-through.
+    const pose = this.throwT > 0 ? 'act_f_throw' : this.darts > 0 ? 'act_f_ready' : this.hits >= 6 ? 'act_f_cheer' : 'act_f_oops'
+    const me = drawPlayer(g, pose, this.cx + 14, this.bottom, { dy: this.throwT > 0.15 ? -1 : 0 })
+    if (this.darts > 0 && this.throwT <= 0) drawDart(g, me.hand.x, me.hand.y - 9, -Math.PI / 2 - 0.25, 10)
     for (let i = 0; i < this.darts; i++) {
       const x = 10 + i * 6
       drawDart(g, x, this.bottom - 30, -Math.PI / 2, 8)
