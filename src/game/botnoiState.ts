@@ -32,10 +32,12 @@ export interface BotnoiState {
   tip: number
   /** Times the player tapped Bot Noi (for a few easter-egg lines). */
   pokes: number
+  /** Tutorial gifts already handed out (ids of TUT_GIFTS; never twice). */
+  gifts: string[]
 }
 
 export function defaultBotnoi(): BotnoiState {
-  return { tut: 'new', step: null, steps: [], finished: 0, rewarded: false, replay: false, seen: [], hidden: false, joke: 0, tip: 0, pokes: 0 }
+  return { tut: 'new', step: null, steps: [], finished: 0, rewarded: false, replay: false, seen: [], hidden: false, joke: 0, tip: 0, pokes: 0, gifts: [] }
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
@@ -66,6 +68,7 @@ export function normalizeBotnoi(raw: unknown, ctx: { onboarded?: boolean } = {})
   b.joke = nat(raw.joke)
   b.tip = nat(raw.tip)
   b.pokes = nat(raw.pokes)
+  b.gifts = strs(raw.gifts)
   if (b.tut !== 'active') b.step = null
   return b
 }

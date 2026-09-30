@@ -52,6 +52,7 @@ describe('merit and coins', () => {
   })
 
   it('buys packs of consumables', () => {
+    game.value = { ...game.value, coins: 100 }
     const before = A.count('fish_food')
     expect(A.buyItem('fish_food')).toBe(true)
     expect(A.count('fish_food')).toBe(before + 12)

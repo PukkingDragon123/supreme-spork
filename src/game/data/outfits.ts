@@ -2060,6 +2060,18 @@ export const OUTFITS: OutfitItem[] = [
   ...BEACH_OUTFITS,
 ]
 
+/**
+ * A new save owns only the hair styles and the plain clothes it is wearing
+ * (DEFAULT_LOOK). The other old freebies are sold cheaply or come from
+ * บอทน้อย's quests; saves that already own them keep them.
+ */
+export const BASIC_CLOTHES = ['top_white', 'bot_khaki']
+for (const o of OUTFITS) {
+  if (!o.starter || o.slot === 'hair' || BASIC_CLOTHES.includes(o.id)) continue
+  o.starter = false
+  if (!o.price) o.price = o.slot === 'shoes' ? 20 : 30
+}
+
 export const OUTFIT_BY_ID: Record<string, OutfitItem> = Object.fromEntries(OUTFITS.map((o) => [o.id, o]))
 
 export const STARTER_OUTFITS = OUTFITS.filter((o) => o.starter).map((o) => o.id)

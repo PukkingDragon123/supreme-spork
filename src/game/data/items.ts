@@ -68,18 +68,12 @@ export const ITEMS: Item[] = [
 
 export const ITEM_BY_ID: Record<string, Item> = Object.fromEntries(ITEMS.map((i) => [i.id, i]))
 
-/** Items the player starts with. */
-export const STARTER_INVENTORY: Record<string, number> = {
-  rice: 3,
-  curry: 1,
-  banana: 2,
-  water: 2,
-  incense: 6,
-  garland: 1,
-  fish_food: 12,
-  dog_food: 2,
-  gold_leaf: 1,
-}
+/**
+ * Items the player starts with: nothing. บอทน้อย hands out the first
+ * incense, fish food and alms set during the tutorial and his quests
+ * (src/game/botnoiTutorial.ts TUT_GIFTS, data/npcQuests/botnoi.ts).
+ */
+export const STARTER_INVENTORY: Record<string, number> = {}
 
 export interface Boost {
   id: string

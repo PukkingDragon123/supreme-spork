@@ -247,7 +247,8 @@ export function defaultState(): GameState {
     beach: defaultBeach(),
     player: { name: 'สายบุญ', birthDay: new Date().getDay(), friendCode: makeFriendCode(), look: { ...DEFAULT_LOOK } },
     merit: 0,
-    coins: 100,
+    // Nothing at first: บอทน้อย's welcome gift and the daily login pay the first coins.
+    coins: 0,
     inventory: { ...STARTER_INVENTORY },
     outfits: [...STARTER_OUTFITS],
     areas: ['wat'],
