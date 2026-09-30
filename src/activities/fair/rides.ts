@@ -4,10 +4,10 @@
 // shared daily counter `hubs.plays` (keys `ride:<id>`), the fair_game event,
 // a little merit (the takings go to the temple) and souvenirs.
 
-import { game, mutate } from '../../game/state'
+import { game } from '../../game/state'
 import { addMerit, track } from '../../game/actions'
 import { grantCollectible, ownedCount } from '../../game/collectibles'
-import { toast } from '../../game/events'
+import { nextQuote, payRound } from './deals'
 import { dayKey } from '../../game/time'
 
 export type RideId = 'wheel' | 'carousel' | 'claw' | 'likay'
@@ -63,9 +63,11 @@ export const RIDES: Record<RideId, RideDef> = {
   },
 }
 
+export const rideKey = (id: RideId) => `ride:${id}`
+
 export const RIDE_IDS = Object.keys(RIDES) as RideId[]
 
-const key = (id: RideId) => `ride:${id}`
+const key = rideKey
 
 export function ridePlaysToday(id: RideId, s = game.value): number {
   return s.hubs.plays.day === dayKey() ? (s.hubs.plays.n[key(id)] ?? 0) : 0
@@ -77,23 +79,12 @@ export function rideCostFor(def: Pick<RideDef, 'price'>, plays: number): number 
 }
 
 export function rideCost(id: RideId): number {
-  return rideCostFor(RIDES[id], ridePlaysToday(id))
+  return nextQuote(key(id), RIDES[id].price).cost
 }
 
-/** Pay for a go (the first each day is free). False if you can't afford it. */
+/** Pay for a go (free first go, prepaid deals, happy hour; see deals.ts). False if you can't afford it. */
 export function startRide(id: RideId): boolean {
-  const cost = rideCost(id)
-  if (cost > 0 && game.value.coins < cost) {
-    toast('บุญคอยน์ไม่พอค่าตั๋วรอบนี้', 'coin', 'warn')
-    return false
-  }
-  mutate((d) => {
-    const day = dayKey()
-    if (d.hubs.plays.day !== day) d.hubs.plays = { day, n: {} }
-    d.hubs.plays.n[key(id)] = (d.hubs.plays.n[key(id)] ?? 0) + 1
-    if (cost > 0) d.coins -= cost
-  })
-  return true
+  return payRound(key(id), RIDES[id].price).ok
 }
 
 export interface RideResult {

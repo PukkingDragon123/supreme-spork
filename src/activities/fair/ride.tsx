@@ -19,6 +19,8 @@ import { fairSfx } from './sound'
 import { finishRide, rideCost, RIDES, startRide, type RideId, type RideResult } from './rides'
 import type { FairShow, ShowAction } from './show'
 import { setDoing } from './live'
+import { BriefCard } from './brief'
+import { rideBooth } from './vendors'
 
 export function CollectibleChip({ id, big }: { id: string; big?: boolean }) {
   const c = COLLECTIBLE_BY_ID[id]
@@ -278,7 +280,8 @@ export function FairRideRun({ id, make, paid, onAgain }: { id: RideId; make: () 
           </div>
         </div>
       )}
-      {(intro || help) && !result && <RideCard id={id} again={help} onStart={help ? () => setHelp(false) : start} onClose={intro ? closeActivity : () => setHelp(false)} />}
+      {intro && !help && !result && <BriefCard b={rideBooth(id)} onPlay={start} onClose={closeActivity} onHowTo={() => setHelp(true)} />}
+      {help && !result && <RideCard id={id} again onStart={() => setHelp(false)} onClose={() => setHelp(false)} />}
       {result && <RideResultCard id={id} summary={result.summary} res={result.res} photo={result.photo} onAgain={again} />}
     </div>
   )

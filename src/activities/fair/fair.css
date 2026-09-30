@@ -89,3 +89,28 @@
 @keyframes fairx-pulse { 50% { filter: brightness(1.35); } }
 @keyframes fairx-wiggle { 0% { transform: scale(0.6) rotate(-6deg); } 50% { transform: scale(1.12) rotate(3deg); } 100% { transform: scale(1) rotate(0); } }
 @keyframes fairx-nudge { from { transform: rotate(-2deg) scale(1.02); } to { transform: rotate(2deg) scale(1.06); } }
+
+/* Vendor brief card (before every booth / ride). */
+.fairx-vendor { display: flex; align-items: center; gap: 10px; margin: 12px 0 6px; text-align: left; }
+.fairx-vendor-face { flex: none; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #fff3a6, #ffb3c9 70%, #e8709e); box-shadow: 0 0 0 3px #3a2838, 0 0 0 5px var(--gold); image-rendering: pixelated; animation: fairx-bob 1.6s ease-in-out infinite alternate; }
+.fairx-vendor .grow { flex: 1; min-width: 0; }
+.fairx-vendor-name { font-size: 15px; line-height: 1.3; }
+.fairx-vendor-say { position: relative; margin-top: 4px; padding: 6px 10px; background: #fffaf0; border-radius: 6px; box-shadow: 0 0 0 2px #3a2838; font-size: 14px; line-height: 1.35; font-weight: 600; }
+.fairx-vendor-say::before { content: ''; position: absolute; left: -13px; top: 10px; border: 6px solid transparent; border-right: 7px solid #3a2838; }
+.fairx-what { margin: 4px 0 8px; line-height: 1.4; }
+.fairx-price { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 10px; margin-bottom: 8px; border-radius: 4px; background: repeating-linear-gradient(135deg, #fff3a6 0 10px, #ffe58a 10px 20px); box-shadow: 0 0 0 2px #b8742a; }
+.fairx-price-big { display: inline-flex; align-items: center; gap: 6px; font-size: 18px; font-weight: 700; }
+.fairx-price-big.green { color: var(--leaf-d); }
+.fairx-sec { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14px; margin: 4px 0; }
+.fairx-deals { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.fairx-deal { text-align: left; display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 4px; background: rgba(255, 250, 240, 0.8); box-shadow: 0 0 0 2px var(--edge); font-size: 13px; }
+.fairx-deal .grow { flex: 1; min-width: 0; line-height: 1.3; }
+.fairx-deal.perk.on { box-shadow: 0 0 0 2px var(--leaf); background: #eaffdf; }
+.fairx-deal.perk.used { opacity: 0.6; }
+.fairx-deal.fairx-pack { background: linear-gradient(90deg, #ffe1ea, #fff6e4); box-shadow: 0 0 0 2px var(--lotus-d); }
+.fairx-brief-prizes { margin-bottom: 6px; }
+.fairx-prize-strip { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: thin; }
+.fairx-mini { flex: none; width: 84px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px 4px; border-radius: 4px; background: #fffaf0; box-shadow: 0 0 0 2px #3a2838; text-align: center; }
+.fairx-mini img { image-rendering: pixelated; }
+.fairx-mini-name { font-size: 11px; line-height: 1.2; min-height: 26px; }
+@keyframes fairx-bob { from { transform: translateY(0) rotate(-2deg); } to { transform: translateY(-3px) rotate(2deg); } }

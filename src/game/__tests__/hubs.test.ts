@@ -68,6 +68,7 @@ describe('saved hub state', () => {
       plays: { day: '', n: { darts: 2 } },
       prizes: { fair_goldfish: 2 },
       passport: false,
+      passes: {},
     })
   })
 

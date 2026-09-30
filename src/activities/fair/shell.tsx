@@ -4,7 +4,10 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { game } from '../../game/state'
-import { FAIR_FULL_ROUNDS, fairPlayCost, fairPlaysToday, finishFairRound, startFairRound, ticketsFor, type FairGameDef, type FairRoundResult } from '../../game/hubs'
+import { FAIR_FULL_ROUNDS, FAIR_PLAY_COST, fairPlaysToday, finishFairRound, ticketsFor, type FairGameDef, type FairRoundResult } from '../../game/hubs'
+import { nextQuote, payRound } from './deals'
+import { gameBooth } from './vendors'
+import { BriefCard } from './brief'
 import { closeActivity, coinStoreOpen, openActivity } from '../../ui/store'
 import { useStage } from '../kit'
 import { PBtn, Window } from '../../ui/components/kit'
@@ -49,7 +52,7 @@ interface Hud {
 
 function CostLine({ def }: { def: FairGameDef }) {
   const plays = fairPlaysToday(def.id)
-  const cost = fairPlayCost(plays)
+  const cost = nextQuote(def.id, FAIR_PLAY_COST).cost
   return (
     <div class="fairx-cost small">
       {cost === 0 ? <span class="chip green small">รอบแรกของวันเล่นฟรี!</span> : <span class="chip small">ค่าเล่นรอบละ <Coin n={cost} size={14} /></span>}
@@ -62,7 +65,7 @@ function CostLine({ def }: { def: FairGameDef }) {
 
 /** How-to card for a fair game (goal, three steps, price and best score). */
 export function FairGoalCard({ def, onStart, onClose, again }: { def: FairGameDef; onStart: () => void; onClose: () => void; again?: boolean }) {
-  const cost = fairPlayCost(fairPlaysToday(def.id))
+  const cost = nextQuote(def.id, FAIR_PLAY_COST).cost
   const best = game.value.hubs.best[def.id] ?? 0
   return (
     <Window
@@ -136,7 +139,7 @@ function FairResult({
   useEffect(() => {
     fairSfx.tada()
   }, [])
-  const cost = fairPlayCost(fairPlaysToday(def.id))
+  const cost = nextQuote(def.id, FAIR_PLAY_COST).cost
   return (
     <div class="modal-backdrop celebrate">
       <FxCanvas mode="sparkle" />
@@ -282,7 +285,7 @@ export function FairRun({ def, make, onAgain, paid, tw = 190 }: { def: FairGameD
   }, [intro, help, quit, scene.current])
 
   const start = () => {
-    if (!startFairRound(def.id)) return
+    if (!payRound(def.id, FAIR_PLAY_COST).ok) return
     sfx.coin()
     setIntro(false)
     countdown()
@@ -296,7 +299,7 @@ export function FairRun({ def, make, onAgain, paid, tw = 190 }: { def: FairGameD
   }
 
   const again = () => {
-    if (!startFairRound(def.id)) return
+    if (!payRound(def.id, FAIR_PLAY_COST).ok) return
     sfx.coin()
     onAgain()
   }
@@ -376,7 +379,8 @@ export function FairRun({ def, make, onAgain, paid, tw = 190 }: { def: FairGameD
           </div>
         </div>
       )}
-      {(intro || help) && !result && <FairGoalCard def={def} again={help} onStart={help ? () => setHelp(false) : start} onClose={intro ? closeActivity : () => setHelp(false)} />}
+      {intro && !help && !result && <BriefCard b={gameBooth(def.id)} onPlay={start} onClose={closeActivity} onHowTo={() => setHelp(true)} />}
+      {help && !result && <FairGoalCard def={def} again onStart={() => setHelp(false)} onClose={() => setHelp(false)} />}
       {quit && (
         <Window
           title="ออกจากเกมนี้?"

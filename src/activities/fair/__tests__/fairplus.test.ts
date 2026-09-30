@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { game, defaultState } from '../../../game/state'
 import { ensureDaily, onTrack } from '../../../game/actions'
 import { COLLECTIBLE_BY_ID } from '../../../game/data/collectibles'
@@ -39,8 +39,14 @@ import { fairHotspotActions, isFairHotspot } from '../hotspots'
 import { GHOST_COUNT, inScare } from '../../../scenes/maps/places/fair-ghost'
 
 beforeEach(() => {
+  // Outside happy hour, so ride prices are the plain ones.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 8, 30, 12, 0))
   game.value = { ...defaultState(), onboarded: true }
   ensureDaily()
+})
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe('ตักปลาทอง', () => {
