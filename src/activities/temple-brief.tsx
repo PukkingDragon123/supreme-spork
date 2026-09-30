@@ -19,7 +19,6 @@ import { toast } from '../game/events'
 import { GOALS } from './goals'
 import { Coin, Icon } from '../ui/components/common'
 import { PBtn, Window } from '../ui/components/kit'
-import { PT } from '../ui/pixeltext'
 import { sfx } from '../engine/audio'
 
 interface Price {
