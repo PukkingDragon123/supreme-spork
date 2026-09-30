@@ -451,6 +451,34 @@ if (want('body')) {
         ])
     }
   }
+  // &part=eyes – every eye style, girl vs boy, big: stand / blink / happy
+  if (has('eyes')) {
+    title('eye styles: f portrait · m portrait · small f · small m')
+    const r = row()
+    for (const f of FACE_STYLES)
+      cell(r, `${f.id} ${f.name}`, [
+        [dollPortrait({ ...F, face: f.id }, 28), Z],
+        [dollPortrait({ ...M, face: f.id }, 28), Z],
+        [avatarPortrait({ ...F, face: f.id }), Z],
+        [avatarPortrait({ ...M, face: f.id }), Z],
+      ])
+    const opts: [string, Partial<AvatarLook>[]][] = [
+      ['size', [0, 1, 2].map((eyeSize) => ({ eyeSize }))],
+      ['lid', [0, 1, 2, 3].map((eyelid) => ({ eyelid }))],
+      ['shine', [0, 1, 2, 3].map((shine) => ({ shine }))],
+      ['lashes', [0, 1, 2].map((lashes) => ({ lashes }))],
+      ['colour', [0, 1, 2, 3, 4, 5, 6].map((eyeColor) => ({ eyeColor }))],
+    ]
+    for (const [n, list] of opts) {
+      const rr = row()
+      for (const p of list)
+        for (const face of [0, 3, 5])
+          cell(rr, `${n} ${JSON.stringify(p)} e${face}`, [
+            [dollPortrait({ ...F, face, ...p }, 28), Z],
+            [dollPortrait({ ...M, face, ...p }, 28), Z],
+          ])
+    }
+  }
   if (has('outfits')) {
     const outfits: [string, Partial<AvatarLook>][] = [
       ['suit trex', { suit: 'suit_trex' }],

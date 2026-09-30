@@ -33,11 +33,44 @@ export const NOSES = opts('ไม่มีจมูก', 'จมูกจุด'
 export const MOUTHS = opts('ยิ้มแมว', 'ยิ้มกว้าง', 'ปากจิ๋ว', 'ยิ้มมุมปาก', 'ฟันกระต่าย')
 /** หนวดเครา */
 export const BEARDS = opts('ไม่มี', 'เคราเขียว ๆ', 'หนวดจิ๋ว', 'เคราแพะ', 'เคราเต็ม')
-/** กระ / ไฝ */
-export const MARKS = opts('ไม่มี', 'ตกกระ', 'ไฝใต้ตา', 'ไฝเสน่ห์', 'แก้มแดง')
+/** กระ / ไฝ (freckles and mole positions) */
+export const MARKS = opts('ไม่มี', 'ตกกระ', 'ไฝใต้ตา', 'ไฝเสน่ห์', 'ไฝแก้ม', 'ไฝคาง')
+/** สีตา */
+export const EYE_COLORS = opts('น้ำตาล', 'ดำขลับ', 'เฮเซล', 'เทาหม่น', 'ฟ้าใส', 'เขียวมรกต', 'อำพัน')
+/** ขนาดตา */
+export const EYE_SIZES = opts('ตาเล็ก', 'ตาปกติ', 'ตาโต')
+/** ชั้นตา */
+export const EYELIDS = opts('ตามแบบตา', 'ชั้นเดียว', 'สองชั้น', 'ตาปรือ')
+/** ขนตา */
+export const LASHES = opts('ตามเพศ', 'มีขนตา', 'ไม่มีขนตา')
+/** ประกายตา */
+export const SHINES = opts('วิบวับ', 'ประกายคู่', 'ประกายโต', 'ตาด้าน')
+/** สีคิ้ว */
+export const BROW_COLORS = opts('ตามสีผม', 'ดำ', 'น้ำตาลเข้ม', 'น้ำตาลอ่อน', 'เทา')
+/** แก้ม (blush level) */
+export const BLUSHES = opts('ไม่ปัดแก้ม', 'ระเรื่อ', 'อมชมพู', 'แก้มแดง')
+/** สีปาก */
+export const LIPS = opts('ธรรมชาติ', 'ชมพูหวาน', 'แดงสด', 'ส้มพีช', 'นู้ด', 'เบอร์รี่')
+/** ของแต่งหน้า (not outfits) */
+export const FACE_DECOS = opts('ไม่มี', 'ลักยิ้ม', 'พลาสเตอร์', 'สติ๊กเกอร์ธงไทย', 'สติ๊กเกอร์หัวใจ', 'สติ๊กเกอร์ดาว')
 
 /** Number of eye styles (AvatarLook.face), matching doll.ts FACE_STYLES. */
 export const EYE_COUNT = 9
+
+/** Iris colours by EYE_COLORS index: pupil (dark) and iris light; boys' brown has a warmer glint. */
+export const IRIS: { p: string; i: string; im?: string; s: string }[] = [
+  { p: '#4a2a48', i: '#b8657f', im: '#a0705a', s: '#5a3838' },
+  { p: '#241a26', i: '#5a4a5e', s: '#2a2030' },
+  { p: '#4a3420', i: '#b08a48', s: '#6a4a28' },
+  { p: '#3a3e4c', i: '#9aa4b8', s: '#4a5060' },
+  { p: '#243c78', i: '#5c9ae0', s: '#2e4c8a' },
+  { p: '#1e5038', i: '#56b27a', s: '#286044' },
+  { p: '#6a3814', i: '#e0a040', s: '#7a4a1a' },
+]
+/** Brow colours (index 0 = hair colour). */
+export const BROW_HEX = [null, '#2a1e2a', '#4a2e22', '#8a5e3c', '#6a6670'] as const
+/** Lip colours: main, soft corner (index 0 = the classic mouth). */
+export const LIP_HEX = ['#a8435a', '#e0607e', '#d8283c', '#ec7a52', '#b0705e', '#8a2a5a'] as const
 
 export interface BodyLook {
   height: number
@@ -48,9 +81,18 @@ export interface BodyLook {
   mouth: number
   beard: number
   marks: number
+  eyeColor: number
+  eyeSize: number
+  eyelid: number
+  lashes: number
+  shine: number
+  browColor: number
+  blush: number
+  lips: number
+  faceDeco: number
 }
 
-export const BODY_KEYS = ['height', 'build', 'faceShape', 'brows', 'nose', 'mouth', 'beard', 'marks'] as const
+export const BODY_KEYS = ['height', 'build', 'faceShape', 'brows', 'nose', 'mouth', 'beard', 'marks', 'eyeColor', 'eyeSize', 'eyelid', 'lashes', 'shine', 'browColor', 'blush', 'lips', 'faceDeco'] as const
 export type BodyKey = (typeof BODY_KEYS)[number]
 
 export const BODY_OPTIONS: Record<BodyKey, readonly BodyOption[]> = {
@@ -62,13 +104,23 @@ export const BODY_OPTIONS: Record<BodyKey, readonly BodyOption[]> = {
   mouth: MOUTHS,
   beard: BEARDS,
   marks: MARKS,
+  eyeColor: EYE_COLORS,
+  eyeSize: EYE_SIZES,
+  eyelid: EYELIDS,
+  lashes: LASHES,
+  shine: SHINES,
+  browColor: BROW_COLORS,
+  blush: BLUSHES,
+  lips: LIPS,
+  faceDeco: FACE_DECOS,
 }
 
 /** The look a body preset starts with. */
 export function bodyDefaults(g: BodyType): BodyLook {
+  const face = { eyeColor: 0, eyeSize: 1, eyelid: 0, lashes: 0, shine: 0, browColor: 0, lips: 0, faceDeco: 0 }
   return g === 'm'
-    ? { height: 2, build: 1, faceShape: 1, brows: 1, nose: 0, mouth: 0, beard: 0, marks: 0 }
-    : { height: 2, build: 1, faceShape: 0, brows: 0, nose: 0, mouth: 0, beard: 0, marks: 0 }
+    ? { height: 2, build: 1, faceShape: 1, brows: 1, nose: 0, mouth: 0, beard: 0, marks: 0, blush: 1, ...face }
+    : { height: 2, build: 1, faceShape: 0, brows: 0, nose: 0, mouth: 0, beard: 0, marks: 0, blush: 2, ...face }
 }
 
 const intIn = (v: unknown, n: number): number | undefined => (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < n ? v : undefined)
@@ -85,6 +137,12 @@ export function bodyOf(look: Partial<AvatarLook> | null | undefined): BodyLook {
 /** Fill in / clamp the body fields of a look (old saves, remote players). */
 export function normalizeBody<T extends Partial<AvatarLook>>(look: T): T & BodyLook {
   const out = { ...look, ...bodyOf(look) } as T & BodyLook
+  // first body-options build stored rosy cheeks as marks 4; that's blush 3 now
+  const raw = look as Partial<AvatarLook>
+  if (raw.marks === 4 && raw.blush === undefined) {
+    out.marks = 0
+    out.blush = 3
+  }
   const face = (look as { face?: unknown }).face
   ;(out as { face?: number }).face = intIn(face, EYE_COUNT) ?? 0
   return out

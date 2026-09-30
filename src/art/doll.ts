@@ -13,7 +13,7 @@ import { cached, outlineCanvas, type Sprite } from '../engine/sprite'
 import { HAIR_COLORS, P, SKIN_TONES } from './palette'
 import { OUTFIT_BY_ID, SUIT_FACE_ACCS, suitGarments, type BottomArt, type Pattern, type ShoeArt, type SuitArt, type SuitKind, type TopArt } from '../game/data/outfits'
 import { lookKey, type AvatarLook } from './avatar'
-import { bodyOf, bodyWiden, DOLL_HEIGHT, planIsIdentity, reshapeIndex, type BodyLook, type ReshapePlan } from './body'
+import { bodyOf, bodyWiden, BROW_HEX, DOLL_HEIGHT, IRIS, LIP_HEX, planIsIdentity, reshapeIndex, type BodyLook, type ReshapePlan } from './body'
 
 export type BaseDollPose = 'stand' | 'wave' | 'wai' | 'happy' | 'think' | 'kneel' | 'kneelWai' | 'bow' | 'sit'
 /**
@@ -39,8 +39,8 @@ export const FACE_STYLES = [
   { id: 3, name: 'ตาคมเท่' },
   { id: 4, name: 'ตาแมวเฉี่ยว' },
   { id: 5, name: 'ตาโตใสแป๋ว' },
-  { id: 6, name: 'ตาตี่ยิ้มง่าย' },
-  { id: 7, name: 'ตาจุดมินิมอล' },
+  { id: 6, name: 'ตาหวานวิ้ง' },
+  { id: 7, name: 'ตาอัลมอนด์' },
   { id: 8, name: 'ตาเข้มมุ่งมั่น' },
 ] as const
 
@@ -52,10 +52,6 @@ export const DOLL_POSES: DollPose[] = ['stand', 'wave', 'wai', 'happy', 'think',
 const INK = P.ink
 const WHITE = '#ffffff'
 const EYE_K = '#2a1a2c'
-const EYE_P = '#4a2a48'
-const EYE_I = '#b8657f'
-/** Boys' iris glint: warm brown rather than pink. */
-const EYE_I_M = '#9a6a5c'
 const MOUTH = '#a8435a'
 const TONGUE = '#ff8f9c'
 
@@ -420,8 +416,10 @@ function drawHead(b: Buf, r: Res, dy: number, view: DollView) {
   commit(b, L, r.sk.d, view === 'front' ? TAG.face : TAG.skin)
 }
 
-// Eye maps for the viewer-left eye (top-left at x=10,y=15). k dark, p pupil,
-// i iris light, w white shine, l lash.
+// Eye maps for the viewer-left eye (top-left at x=10,y=15). k dark outline,
+// p pupil (dark iris), i iris light, w white shine, l lash, s lid skin,
+// c lid crease. The right eye is mirrored; `keep` keeps shines on the same
+// side in both eyes (light comes from one direction).
 interface EyeMap {
   rows: string[]
   ox?: number
@@ -429,58 +427,165 @@ interface EyeMap {
   /** Keep shine pixels at the same relative spot in both eyes. */
   keep?: boolean
   lash?: [number, number]
+  /** Arc / line eyes: no iris, so colour, size and lid options don't apply. */
+  arc?: boolean
 }
 
 const EYES: EyeMap[] = [
   // 0 round sparkly
   { rows: ['.kk.', 'kwpk', 'kwpk', 'kppk', 'kiik', '.kk.'], keep: true, lash: [-1, 1] },
   // 1 gentle smile arcs
-  { rows: ['....', '.kk.', 'k..k', 'k..k', '....'], oy: 1, lash: [-1, 1] },
+  { rows: ['....', '.kk.', 'k..k', 'k..k', '....'], oy: 1, lash: [-1, 1], arc: true },
   // 2 calm / sleepy: heavy lid, half-visible iris
-  { rows: ['....', 'ssss', 'kkkk', 'kwpk', 'kiik', '.kk.'], lash: [-1, 2] },
+  { rows: ['....', 'ssss', 'kkkk', 'kwpk', 'kiik', '.kk.'], keep: true, lash: [-1, 2] },
   // 3 sharp cool: slanted upper lid
-  { rows: ['k....', 'kkkkk', '.wppk', '.ppik', '..kk.'], ox: -1, oy: 1 },
-  // 4 cat-eye with lashes
-  { rows: ['l....', 'lkkkk', '.kwpk', '.kppk', '.kiik', '..kk.'], ox: -1 },
+  { rows: ['k....', 'kkkkk', '.wppk', '.ppik', '..kk.'], ox: -1, oy: 1, keep: true },
+  // 4 cat-eye with a lash flick
+  { rows: ['l....', 'lkkkk', '.kwpk', '.kppk', '.kiik', '..kk.'], ox: -1, keep: true },
   // 5 big glassy eyes with double shine
   { rows: ['.kkk.', 'kwwpk', 'kwppk', 'kpppk', 'kiiwk', '.kkk.'], ox: -1, keep: true, lash: [-1, 1] },
-  // 6 narrow smiley line eyes
-  { rows: ['kkkk', '.kk.'], oy: 3, lash: [-1, 3] },
-  // 7 tiny dot eyes
-  { rows: ['.kk.', 'kwpk', '.kk.'], oy: 2, keep: true, lash: [-1, 2] },
-  // 8 determined: heavy lid over a bright eye
-  { rows: ['kkkk', 'kkkk', 'kwpk', 'kpik', '.kk.'], oy: 1, keep: true, lash: [-1, 1] },
+  // 6 sweet sparkle: shine top and a twinkle below
+  { rows: ['.kk.', 'kwpk', 'kppk', 'kpwk', 'kiik', '.kk.'], keep: true, lash: [-1, 1] },
+  // 7 almond: long and gentle
+  { rows: ['.kkkk', 'kwwpk', 'kwpik', 'kpiik', '.kkk.'], ox: -1, oy: 1, keep: true, lash: [-1, 1] },
+  // 8 determined: lid dips toward the nose
+  { rows: ['kk..', 'kkkk', 'kwpk', 'kwpk', 'kiik', '.kk.'], keep: true, lash: [-1, 1] },
 ]
 
-/**
- * Boy versions: flatter upper lids, one row shorter, no lashes, so the eyes
- * read "cool little brother" rather than "cute girl" while staying chibi.
- */
-const EYES_M: EyeMap[] = [
-  { rows: ['kkkk', 'kwpk', 'kppk', '.kk.'], oy: 2, keep: true },
-  EYES[1],
-  { rows: ['ssss', 'kkkk', 'kwpk', '.kk.'], oy: 2 },
-  { rows: ['kkkkk', '.wppk', '.pppk', '..kk.'], ox: -1, oy: 2 },
-  { rows: ['kkkkk', '.kwpk', '.kppk', '..kk.'], ox: -1, oy: 2 },
-  { rows: ['kkkkk', 'kwwpk', 'kwppk', '.kkk.'], ox: -1, oy: 2, keep: true },
-  { rows: ['kkkk', '.kk.'], oy: 3 },
-  { rows: ['.kk.', 'kwpk', '.kk.'], oy: 2, keep: true },
-  { rows: ['kkkk', 'kkkk', 'kwpk', '.kk.'], oy: 2, keep: true },
-]
-
-const EYE_CLOSED: EyeMap = { rows: ['....', '....', 'k..k', '.kk.'], oy: 2 }
-const EYE_HAPPY: EyeMap = { rows: ['....', '.kk.', 'k..k', '....'], oy: 1 }
-const EYE_BLINK: EyeMap = { rows: ['....', '....', '....', 'kkkk'], oy: 1 }
+const EYE_CLOSED: EyeMap = { rows: ['....', '....', 'k..k', '.kk.'], oy: 2, arc: true }
+const EYE_HAPPY: EyeMap = { rows: ['....', '.kk.', 'k..k', '....'], oy: 1, arc: true }
+const EYE_BLINK: EyeMap = { rows: ['....', '....', '....', 'kkkk'], oy: 1, arc: true }
 
 export type Expr = 'smile' | 'open' | 'serene' | 'happy' | 'think'
 
-function drawEye(b: Buf, e: EyeMap, left: boolean, dy: number, g: 'm' | 'f', lashOk: boolean, lid: string) {
+const setCh = (row: string, i: number, ch: string) => row.slice(0, i) + ch + row.slice(i + 1)
+
+/**
+ * The player's open eye: the style map plus body options — boys get a
+ * defined flat upper lid and sit a pixel lower (room for brows), then size,
+ * lid and shine tweaks. Lashes are resolved separately (see eyeLashes).
+ */
+function buildEye(r: Res): EyeMap {
+  const f = r.body
+  const base = EYES[r.face] ?? EYES[0]
+  if (base.arc) return r.g === 'm' ? { ...base, oy: (base.oy ?? 0) + 1 } : base
+  let rows = base.rows.slice()
+  let ox = base.ox ?? 0
+  let oy = base.oy ?? 0
+  const w0 = rows[0].length
+  // span of the first solid row below the top (where the lid sits)
+  const extent = (j: number) => {
+    const row = rows[j] ?? ''
+    const a = row.search(/[^.]/)
+    let b2 = row.length - 1
+    while (b2 >= 0 && row[b2] === '.') b2--
+    return [a, b2] as const
+  }
+  const fillRow = (j: number, ch: string, from = j + 1) => {
+    const [a, b2] = extent(from)
+    if (a < 0) return
+    let row = rows[j]
+    for (let i = a; i <= b2; i++) if (row[i] !== 'l') row = setCh(row, i, ch)
+    rows[j] = row
+  }
+  const top = rows.findIndex((row) => /[kp]/.test(row))
+  if (r.g === 'm') {
+    // flat, defined upper lid instead of the rounded top
+    if (/^\.k+\.$/.test(rows[top])) fillRow(top, 'k')
+    oy += 1
+  }
+  // eyelid style
+  if (f.eyelid === 1) {
+    fillRow(top, 'k')
+    // the heavier lid hides the top shine: move it down a row
+    const j = top + 1
+    if (rows[j] && rows[j + 1]) {
+      for (let i = 0; i < w0; i++) {
+        if (rows[j][i] === 'w' && /[pi]/.test(rows[j + 1][i])) {
+          rows[j] = setCh(rows[j], i, 'k')
+          rows[j + 1] = setCh(rows[j + 1], i, 'w')
+        } else if (rows[j][i] === 'p') rows[j] = setCh(rows[j], i, 'k')
+      }
+    }
+  } else if (f.eyelid === 2) {
+    // a soft crease above the lid, leaning to the outer corner
+    const [a, b2] = extent(top)
+    let crease = '.'.repeat(w0)
+    for (let i = Math.max(0, a - 1); i < b2; i++) crease = setCh(crease, i, 'c')
+    rows = [crease, ...rows]
+    oy -= 1
+  } else if (f.eyelid === 3 && base !== EYES[2]) {
+    fillRow(top, 's')
+    fillRow(top + 1, 'k', top + 1)
+  }
+  // size
+  const lidRows = f.eyelid === 2 ? 1 : 0
+  if (f.eyeSize === 0 && rows.length - lidRows >= 5) {
+    // drop a repeated middle row (or the one above the bottom)
+    let j = rows.findIndex((row, i) => i > top + lidRows && i < rows.length - 2 && row === rows[i - 1])
+    if (j < 0) j = rows.length - 2
+    rows.splice(j, 1)
+    oy += 1
+  } else if (f.eyeSize === 2) {
+    const mid = Math.floor((top + lidRows + rows.length) / 2)
+    rows.splice(mid, 0, rows[mid])
+    // widen through the pupil column
+    const c = Math.floor(w0 / 2)
+    rows = rows.map((row) => row.slice(0, c) + row[c] + row.slice(c))
+    ox -= 1
+  }
+  // shine
+  const W = rows[0].length
+  if (f.shine === 3) rows = rows.map((row) => row.replace(/w/g, 'p'))
+  else if (f.shine === 2) {
+    rows = rows.map((row, j) => {
+      let out = row
+      for (let i = 0; i < W - 1; i++) if (row[i] === 'w' && row[i + 1] === 'p' && j > 0 && rows[j - 1][i] !== 'w') out = setCh(out, i + 1, 'w')
+      return out
+    })
+  } else if (f.shine === 1) {
+    // a twinkle low on the far side of the iris
+    for (let j = rows.length - 3; j >= 1; j--) {
+      const i = W - 2
+      if (rows[j][i] === 'p' || rows[j][i] === 'i') {
+        rows[j] = setCh(rows[j], i, 'w')
+        break
+      }
+    }
+  }
+  const lash = base.lash ? ([base.lash[0], base.lash[1] + (rows.length > base.rows.length && f.eyelid === 2 ? 1 : 0)] as [number, number]) : undefined
+  return { ...base, rows, ox, oy, lash }
+}
+
+/** Lashes: girls by default, anyone who turns them on, nobody who turns them off. */
+function eyeLashes(r: Res) {
+  const l = r.body.lashes
+  return l === 1 || (l === 0 && r.g === 'f')
+}
+
+function drawEye(b: Buf, e: EyeMap, left: boolean, dy: number, r: Res, lashOk: boolean) {
   const w = e.rows[0].length
   const baseX = 10 + (e.ox ?? 0)
   const oy = 15 + (e.oy ?? 0) + dy
-  const iris = g === 'm' ? EYE_I_M : EYE_I
+  const iris = IRIS[r.body.eyeColor] ?? IRIS[0]
+  const lashes = eyeLashes(r)
+  const irisLight = r.g === 'm' && iris.im ? iris.im : iris.i
   const col = (ch: string) =>
-    ch === 'k' ? EYE_K : ch === 'p' ? EYE_P : ch === 'i' ? iris : ch === 'w' ? WHITE : ch === 'l' ? INK : ch === 's' ? lid : null
+    ch === 'k'
+      ? EYE_K
+      : ch === 'p'
+        ? iris.p
+        : ch === 'i'
+          ? irisLight
+          : ch === 'w'
+            ? WHITE
+            : ch === 'l'
+              ? INK
+              : ch === 's'
+                ? r.sk.s
+                : ch === 'c'
+                  ? mix(r.sk.s, r.sk.d, 0.55)
+                  : null
   for (let j = 0; j < e.rows.length; j++) {
     for (let i = 0; i < w; i++) {
       let ch = e.rows[j][i]
@@ -493,22 +598,34 @@ function drawEye(b: Buf, e: EyeMap, left: boolean, dy: number, g: 'm' | 'f', las
         }
       }
       if (ch === '.') continue
-      if (g === 'm' && ch === 'l') continue
+      if (ch === 'l' && !lashes) continue
       // viewer-left eye at x=10.., right eye mirrored around 15.5
       const x = left ? baseX + i : 31 - (baseX + w - 1) + i
-      b.put(x, oy + j, col(ch), TAG.eye)
+      b.put(x, oy + j, col(ch), ch === 'c' || ch === 's' ? TAG.face : TAG.eye)
     }
   }
-  if (g === 'f' && lashOk && e.lash) {
+  // boys: the upper lid line runs a pixel past the outer corner (defined, not girly)
+  if (r.g === 'm' && !e.arc && !lashes) {
+    const j = e.rows.findIndex((row) => /^k{3,}/.test(row.replace(/^\./, '')))
+    if (j >= 0 && e.rows[j][0] !== '.') b.put(left ? baseX - 1 : 31 - (baseX - 1), oy + j, EYE_K, TAG.eye)
+  }
+  if (lashes && lashOk && e.lash) {
     const [lx, ly] = e.lash
     const x = left ? baseX + lx : 31 - (baseX + lx)
     b.put(x, oy + ly, INK, TAG.eye)
+    // lashes turned on: a second flick for drama
+    if (r.body.lashes === 1) b.put(left ? x - 1 : x + 1, oy + ly - 1, INK, TAG.eye)
   }
+}
+
+/** Brow colour: the hair's dark tone unless a colour was picked. */
+function browCol(r: Res): string {
+  return BROW_HEX[r.body.browColor] ?? r.hr.d
 }
 
 /** Brows drawn under the fringe (the classic soft arch; mostly hidden). */
 function drawBrowsUnder(b: Buf, r: Res, dy: number, expr: Expr) {
-  const bc = r.hr.d
+  const bc = browCol(r)
   if (r.body.brows !== 0) return
   if (r.g === 'm') {
     for (const x of [10, 11, 12, 13]) {
@@ -533,8 +650,9 @@ function drawBrowsUnder(b: Buf, r: Res, dy: number, expr: Expr) {
 function drawBrowsOver(b: Buf, r: Res, dy: number, expr: Expr) {
   const st = r.body.brows
   if (st === 0 || hoodedR(r)) return
-  const bc = mix(r.hr.d, INK, 0.25)
-  const lite = r.hr.s
+  const base = browCol(r)
+  const bc = mix(base, INK, 0.25)
+  const lite = mix(base, r.sk.b, 0.3)
   // [x, row] for the viewer-left brow; mirrored for the right one
   const px: [number, number, string][] =
     st === 1
@@ -544,10 +662,10 @@ function drawBrowsOver(b: Buf, r: Res, dy: number, expr: Expr) {
         : st === 3
           ? [[9, 13, bc], [10, 13, bc], [11, 13, bc], [12, 14, bc], [13, 14, bc], [11, 14, bc], [10, 14, lite]]
           : [[10, 14, bc], [11, 14, bc], [12, 13, bc], [13, 13, bc]]
-  // sit just above the eye's top edge so they show below the fringe
-  const e = (r.g === 'm' ? EYES_M : EYES)[r.face] ?? EYES[0]
-  const first = e.rows.findIndex((row) => /[^.s]/.test(row))
-  const low = Math.min(15, 15 + (e.oy ?? 0) + Math.max(0, first) - (r.g === 'm' ? 2 : 1)) - 14
+  // sit just above the eye's top edge (one skin row between) below the fringe
+  const e = buildEye(r)
+  const first = e.rows.findIndex((row) => /[^.sc]/.test(row))
+  const low = Math.min(15, 15 + (e.oy ?? 0) + Math.max(0, first) - 2) - 14
   const up = low + (expr === 'happy' ? -1 : 0)
   for (const [x, y, c] of px) {
     b.put(x, y + dy + up, c, TAG.face)
@@ -556,51 +674,119 @@ function drawBrowsOver(b: Buf, r: Res, dy: number, expr: Expr) {
   }
 }
 
+/** Cheek blush by level (BLUSHES): none, faint, classic, rosy. */
+function drawBlush(b: Buf, r: Res, dy: number) {
+  const lv = r.body.blush
+  if (!lv) return
+  const cx = r.body.faceShape === 3 ? -1 : 0
+  const both = (x: number, y: number, c: string) => {
+    b.put(x + cx, y + dy, c, TAG.face)
+    b.put(31 - x - cx, y + dy, c, TAG.face)
+  }
+  if (lv === 1) for (const x of [8, 9]) both(x, 21, mix(r.sk.b, P.blush, 0.3))
+  else if (lv === 2) {
+    for (const x of [7, 8, 9]) both(x, 21, r.blush)
+    both(8, 20, mix(r.sk.b, P.blush, 0.35))
+  } else {
+    for (const x of [6, 7, 8, 9, 10]) both(x, 21, r.blush)
+    for (const x of [7, 8, 9]) both(x, 20, mix(r.sk.b, P.blush, 0.5))
+  }
+}
+
+/** Dimples, a plaster or a cheek sticker (FACE_DECOS). */
+function drawFaceDeco(b: Buf, r: Res, dy: number) {
+  const d = r.body.faceDeco
+  const put = (x: number, y: number, c: string) => b.put(x, y + dy, c, TAG.face)
+  if (d === 1) {
+    put(13, 22, r.sk.s)
+    put(18, 22, r.sk.s)
+  } else if (d === 2) {
+    // a plaster across the viewer-right cheek
+    const tape = '#f7dfb6'
+    const pad = '#e2b884'
+    for (const [x, y] of [
+      [21, 19],
+      [22, 19],
+      [23, 19],
+      [24, 20],
+      [20, 20],
+      [21, 20],
+      [22, 20],
+      [23, 20],
+    ])
+      put(x, y, x === 22 || (x === 21 && y === 20) ? pad : tape)
+    put(20, 19, mix(tape, INK, 0.25))
+    put(24, 19, mix(tape, INK, 0.25))
+    put(22, 21, mix(tape, INK, 0.25))
+  } else if (d === 3) {
+    // Thai flag sticker on the viewer-left cheek: red, white, blue, white, red
+    const band = ['#e8414f', '#ffffff', '#2e4aa8', '#ffffff', '#e8414f']
+    band.forEach((c, j) => {
+      for (let x = 7; x <= 9; x++) put(x, 17 + j, c)
+    })
+  } else if (d === 4) {
+    const h = '#ff4f86'
+    const hl = '#ffb3c9'
+    for (const [x, y, c] of [
+      [7, 19, h],
+      [9, 19, h],
+      [6, 19, h],
+      [10, 19, h],
+      [6, 20, h],
+      [7, 20, hl],
+      [8, 20, h],
+      [9, 20, h],
+      [10, 20, h],
+      [7, 21, h],
+      [8, 21, h],
+      [9, 21, h],
+      [8, 22, h],
+    ] as [number, number, string][])
+      put(x, y, c)
+  } else if (d === 5) {
+    const s = '#ffd23f'
+    const sd = '#e8a21c'
+    for (const [x, y, c] of [
+      [8, 18, s],
+      [7, 19, s],
+      [8, 19, '#fff3a6'],
+      [9, 19, s],
+      [6, 19, s],
+      [10, 19, s],
+      [7, 20, s],
+      [8, 20, s],
+      [9, 20, sd],
+      [7, 21, sd],
+      [9, 21, sd],
+    ] as [number, number, string][])
+      put(x, y, c)
+  }
+}
+
 function drawFace(b: Buf, r: Res, dy: number, expr: Expr, blink: boolean) {
   const f = r.body
   drawBrowsUnder(b, r, dy, expr)
-  let e: EyeMap = (r.g === 'm' ? EYES_M : EYES)[r.face] ?? EYES[0]
+  let e: EyeMap = buildEye(r)
   let lash = true
+  const low = r.g === 'm' ? 1 : 0
   if (expr === 'happy') {
-    e = EYE_HAPPY
+    e = { ...EYE_HAPPY, oy: (EYE_HAPPY.oy ?? 0) + low }
     lash = false
   } else if (expr === 'serene') {
-    e = EYE_CLOSED
+    e = { ...EYE_CLOSED, oy: (EYE_CLOSED.oy ?? 0) + low }
     lash = false
   } else if (blink) {
-    e = EYE_BLINK
+    e = { ...EYE_BLINK, oy: (EYE_BLINK.oy ?? 0) + low + (f.eyeSize === 2 ? 1 : 0) }
     lash = false
   }
-  drawEye(b, e, true, dy, r.g, lash, r.sk.s)
-  drawEye(b, e, false, dy, r.g, lash, r.sk.s)
-  // blush: soft and small on boys, big for rosy cheeks
-  const cheekX = f.faceShape === 3 ? -1 : 0
-  if (f.marks === 4) {
-    for (const x of [6, 7, 8, 9, 10]) {
-      b.put(x + cheekX, 21 + dy, r.blush, TAG.face)
-      b.put(31 - x - cheekX, 21 + dy, r.blush, TAG.face)
-    }
-    for (const x of [7, 8, 9]) {
-      b.put(x + cheekX, 20 + dy, mix(r.sk.b, P.blush, 0.5), TAG.face)
-      b.put(31 - x - cheekX, 20 + dy, mix(r.sk.b, P.blush, 0.5), TAG.face)
-    }
-  } else if (r.g === 'm') {
-    for (const x of [8, 9]) {
-      b.put(x + cheekX, 21 + dy, mix(r.sk.b, P.blush, 0.3), TAG.face)
-      b.put(31 - x - cheekX, 21 + dy, mix(r.sk.b, P.blush, 0.3), TAG.face)
-    }
-  } else {
-    for (const x of [7, 8, 9]) {
-      b.put(x + cheekX, 21 + dy, r.blush, TAG.face)
-      b.put(31 - x - cheekX, 21 + dy, r.blush, TAG.face)
-    }
-    b.put(8 + cheekX, 20 + dy, mix(r.sk.b, P.blush, 0.35), TAG.face)
-    b.put(23 - cheekX, 20 + dy, mix(r.sk.b, P.blush, 0.35), TAG.face)
-  }
+  drawEye(b, e, true, dy, r, lash)
+  drawEye(b, e, false, dy, r, lash)
+  drawBlush(b, r, dy)
   // cheek shine
-  b.put(7 + cheekX, 19 + dy, r.sk.l, TAG.face)
+  b.put(7 + (f.faceShape === 3 ? -1 : 0), 19 + dy, r.sk.l, TAG.face)
   // freckles & moles
   const dot = mix(r.sk.d, '#8a4f3a', 0.4)
+  const mole = '#4a2f33'
   if (f.marks === 1)
     for (const [x, y] of [
       [9, 19],
@@ -611,8 +797,11 @@ function drawFace(b: Buf, r: Res, dy: number, expr: Expr, blink: boolean) {
       b.put(x, y + dy, dot, TAG.face)
       b.put(31 - x, y + dy, dot, TAG.face)
     }
-  if (f.marks === 2) b.put(20, 21 + dy, '#4a2f33', TAG.face)
-  if (f.marks === 3) b.put(19, 23 + dy, '#4a2f33', TAG.face)
+  if (f.marks === 2) b.put(20, 21 + dy, mole, TAG.face)
+  if (f.marks === 3) b.put(19, 23 + dy, mole, TAG.face)
+  if (f.marks === 4) b.put(23, 19 + dy, mole, TAG.face)
+  if (f.marks === 5) b.put(17, 23 + dy, mix(mole, r.sk.b, 0.2), TAG.face)
+  drawFaceDeco(b, r, dy)
   // nose
   if (f.nose === 1) b.put(16, 20 + dy, r.sk.s, TAG.face)
   if (f.nose === 2) {
@@ -622,8 +811,9 @@ function drawFace(b: Buf, r: Res, dy: number, expr: Expr, blink: boolean) {
     b.put(15, 18 + dy, r.sk.l, TAG.face)
   }
   // mouth
-  const m = (x: number, y: number, c = MOUTH) => b.put(x, y + dy, c, TAG.eye)
-  const soft = mix(MOUTH, r.sk.b, 0.45)
+  const lip: string = LIP_HEX[f.lips] ?? MOUTH
+  const m = (x: number, y: number, c = lip) => b.put(x, y + dy, c, TAG.eye)
+  const soft = mix(lip, r.sk.b, 0.45)
   switch (expr) {
     case 'open':
     case 'happy':
@@ -681,6 +871,8 @@ function drawFace(b: Buf, r: Res, dy: number, expr: Expr, blink: boolean) {
           m(16, 22)
           m(17, 21, soft)
       }
+      // coloured lips get a tiny gloss
+      if (f.lips && f.mouth !== 2) m(15, 22, mix(lip, WHITE, 0.35))
   }
   drawBeard(b, r, dy)
 }

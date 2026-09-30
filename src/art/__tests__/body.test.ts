@@ -69,6 +69,33 @@ describe('reshape maps', () => {
   })
 })
 
+describe('eye & face options', () => {
+  it('defaults: boys get faint blush, girls the classic', () => {
+    expect(bodyOf({ gender: 'm' }).blush).toBe(1)
+    expect(bodyOf({ gender: 'f' }).blush).toBe(2)
+    expect(bodyOf({ gender: 'f' }).eyeSize).toBe(1)
+  })
+
+  it('migrates the old rosy-cheek mark to blush', () => {
+    const n = normalizeBody({ ...DEFAULT_LOOK, marks: 4 })
+    expect(n.marks).toBe(0)
+    expect(n.blush).toBe(3)
+    const kept = normalizeBody({ ...DEFAULT_LOOK, marks: 4, blush: 0 })
+    expect(kept.marks).toBe(4)
+    expect(kept.blush).toBe(0)
+  })
+
+  it('remote looks keep and clamp the new fields', () => {
+    const l: AvatarLook = { ...DEFAULT_LOOK, eyeColor: 4, eyeSize: 2, eyelid: 3, lashes: 1, shine: 2, browColor: 3, blush: 0, lips: 5, faceDeco: 3 }
+    const back = cleanLook(encodeLook(l))
+    for (const k of ['eyeColor', 'eyeSize', 'eyelid', 'lashes', 'shine', 'browColor', 'blush', 'lips', 'faceDeco'] as const) expect(back[k]).toBe(l[k])
+    const bad = cleanLook({ ...encodeLook(l), eyeColor: 40, lips: -1, faceDeco: 'x' })
+    expect(bad.eyeColor).toBe(0)
+    expect(bad.lips).toBe(0)
+    expect(bad.faceDeco).toBe(0)
+  })
+})
+
 describe('online looks', () => {
   it('round-trips body fields and clamps junk', () => {
     const l: AvatarLook = { ...DEFAULT_LOOK, gender: 'm', height: 3, build: 2, beard: 4, marks: 2, face: EYE_COUNT - 1 }

@@ -6,7 +6,7 @@ import { createCanvas } from '../engine/pixel'
 import { cached, outlineCanvas, paintRows, type Sprite } from '../engine/sprite'
 import { HAIR_COLORS, P, SKIN_TONES } from './palette'
 import { OUTFIT_BY_ID, SUIT_FACE_ACCS, suitGarments, type BottomArt, type Pattern, type ShoeArt, type SuitArt, type SuitKind, type TopArt } from '../game/data/outfits'
-import { bodyOf, bodyWiden, planIsIdentity, reshapeIndex, SPRITE_HEIGHT, type BodyLook, type ReshapePlan } from './body'
+import { BODY_KEYS, bodyOf, bodyWiden, IRIS, LIP_HEX, planIsIdentity, reshapeIndex, SPRITE_HEIGHT, type BodyLook, type ReshapePlan } from './body'
 
 export type BodyType = 'm' | 'f'
 
@@ -43,8 +43,26 @@ export interface AvatarLook {
   mouth?: number
   /** BEARDS index (0 none). */
   beard?: number
-  /** MARKS index: freckles, moles, rosy cheeks (0 none). */
+  /** MARKS index: freckles or a mole position (0 none). */
   marks?: number
+  /** EYE_COLORS index (0 = classic brown). */
+  eyeColor?: number
+  /** EYE_SIZES index: small, normal, big. */
+  eyeSize?: number
+  /** EYELIDS index: style default, monolid, double lid, sleepy. */
+  eyelid?: number
+  /** LASHES index: by preset, on, off. */
+  lashes?: number
+  /** SHINES index: eye highlight style. */
+  shine?: number
+  /** BROW_COLORS index (0 = hair colour). */
+  browColor?: number
+  /** BLUSHES index: cheek blush level. */
+  blush?: number
+  /** LIPS index. */
+  lips?: number
+  /** FACE_DECOS index: dimples, plaster, face stickers. */
+  faceDeco?: number
 }
 
 export type View = 'front' | 'back' | 'side'
@@ -2757,7 +2775,9 @@ function hairColorFn(r: Resolved, ribbon = '#e8514a') {
   }
 }
 
-function headColorFn(r: Resolved) {
+function headColorFn(r: Resolved, b?: BodyLook) {
+  const iris = b && b.eyeColor ? IRIS[b.eyeColor] : null
+  const lip = b && b.lips ? LIP_HEX[b.lips] : '#c65a6a'
   return (k: string) => {
     switch (k) {
       case 's':
@@ -2766,12 +2786,15 @@ function headColorFn(r: Resolved) {
         return r.skin.d
       case 'E':
         return '#3a2838'
+      case 'I':
+        // lower half of a coloured eye
+        return iris ? mixHex(iris.p, iris.i, 0.35) : '#3a2838'
       case 'e':
         return '#fffaf0'
       case 'B':
         return P.blush
       case 'm':
-        return '#c65a6a'
+        return lip
       case 'z':
         return mixHex(r.skin.b, r.hair.d, 0.28)
       case 'h':
@@ -2782,22 +2805,34 @@ function headColorFn(r: Resolved) {
         return '#4a2f33'
       case 'f':
         return mixHex(r.skin.d, '#8a4f3a', 0.45)
+      case 'P':
+        return '#f3d6a8'
+      case 'r':
+        return '#e8414f'
+      case 'u':
+        return '#2e4aa8'
+      case 'H':
+        return '#ff4f86'
+      case 'Y':
+        return '#ffd23f'
     }
     return null
   }
 }
 
 /**
- * Eye-style / body-preset tweaks on the 2×2 eyes of the small head (rows 7–9).
+ * Eye-style / body-option tweaks on the 2×2 eyes of the small head (rows 7–9).
  * `cols` are the left columns of each eye.
  */
-function faceRows(rows: string[], face: number, gender: BodyType, cols: number[]): string[] {
+function faceRows(rows: string[], face: number, gender: BodyType, cols: number[], b?: BodyLook): string[] {
   const out = rows.slice()
   const set = (y: number, x: number, ch: string) => {
     out[y] = out[y].slice(0, x) + ch + out[y].slice(x + 1)
   }
+  const lashes = b ? b.lashes === 1 || (b.lashes === 0 && gender === 'f') : gender === 'f'
   for (const c of cols) {
     const outer = c < 8 ? c - 1 : c + 2
+    const inner = c < 8 ? c + 1 : c
     switch (face) {
       case 1: // smile arcs
         set(8, c, 's')
@@ -2816,41 +2851,51 @@ function faceRows(rows: string[], face: number, gender: BodyType, cols: number[]
         set(9, c + 1, c < 8 ? 'E' : 's')
         break
       case 4: // cat-eye lash
-        set(7, outer, 'E')
+        set(7, outer, lashes ? 'E' : 's')
         break
       case 5: // big eyes
         set(7, c, 'E')
         set(7, c + 1, 'E')
         set(8, c, 'e')
         break
-      case 6: // narrow line eyes
-        set(8, c, 's')
-        set(8, c + 1, 's')
+      case 6: // sweet sparkle: a twinkle low in the eye
+        set(9, inner, 'e')
         break
-      case 7: // dot eyes
-        set(8, c, 's')
-        set(8, c + 1, 's')
-        set(9, c < 8 ? c : c + 1, 's')
+      case 7: // almond: a longer eye
+        set(8, outer, 'E')
         break
-      case 8: // determined: heavy lid, bright eye below
-        set(8, c, 'E')
-        set(8, c + 1, 'E')
-        set(9, c < 8 ? c + 1 : c, 'e')
+      case 8: // determined: the lid dips toward the nose
+        set(7, inner, 'E')
         break
     }
-    // girls keep the flick of lashes; the cat-eye flick is a lash too
-    if (gender === 'f' && face !== 4 && face !== 1 && face < 6) set(8, outer, 'E')
-    if (gender === 'm' && face === 4) set(7, outer, 's')
+    if (b && face !== 1) {
+      if (b.eyeSize === 2 && face !== 5) {
+        set(7, c, 'E')
+        set(7, c + 1, 'E')
+      }
+      if (b.eyelid === 3 && face !== 2) {
+        set(8, c, 'E')
+        set(8, c + 1, 'E')
+        set(7, c, 'd')
+        set(7, c + 1, 'd')
+      }
+      if (b.eyelid === 1) set(8, c < 8 ? c : c + 1, 'E')
+      if (b.shine === 3) for (let y = 7; y <= 9; y++) for (const x of [c, c + 1]) if (out[y][x] === 'e') set(y, x, 'E')
+      if (b.eyeColor) for (const x of [c, c + 1]) if (out[9][x] === 'E') set(9, x, 'I')
+    }
+    // lashes: a flick at the outer corner (the cat-eye flick is one already)
+    if (lashes && face !== 4 && face !== 1) set(8, outer, 'E')
   }
   return out
 }
 
 /**
  * Body-option face details on the small head: jaw shape, nose, mouth, beard,
- * moles and blush. Codes: z stubble, h hair (beard), n nose, k mole,
- * f freckle, B blush, m mouth, e teeth / eye white.
+ * moles, blush and face stickers. Codes: z stubble, h hair (beard), n nose,
+ * k mole, f freckle, B blush, m mouth, e teeth / eye white, P plaster,
+ * r/u flag red/blue, H heart pink, Y star yellow.
  */
-function featureRows(rows: string[], gender: BodyType, b: BodyLook, view: View, closed: boolean): string[] {
+function featureRows(rows: string[], _gender: BodyType, b: BodyLook, view: View, closed: boolean): string[] {
   const out = rows.slice()
   const set = (y: number, x: number, ch: string) => {
     if (y < 0 || y >= out.length || x < 0 || x >= 16) return
@@ -2875,6 +2920,9 @@ function featureRows(rows: string[], gender: BodyType, b: BodyLook, view: View, 
     }
     if (b.nose) set(9, 13, 'n')
     if (b.marks === 1) set(10, 8, 'f')
+    if (b.blush === 0) for (let x = 0; x < 16; x++) if (out[10][x] === 'B') set(10, x, 's')
+    if (b.faceDeco === 2) set(10, 8, 'P')
+    if (b.faceDeco >= 3) set(10, 7, b.faceDeco === 3 ? 'r' : b.faceDeco === 4 ? 'H' : 'Y')
     return out
   }
   // jaw
@@ -2887,13 +2935,17 @@ function featureRows(rows: string[], gender: BodyType, b: BodyLook, view: View, 
     span(10, 1, 14)
     span(11, 2, 13)
   }
-  // blush: boys get a single soft pixel, rosy cheeks a wide one
+  // blush level: none, a soft pixel, the classic pair, rosy
   const cheek = b.faceShape === 3 ? 1 : 0
-  if (gender === 'm') {
+  if (b.blush <= 1) {
     set(10, 4, 's')
     set(10, 11, 's')
   }
-  if (b.marks === 4) for (const x of [2, 3, 4, 5]) set(10, x - cheek, 'B'), set(10, 15 - x + cheek, 'B')
+  if (b.blush === 0) {
+    set(10, 3, 's')
+    set(10, 12, 's')
+  }
+  if (b.blush === 3) for (const x of [2, 3, 4, 5]) set(10, x - cheek, 'B'), set(10, 15 - x + cheek, 'B')
   if (b.marks === 1) {
     set(10, 4, 'f')
     set(10, 11, 'f')
@@ -2904,6 +2956,26 @@ function featureRows(rows: string[], gender: BodyType, b: BodyLook, view: View, 
   }
   if (b.marks === 2) set(10, 10, 'k')
   if (b.marks === 3) set(11, 10, 'k')
+  if (b.marks === 4) set(10, 12, 'k')
+  if (b.marks === 5) set(12, 9, 'k')
+  // stickers and a plaster
+  if (b.faceDeco === 2) {
+    set(10, 11, 'P')
+    set(10, 12, 'P')
+  } else if (b.faceDeco === 3) {
+    set(10, 3, 'r')
+    set(10, 4, 'r')
+    set(11, 3, 'u')
+    set(11, 4, 'u')
+  } else if (b.faceDeco === 4) {
+    set(10, 3, 'H')
+    set(10, 4, 'H')
+    set(11, 4, 'H')
+  } else if (b.faceDeco === 5) {
+    set(10, 3, 'Y')
+    set(10, 4, 'Y')
+    set(11, 3, 'Y')
+  }
   // nose
   if (b.nose === 1) set(10, 8, 'n')
   if (b.nose === 2) {
@@ -3352,7 +3424,7 @@ function composeBase(look: AvatarLook, view: View, pose: Pose, opts: AvatarRende
   const hairItem = OUTFIT_BY_ID[look.hair]
   const hair = HAIR[hairItem?.hair ?? 'bob'] ?? HAIR.bob
   const hcol = hairColorFn(r, HAIR_RIBBON[hairItem?.hair ?? ''] ?? '#e8514a')
-  const head = headColorFn(r)
+  const head = headColorFn(r, body)
   const tcol = (k: string, x: number, y: number) => topColor(r, k, x, y)
   const lcol = (k: string, x: number, y: number) => legColor(r, k, x, y)
 
@@ -3432,7 +3504,7 @@ function composeBase(look: AvatarLook, view: View, pose: Pose, opts: AvatarRende
   // Head.
   const closed = pose === 'happy' || pose === 'wai'
   let headRows = view === 'front' ? (closed ? HEAD_FRONT_CLOSED : HEAD_FRONT) : view === 'side' ? HEAD_SIDE : HEAD_BACK
-  if (!closed && view !== 'back') headRows = faceRows(headRows, look.face ?? 0, look.gender, view === 'front' ? [4, 10] : [10])
+  if (!closed && view !== 'back') headRows = faceRows(headRows, look.face ?? 0, look.gender, view === 'front' ? [4, 10] : [10], body)
   if (view !== 'back') headRows = featureRows(headRows, look.gender, body, view, closed)
   paint(ctx, headRows, dy, head)
 
@@ -3475,7 +3547,7 @@ export function lookKey(l: AvatarLook): string {
   const b = bodyOf(l)
   return [
     l.gender, l.skin, l.face, l.hairColor, l.hair, l.top, l.bottom, l.head ?? '', l.neck ?? '', l.hand ?? '', l.shoes ?? '', l.back ?? '', l.suit ?? '',
-    b.height, b.build, b.faceShape, b.brows, b.nose, b.mouth, b.beard, b.marks,
+    ...BODY_KEYS.map((k) => b[k]),
   ].join('|')
 }
 

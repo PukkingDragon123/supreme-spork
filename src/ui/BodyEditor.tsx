@@ -10,7 +10,7 @@ import { OUTFIT_BY_ID } from '../game/data/outfits'
 import { HAIR_COLORS, SKIN_TONES } from '../art/palette'
 import { lookKey, type AvatarLook, type BodyType } from '../art/avatar'
 import { DOLL_H, FACE_STYLES, dollSprite } from '../art/doll'
-import { BEARDS, BROWS, BUILDS, bodyOf, DOLL_HEIGHT, FACE_SHAPES, HEIGHTS, MARKS, MOUTHS, NOSES, switchGender, type BodyKey, type BodyOption } from '../art/body'
+import { BEARDS, BLUSHES, BROW_COLORS, BROWS, BUILDS, bodyOf, DOLL_HEIGHT, EYE_COLORS, EYE_SIZES, EYELIDS, FACE_DECOS, FACE_SHAPES, HEIGHTS, LASHES, LIPS, MARKS, MOUTHS, NOSES, SHINES, switchGender, type BodyKey, type BodyOption } from '../art/body'
 import { buyHairColor, setLook } from '../game/actions'
 import { sfx } from '../engine/audio'
 import { PBtn, Slot as SlotBtn } from './components/kit'
@@ -76,11 +76,20 @@ export function BodyEditor({ look, onChange, creating }: { look: AvatarLook; onC
           ))}
         </div>
       </div>
+      {feature('สีตา', 'eyeColor', EYE_COLORS, 'eyes')}
+      {feature('ขนาดตา', 'eyeSize', EYE_SIZES, 'eyes')}
+      {feature('ชั้นตา', 'eyelid', EYELIDS, 'eyes')}
+      {feature('ขนตา', 'lashes', LASHES, 'eyes')}
+      {feature('ประกายตา', 'shine', SHINES, 'eyes')}
       {feature('คิ้ว', 'brows', BROWS, 'eyes')}
+      {feature('สีคิ้ว', 'browColor', BROW_COLORS, 'eyes')}
       {feature('จมูก', 'nose', NOSES)}
       {feature('ปาก', 'mouth', MOUTHS)}
+      {feature('สีปาก', 'lips', LIPS)}
+      {feature('แก้ม', 'blush', BLUSHES)}
       {feature('หนวดเครา', 'beard', BEARDS)}
       {feature('กระ / ไฝ', 'marks', MARKS)}
+      {feature('ของแต่งหน้า', 'faceDeco', FACE_DECOS)}
       <div class="row wrap">
         <PT text="สีผม" size={13} weight={600} {...TONE_TEXT.ink} />
         <span class="grow" />
@@ -121,7 +130,7 @@ function FeatureSlot({ look, patch, crop, label, on, onClick }: { look: AvatarLo
     }
     // head crop (eyes crop is a tighter zoom on the brows and eyes)
     const off = Math.max(0, -(DOLL_HEIGHT[bodyOf(l).height] ?? 0))
-    const [y0, h] = crop === 'eyes' ? [off + 12, 12] : [off + 8, 19]
+    const [y0, h] = crop === 'eyes' ? [off + 12, 14] : [off + 8, 19]
     const w = crop === 'eyes' ? 22 : 24
     const c = createCanvas(w, h)
     c.getContext('2d')!.drawImage(s.canvas, Math.round((w - s.w) / 2), -y0)
