@@ -3,9 +3,10 @@
 // handful of maps produce every outfit in every pose.
 
 import { createCanvas } from '../engine/pixel'
-import { cached, outlineCanvas, paintRows, type Sprite } from '../engine/sprite'
+import { cached, paintRows, type Sprite } from '../engine/sprite'
 import { HAIR_COLORS, P, SKIN_TONES } from './palette'
 import { OUTFIT_BY_ID, SUIT_FACE_ACCS, suitGarments, type BottomArt, type Pattern, type ShoeArt, type SuitArt, type SuitKind, type TopArt } from '../game/data/outfits'
+import { softOutline } from './outline'
 import { BODY_KEYS, bodyOf, bodyWiden, IRIS, LIP_HEX, planIsIdentity, reshapeIndex, SPRITE_HEIGHT, type BodyLook, type ReshapePlan } from './body'
 
 export type BodyType = 'm' | 'f'
@@ -2776,7 +2777,7 @@ function hairColorFn(r: Resolved, ribbon = '#e8514a') {
 }
 
 function headColorFn(r: Resolved, b?: BodyLook) {
-  const iris = b && b.eyeColor ? IRIS[b.eyeColor] : null
+  const iris = b ? IRIS[b.eyeColor] ?? IRIS[0] : null
   const lip = b && b.lips ? LIP_HEX[b.lips] : '#c65a6a'
   return (k: string) => {
     switch (k) {
@@ -2881,7 +2882,7 @@ function faceRows(rows: string[], face: number, gender: BodyType, cols: number[]
       }
       if (b.eyelid === 1) set(8, c < 8 ? c : c + 1, 'E')
       if (b.shine === 3) for (let y = 7; y <= 9; y++) for (const x of [c, c + 1]) if (out[y][x] === 'e') set(y, x, 'E')
-      if (b.eyeColor) for (const x of [c, c + 1]) if (out[9][x] === 'E') set(9, x, 'I')
+      for (const x of [c, c + 1]) if (out[9][x] === 'E') set(9, x, 'I')
     }
     // lashes: a flick at the outer corner (the cat-eye flick is one already)
     if (lashes && face !== 4 && face !== 1) set(8, outer, 'E')
@@ -3527,7 +3528,7 @@ export function avatarSprite(look: AvatarLook, view: View, pose: Pose, opts: Ava
   const key = `av:${lookKey(look)}:${view}:${pose}:${opts.barefoot ? 1 : 0}:${opts.flip ? 1 : 0}`
   return cached(key, () => {
     const comp = composeAvatar(look, view, pose, opts)
-    const s = outlineCanvas(comp, P.ink)
+    const s = softOutline(comp, 0.66, 0.8)
     if (!opts.flip) return s
     const f = createCanvas(s.w, s.h)
     const ctx = f.getContext('2d')!

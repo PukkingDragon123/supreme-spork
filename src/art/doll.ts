@@ -9,10 +9,11 @@
 // silhouette then gets a 1px ink outline.
 
 import { createCanvas, mix } from '../engine/pixel'
-import { cached, outlineCanvas, type Sprite } from '../engine/sprite'
+import { cached, type Sprite } from '../engine/sprite'
 import { HAIR_COLORS, P, SKIN_TONES } from './palette'
 import { OUTFIT_BY_ID, SUIT_FACE_ACCS, suitGarments, type BottomArt, type Pattern, type ShoeArt, type SuitArt, type SuitKind, type TopArt } from '../game/data/outfits'
 import { lookKey, type AvatarLook } from './avatar'
+import { softOutline } from './outline'
 import { bodyOf, bodyWiden, BROW_HEX, DOLL_HEIGHT, IRIS, LIP_HEX, planIsIdentity, reshapeIndex, type BodyLook, type ReshapePlan } from './body'
 
 export type BaseDollPose = 'stand' | 'wave' | 'wai' | 'happy' | 'think' | 'kneel' | 'kneelWai' | 'bow' | 'sit'
@@ -63,8 +64,9 @@ interface Mat {
 }
 
 function mat(b: string, s?: string, l?: string): Mat {
-  const sh = s ?? mix(b, INK, 0.22)
-  return { l: l ?? mix(b, '#ffffff', 0.35), b, s: sh, d: mix(sh, INK, 0.5) }
+  // cool, hue-shifted shadows read softer than plain darkening
+  const sh = s ?? mix(mix(b, '#4a3a7a', 0.16), INK, 0.08)
+  return { l: l ?? mix(b, '#fff6e6', 0.38), b, s: sh, d: mix(sh, INK, 0.42) }
 }
 
 // ---------------------------------------------------------------------------
@@ -331,7 +333,9 @@ interface Res {
 function resolve(look: AvatarLook, bare: boolean): Res {
   const tone = SKIN_TONES[look.skin] ?? SKIN_TONES[1]
   const hc = HAIR_COLORS[look.hairColor] ?? HAIR_COLORS[0]
-  const sk: Mat = { l: tone.l, b: tone.b, s: mix(tone.b, tone.d, 0.6), d: mix(tone.d, INK, 0.4) }
+  const hairDark = parseInt(hc.b.slice(1, 3), 16) + parseInt(hc.b.slice(3, 5), 16) + parseInt(hc.b.slice(5, 7), 16) < 300
+  // warm reddish-brown skin lines instead of ink
+  const sk: Mat = { l: tone.l, b: tone.b, s: mix(tone.b, tone.d, 0.6), d: mix(mix(tone.d, '#7a3040', 0.35), INK, 0.3) }
   const acc = (id: string | null | undefined) => (id ? OUTFIT_BY_ID[id]?.acc ?? null : null)
   const suit = (look.suit && OUTFIT_BY_ID[look.suit]?.suit) || null
   const g = suit ? suitGarments(suit) : null
@@ -340,13 +344,14 @@ function resolve(look: AvatarLook, bare: boolean): Res {
     g: look.gender === 'm' ? 'm' : 'f',
     face: look.face ?? 0,
     sk,
-    blush: mix(tone.b, P.blush, 0.6),
+    blush: mix(tone.b, P.blush, 0.45),
     hr: {
-      l: hc.l,
+      // dark hair gets a cool sheen so the shine band reads
+      l: mix(hc.l, '#a898c8', hairDark ? 0.32 : 0.08),
       b: hc.b,
       s: mix(hc.b, hc.d, 0.55),
       d: mix(hc.d, INK, 0.35),
-      shine: mix(hc.l, '#ffffff', 0.55),
+      shine: mix(hc.l, '#ffffff', hairDark ? 0.62 : 0.55),
       stub: mix(hc.b, tone.b, 0.22),
       stub2: mix(hc.b, tone.b, 0.4),
     },
@@ -563,6 +568,62 @@ function eyeLashes(r: Res) {
   return l === 1 || (l === 0 && r.g === 'f')
 }
 
+/**
+ * Paint an eye map in the soft style: one full-width dark upper lid, then the
+ * iris filling the eye with a dark-to-light gradient (no side or bottom
+ * outline), so eyes read friendly instead of staring. Shines, lashes, lid
+ * skin and creases are kept.
+ */
+function softEye(src: string[]): string[] {
+  const t0 = src.findIndex((row) => /[kp]/.test(row))
+  if (t0 < 0) return src
+  const H = src.length
+  const W = src[0].length
+  // a single crisp shine: drop repeats straight below the first one
+  const seen = new Set<number>()
+  const rows = src.map((row) => {
+    let out = ''
+    for (let i = 0; i < row.length; i++) {
+      if (row[i] === 'w') {
+        out += seen.has(i) ? 'p' : 'w'
+        seen.add(i)
+      } else out += row[i]
+    }
+    return out
+  })
+  const out = rows.map((row, j) => {
+    if (j < t0) return row
+    let s = ''
+    for (let i = 0; i < row.length; i++) {
+      const ch = row[i]
+      if (j === t0) {
+        // the upper lid spans the eye
+        const below = rows[j + 1]?.[i] ?? '.'
+        s += ch === 'l' ? 'l' : ch !== '.' || (below !== '.' && below !== 's') ? (ch === 'w' ? 'w' : 'k') : '.'
+        continue
+      }
+      const edge = i === 0 || i === W - 1 || row[i - 1] === '.' || row[i + 1] === '.' || j === H - 1 || rows[j + 1]?.[i] === '.'
+      if (ch === 'k') {
+        // the lower rim is softer than the lid
+        s += j === H - 1 || rows[j + 1]?.[i] === '.' ? 'K' : 'k'
+        continue
+      }
+      if (ch !== 'p' && ch !== 'i') {
+        s += ch
+        continue
+      }
+      const f = (j - t0) / Math.max(1, H - 1 - t0)
+      s += edge && f >= 0.5 ? 'I' : f < 0.5 ? 'p' : f < 0.8 ? 'I' : 'i'
+    }
+    return s
+  })
+  // a tiny reflected glint low on the inner side
+  const gj = H - 2
+  const gi = W - 2
+  if (gj > t0 + 1 && /[iI]/.test(out[gj]?.[gi] ?? '')) out[gj] = out[gj].slice(0, gi) + 'L' + out[gj].slice(gi + 1)
+  return out
+}
+
 function drawEye(b: Buf, e: EyeMap, left: boolean, dy: number, r: Res, lashOk: boolean) {
   const w = e.rows[0].length
   const baseX = 10 + (e.ox ?? 0)
@@ -585,14 +646,21 @@ function drawEye(b: Buf, e: EyeMap, left: boolean, dy: number, r: Res, lashOk: b
                 ? r.sk.s
                 : ch === 'c'
                   ? mix(r.sk.s, r.sk.d, 0.55)
-                  : null
-  for (let j = 0; j < e.rows.length; j++) {
+                  : ch === 'I'
+                    ? mix(iris.p, irisLight, 0.5)
+                    : ch === 'K'
+                      ? mix(EYE_K, iris.p, 0.5)
+                      : ch === 'L'
+                        ? mix(irisLight, WHITE, 0.55)
+                    : null
+  const rows = e.arc ? e.rows : softEye(e.rows)
+  for (let j = 0; j < rows.length; j++) {
     for (let i = 0; i < w; i++) {
-      let ch = e.rows[j][i]
+      let ch = rows[j][i]
       if (!left) {
-        ch = e.rows[j][w - 1 - i]
+        ch = rows[j][w - 1 - i]
         if (e.keep) {
-          const orig = e.rows[j][i]
+          const orig = rows[j][i]
           if (ch === 'w' && orig !== 'w') ch = 'p'
           if (orig === 'w' && ch !== '.') ch = 'w'
         }
@@ -1770,7 +1838,7 @@ function hairColour(r: Res, def: HairDef, ch: string, x: number, t: number, y: n
     case 's':
       return h.s
     case 'd':
-      return h.d
+      return mix(h.d, h.b, 0.3)
     case 'b':
       return h.b
     case 'k':
@@ -1788,16 +1856,18 @@ function hairColour(r: Res, def: HairDef, ch: string, x: number, t: number, y: n
     case '2':
       return def.accent2 ?? '#7fd3b5'
   }
-  // '#': auto shading
+  // '#': auto shading — light from the top-left: a lit crown rim, one clean
+  // shine band (no dithering), shade down the right side and the ends.
   if (kind === 'behind') return x >= 16 ? mix(h.s, h.d, 0.35) : h.s
-  const ringT = kind === 'front' ? 3 : 3
-  if (t === ringT && x >= 7 && x <= 24 && (x + y) % 5 !== 0) {
-    if (x >= 9 && x <= 11) return h.shine
-    return h.l
+  if (t === 3 && x >= 8 && x <= 21) {
+    if (x >= 10 && x <= 12) return h.shine
+    return x <= 18 ? h.l : mix(h.l, h.b, 0.5)
   }
-  if (t === ringT - 1 && x >= 10 && x <= 13) return h.l
-  if (x >= 24 && t >= 4) return h.s
-  if (kind === 'back' && y >= 17) return x % 3 === 0 ? h.s : h.b
+  if (t === 2 && x >= 11 && x <= 15) return mix(h.l, h.b, 0.4)
+  if (t === 4 && x >= 9 && x <= 13) return mix(h.l, h.b, 0.55)
+  if (t <= 1 && x <= 14) return mix(h.l, h.b, 0.5)
+  if (x >= 23 && t >= 3) return h.s
+  if (kind === 'back' && y >= 17) return x >= 20 ? h.s : h.b
   if (kind === 'front' && y >= 17) return h.s
   return h.b
 }
@@ -1994,10 +2064,12 @@ function poseDef(pose: DollPose, view: DollView): PoseDef {
 // ---- top materials
 
 function topMats(t: TopArt) {
-  const body = mat(t.main, t.shade)
+  // outfit shades are pulled a little toward the fill (and cooled) so whites don't look grubby
+  const soft = (m: string, s: string | undefined) => (s ? mix(mix(s, m, 0.3), '#6a5aa0', 0.06) : undefined)
+  const body = mat(t.main, soft(t.main, t.shade))
   const j = t.jacket
-  const jacket = j ? mat(j.main, j.shade) : null
-  const sleeve = j ? mat(j.sleeve ?? j.main, j.sleeveShade ?? j.shade) : body
+  const jacket = j ? mat(j.main, soft(j.main, j.shade)) : null
+  const sleeve = j ? mat(j.sleeve ?? j.main, soft(j.sleeve ?? j.main, j.sleeveShade ?? j.shade)) : body
   return { body, jacket, sleeve }
 }
 
@@ -6784,7 +6856,7 @@ export function dollSprite(look: AvatarLook, pose: DollPose, opts: DollOptions =
   const key = `doll:${lookKey(look)}:${pose}:${view}:${opts.blink ? 1 : 0}:${opts.flip ? 1 : 0}:${opts.barefoot ? 1 : 0}`
   return cached(key, () => {
     const buf = compose(look, pose, view, !!opts.blink, !!opts.barefoot)
-    const s = outlineCanvas(buf.canvas(), INK)
+    const s = softOutline(buf.canvas())
     if (!opts.flip) return s
     const f = createCanvas(s.w, s.h)
     const ctx = f.getContext('2d')!

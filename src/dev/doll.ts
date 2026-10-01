@@ -515,3 +515,37 @@ if (want('body')) {
     }
   }
 }
+
+// ?s=style – the style sheet for art passes: a few looks in the key poses
+// (doll stand / wave / think / back / kneelWai · portrait · small front / side
+// walk / back / wai). Compare before/after at &z=6.
+if (want('style')) {
+  const looks: [string, AvatarLook][] = [
+    ['boy', M],
+    ['girl', F],
+    ['boy hoodie', { ...M, hair: 'hair_curtain', hairColor: 1, top: 'top_hoodie_over', bottom: 'bot_jeans', shoes: 'shoes_sneaker_white', skin: 2 }],
+    ['girl thai', { ...F, hair: 'hair_long', hairColor: 2, top: 'top_chitralada', bottom: 'bot_chitralada', shoes: 'shoes_sandal', head: 'head_jasmine', skin: 0 }],
+    ['boy tan', { ...M, hair: 'hair_buzz', skin: 3, top: 'top_tee_white', bottom: 'bot_denim_shorts', shoes: 'shoes_flipflop' }],
+    ['girl suit', { ...F, hair: 'hair_ponytail', suit: 'suit_cat' }],
+  ]
+  const lim = Number(params.get('n') ?? looks.length)
+  if (params.has('closeup')) {
+    const r = row()
+    for (const [n, l] of looks.slice(0, lim)) cell(r, n, [[dollSprite(l, 'stand'), Z], [avatarSprite(l, 'front', 'stand'), Z], [avatarSprite(l, 'side', 'walk1'), Z]])
+  }
+  for (const [n, l] of looks.slice(0, params.has('closeup') ? 0 : lim)) {
+    const r = row()
+    cell(r, n, [
+      [dollSprite(l, 'stand'), Z],
+      [dollSprite(l, 'wave'), Z],
+      [dollSprite(l, 'think'), Z],
+      [dollSprite(l, 'stand', { view: 'back' }), Z],
+      [dollSprite(l, 'kneelWai'), Z],
+      [dollPortrait(l, 28), Z],
+      [avatarSprite(l, 'front', 'stand'), Z],
+      [avatarSprite(l, 'side', 'walk1'), Z],
+      [avatarSprite(l, 'back', 'walk2'), Z],
+      [avatarSprite(l, 'front', 'wai'), Z],
+    ])
+  }
+}

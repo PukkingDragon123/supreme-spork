@@ -59,7 +59,7 @@ export const EYE_COUNT = 9
 
 /** Iris colours by EYE_COLORS index: pupil (dark) and iris light; boys' brown has a warmer glint. */
 export const IRIS: { p: string; i: string; im?: string; s: string }[] = [
-  { p: '#4a2a48', i: '#b8657f', im: '#a0705a', s: '#5a3838' },
+  { p: '#2e1a28', i: '#9c5a56', im: '#8e6044', s: '#5a3838' },
   { p: '#241a26', i: '#5a4a5e', s: '#2a2030' },
   { p: '#4a3420', i: '#b08a48', s: '#6a4a28' },
   { p: '#3a3e4c', i: '#9aa4b8', s: '#4a5060' },
