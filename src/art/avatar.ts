@@ -71,6 +71,8 @@ export type Pose = 'stand' | 'walk1' | 'walk2' | 'pass' | 'wai' | 'kneel' | 'bow
 
 export const FRAME_W = 16
 export const FRAME_H = 27
+/** v5: the world sprite is drawn two rows taller (chest + thighs) than its 27-row maps. */
+export const SPRITE_STRETCH = 2
 /** Rows of empty space above the head for buns and hats. */
 const HEADROOM = 4
 
@@ -934,6 +936,39 @@ const TORSO: Record<string, string[]> = {
     '...aaTTTTTtaa...',
     '...HHTTTTTtHH...',
     '.....TTTTTt.....',
+  ],
+  // v5 walk: arms swing (one hand forward/up, the other back/down)
+  frontWalk1: [
+    '....ATTCCTTA....',
+    '...AATTTTTTAA...',
+    '...aaTTTTTtAA...',
+    '...HHTTTTTtAA...',
+    '.....TTTTTtaa...',
+    '.....TTTTTtHH...',
+  ],
+  frontWalk2: [
+    '....ATTCCTTA....',
+    '...AATTTTTTAA...',
+    '...AATTTTTtaa...',
+    '...AATTTTTtHH...',
+    '...aaTTTTTt.....',
+    '...HHTTTTTt.....',
+  ],
+  backWalk1: [
+    '....ATTTTTTA....',
+    '...AATTTTTTAA...',
+    '...AATTTTTtaa...',
+    '...AATTTTTtHH...',
+    '...aaTTTTTt.....',
+    '...HHTTTTTt.....',
+  ],
+  backWalk2: [
+    '....ATTTTTTA....',
+    '...AATTTTTTAA...',
+    '...aaTTTTTtAA...',
+    '...HHTTTTTtAA...',
+    '.....TTTTTtaa...',
+    '.....TTTTTtHH...',
   ],
   frontWai: [
     '....ATTHHTTA....',
@@ -3384,14 +3419,26 @@ function reshapeSmall(src: HTMLCanvasElement, g: BodyType, b: BodyLook, view: Vi
   const standing = low <= 0
   const chest = HEADROOM + 15 + low
   const thigh = HEADROOM + 20
-  const rows: { at: number; n: number }[] = []
-  if (d > 0) rows.push({ at: chest, n: d })
-  else if (d === -1) rows.push({ at: chest, n: -1 })
-  else if (d === -2) rows.push(...(standing ? [{ at: chest, n: -1 }, { at: thigh, n: -1 }] : [{ at: chest, n: -2 }]))
+  const ops = new Map<number, number>()
+  const add = (at: number, n: number) => ops.set(at, (ops.get(at) ?? 0) + n)
+  // v5 proportions: a row longer in the chest and (standing) the thighs
+  if (!bow) {
+    add(chest + 1, 1)
+    if (standing) add(thigh, 1)
+  }
+  if (d > 0) add(chest, d)
+  else if (d === -1) add(chest, -1)
+  else if (d === -2) {
+    if (standing) {
+      add(chest, -1)
+      add(thigh, -1)
+    } else add(chest, -2)
+  }
+  const rows = [...ops].filter(([, n]) => n).map(([at, n]) => ({ at, n }))
   const plan: ReshapePlan = {
     w: FRAME_W,
     h: FRAME_H,
-    outH: FRAME_H + (bow ? SPRITE_HEIGHT[b.height] ?? 0 : d),
+    outH: FRAME_H + SPRITE_STRETCH + (bow ? SPRITE_HEIGHT[b.height] ?? 0 : d),
     widen: (y) => (y >= legY ? wL : y >= torsoY ? wT : 0),
     xl: side ? -1 : 5,
     xr: side ? 8 : 10,
@@ -3473,8 +3520,8 @@ function composeBase(look: AvatarLook, view: View, pose: Pose, opts: AvatarRende
 
   // Torso.
   let torso: string[]
-  if (view === 'front') torso = pose === 'wai' ? TORSO.frontWai : pose === 'sit' ? TORSO.frontSit : TORSO.front
-  else if (view === 'back') torso = pose === 'wai' || pose === 'kneel' || pose === 'sit' ? TORSO.backWai : TORSO.back
+  if (view === 'front') torso = pose === 'wai' ? TORSO.frontWai : pose === 'sit' ? TORSO.frontSit : pose === 'walk1' ? TORSO.frontWalk1 : pose === 'walk2' ? TORSO.frontWalk2 : TORSO.front
+  else if (view === 'back') torso = pose === 'wai' || pose === 'kneel' || pose === 'sit' ? TORSO.backWai : pose === 'walk1' ? TORSO.backWalk1 : pose === 'walk2' ? TORSO.backWalk2 : TORSO.back
   else
     torso =
       pose === 'offer' ? TORSO.sideOffer : pose === 'walk1' ? TORSO.sideFwd : pose === 'walk2' ? TORSO.sideBack : TORSO.side

@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { gripPose, poseInfo, reachPose, rollPose, stirPose, workPose, wristOf, WP } from '../../../art/poses/work'
 import { wateringSpoutFromHandle } from '../../../art/jobs'
+import { dollJoint, dollPoint, restingArm } from '../../../art/doll'
 import { JobScene } from '../base'
 import type { Surface } from '../../../engine/pixel'
 
@@ -20,10 +21,12 @@ describe('work poses', () => {
     expect(rollPose(2).startsWith('act_w_roll_')).toBe(true)
   })
 
-  it('reports wrists in sprite space (doll + 1 px outline)', () => {
+  it('reports wrists in sprite space (mapped through dollJoint)', () => {
     const name = workPose({ name: 'act_w_test_wrist', view: 'front', L: { w: [10, 30] }, R: 'rest', expr: 'smile' })
-    expect(wristOf(name, 'L')).toEqual([11, 31])
-    expect(wristOf(name, 'R')).toEqual([22.9, 33])
+    expect(wristOf(name, 'L')).toEqual(dollJoint({ gender: 'm' }, name, 'front', 1, { w: [10, 30], k: [1, 0] }))
+    expect(wristOf(name, 'R')).toEqual(dollJoint({ gender: 'm' }, name, 'front', -1, restingArm(0, -1)))
+    // v5 proportions: below the shoulders the sprite is taller than compose space
+    expect(wristOf(name, 'L')![1]).toBeGreaterThan(31)
     expect(wristOf('stand', 'L')).toBeNull()
   })
 
@@ -37,7 +40,8 @@ describe('work poses', () => {
       // Both wrists lie on the line through the hold point along the handle.
       for (const [x, y] of [L, R]) {
         const cross = (x - g.c[0]) * ay - (y - g.c[1]) * ax
-        expect(Math.abs(cross)).toBeLessThan(1e-6)
+        // sub-pixel: the v5 body mapping is piecewise linear
+        expect(Math.abs(cross)).toBeLessThan(0.6)
       }
       // The upper hand is on the side the handle leans toward.
       const upper = L[1] < R[1] ? L : R
@@ -55,7 +59,10 @@ describe('work poses', () => {
   it('reaches the requested distance from the shoulder', () => {
     const name = reachPose('back', 'R', -Math.PI / 2, 9)
     const w = wristOf(name, 'R')!
-    expect(Math.hypot(w[0] - 1 - 23.5, w[1] - 1 - 25)).toBeCloseTo(9, 5)
+    const s = dollPoint({ gender: 'm' }, name, 'back', 23.5, 25)
+    // mapped to sprite pixels the arm is a little longer below the shoulder line
+    expect(Math.hypot(w[0] - s[0], w[1] - s[1])).toBeGreaterThan(8.5)
+    expect(Math.hypot(w[0] - s[0], w[1] - s[1])).toBeLessThan(11)
     expect(poseInfo(name)?.view).toBe('back')
   })
 })

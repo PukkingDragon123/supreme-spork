@@ -3,7 +3,7 @@
 // flash, light rays and vignettes, and the props people hold (incense,
 // candles, strikers, ladles, gold leaf, coins).
 
-import { dollSprite, type BaseDollPose, type DollView } from '../doll'
+import { DOLL_W, dollJoint, dollPoint, dollSprite, restWrist, type BaseDollPose, type DollView } from '../doll'
 import type { AvatarLook } from '../avatar'
 import { bake, mix, type Surface } from '../../engine/pixel'
 import { P } from '../palette'
@@ -65,13 +65,14 @@ export function handAt(p: Placed, side: 1 | -1): [number, number] {
   let w: [number, number] | null = null
   if (T_POSES.has(p.pose)) w = tWrist(p.pose as TPose, p.view, side, p.gender)
   if (!w) {
-    // Built-in poses: chest wai / kneeling wai / resting.
+    // Built-in poses: chest wai / kneeling wai / resting (mapped to v5 sprite pixels).
     const kneel = p.pose === 'kneel' || p.pose === 'kneelWai'
     const wai = p.pose === 'wai' || p.pose === 'kneelWai'
-    const y = (wai ? (p.view === 'back' ? 21 : 27) : 33) + (kneel ? 9 : 0)
-    w = wai ? [17, y] : [side === 1 ? 9 : 25, y]
+    const dy = kneel ? 9 : 0
+    const pose = (T_POSES.has(p.pose) ? 'stand' : p.pose) as BaseDollPose
+    w = wai ? dollPoint({ gender: p.gender }, pose, p.view, 16, (p.view === 'back' ? 20 : 26) + dy) : dollJoint({ gender: p.gender }, pose, p.view, side, { w: restWrist(side, dy) })
   }
-  const x = p.flip ? 34 - w[0] : w[0]
+  const x = p.flip ? DOLL_W - w[0] : w[0]
   return [p.x + x * p.s, p.y + w[1] * p.s]
 }
 

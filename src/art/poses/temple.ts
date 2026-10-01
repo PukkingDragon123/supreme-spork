@@ -7,7 +7,7 @@
 // the screen-left, `R` the screen-right one, in both views. Props held in the
 // hands are drawn by the scenes at `tWrist()`.
 
-import { registerDollPose, restingArm, type ArmDef, type DollView, type Hand, type PoseDef, type Pt } from '../doll'
+import { DOLL_W, dollJoint, registerDollPose, restingArm, type ArmDef, type DollView, type Hand, type PoseDef, type Pt } from '../doll'
 
 export type TPose =
   | 'alms_hold'
@@ -413,18 +413,9 @@ export function tWrist(name: TPose, view: DollView, side: 1 | -1, gender: 'm' | 
   const d = def(name, view)
   const a = d ? (side === 1 ? d.L : d.R) : null
   if (!a) return null
-  let x = a.w[0]
-  let y = a.w[1]
-  if (gender === 'f') {
-    const kw = a.k?.[1] ?? 1
-    x += side * kw
-    y += 0.5 * kw
-  }
-  // +1 for the outline border.
-  x += 1
-  y += 1
-  if (flip) x = 34 - x
-  return [x, y]
+  // compose space → sprite pixels (girls' shoulders, v5 proportions, outline)
+  const [x, y] = dollJoint({ gender }, tp(name), view, side, a)
+  return [flip ? DOLL_W - x : x, y]
 }
 
 export { mirror as mirrorArm }

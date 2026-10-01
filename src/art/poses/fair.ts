@@ -7,7 +7,7 @@
 //   dollSprite(look, 'act_f_throw', { view: 'back' })
 // and use `fairHand()` to put a held prop (dart, ring, food…) in the hand.
 
-import { registerDollPose, restingArm, type ArmDef, type DollView, type PoseDef } from '../doll'
+import { dollJoint, registerDollPose, restingArm, type ArmDef, type DollPose, type DollView, type PoseDef } from '../doll'
 import type { AvatarLook } from '../avatar'
 
 type Views = { front?: PoseDef; back?: PoseDef }
@@ -262,8 +262,7 @@ export function fairPoseDef(name: string, view: DollView): PoseDef | null {
 export function fairHand(name: string, view: DollView, look: Pick<AvatarLook, 'gender'>, side: 'R' | 'L' = 'R'): { x: number; y: number } {
   const def = fairPoseDef(name, view)
   const arm = (def ? def[side] : null) ?? rest()[side]
-  const k = arm.k ?? [1, 1]
-  const sx = side === 'L' ? 1 : -1
-  const shift = look.gender === 'f' ? sx * k[1] : 0
-  return { x: Math.round(arm.w[0] + shift) + 1, y: Math.round(arm.w[1] + (look.gender === 'f' ? 0.5 * k[1] : 0)) + 1 }
+  // compose space → sprite pixels (girls' shoulders, v5 proportions, outline)
+  const [x, y] = dollJoint(look, (def ? name : 'stand') as DollPose, view, side === 'L' ? 1 : -1, arm)
+  return { x: Math.round(x), y: Math.round(y) }
 }

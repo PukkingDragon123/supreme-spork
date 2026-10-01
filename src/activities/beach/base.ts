@@ -9,7 +9,7 @@ import { JobScene } from '../jobs/base'
 import type { BeachRoundStats } from '../../game/beach'
 import { currentPhase } from '../../scenes/sky'
 import { beachWrist } from '../../art/poses/beach'
-import { DOLL_W, DOLL_H } from '../../art/doll'
+import { DOLL_W, DOLL_H, dollJoint, restWrist } from '../../art/doll'
 import { mix, SAND, SEA, type SeaPal } from '../../art/places/beach-kit'
 import { BEACH_META, beachOf } from '../../game/data/beaches'
 import { mapId } from '../../ui/store'
@@ -28,7 +28,7 @@ export abstract class BeachScene extends JobScene {
 export function bwrist(pose: string, side: 'L' | 'R', x: number, feetY: number, flip = false): [number, number] {
   const ox = Math.round(x - DOLL_W / 2)
   const oy = Math.round(feetY - DOLL_H + 1)
-  const w = beachWrist(pose, flip ? (side === 'L' ? 'R' : 'L') : side) ?? [side === 'L' ? 9 : 24, 33]
+  const w = beachWrist(pose, flip ? (side === 'L' ? 'R' : 'L') : side) ?? dollJoint({ gender: 'm' }, 'stand', 'front', side === 'L' ? 1 : -1, { w: restWrist(side === 'L' ? 1 : -1) })
   return [ox + (flip ? DOLL_W - w[0] : w[0]), oy + w[1]]
 }
 
