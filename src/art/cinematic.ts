@@ -860,8 +860,10 @@ export function villagerSprite(look: AvatarLook, pose: 'offer' | 'stand'): Sprit
     const comp = composeAvatar(look, 'side', pose)
     const c = createCanvas(18, 27)
     const ctx = c.getContext('2d')!
-    // Upper body (head + torso, rows 0..22) sits a little lower when kneeling.
-    ctx.drawImage(comp, 0, 0, 16, 23, 0, 1, 16, 23)
+    // Upper body (head + torso: 23 rows of the classic map, plus the v5 chest
+    // row) sits on the kneeling legs below.
+    const upper = 23 + 1
+    ctx.drawImage(comp, 0, 0, 16, upper, 0, 24 - upper, 16, upper)
     const bot = OUTFIT_BY_ID[look.bottom]?.bottom
     const skin = SKIN_TONES[look.skin] ?? SKIN_TONES[1]
     const pal: Record<string, string> = { L: bot?.main ?? '#8a6a55', K: bot?.shade ?? '#6a4a35', F: skin.d }

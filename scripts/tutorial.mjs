@@ -309,7 +309,9 @@ await step('11 go home and decorate', async () => {
   await shot('decorate-place')
   // Bot Noi steps aside while placing; confirm with the in-room ✓ (the scene's confirm).
   await page.waitForSelector('.edit-bar')
-  await page.evaluate(async () => (await import('/src/ui/views/HouseView.tsx')).currentHouseScene()?.confirmGhost())
+  // via the dev hook: importing /src/ui/views/HouseView.tsx here would load a second
+  // copy of the module (with no scene) whenever the dev server has hot-updated it
+  await page.evaluate(async () => (window.__boondee.houseScene ?? (await import('/src/ui/views/HouseView.tsx')).currentHouseScene)()?.confirmGhost())
   await page.waitForTimeout(500)
   const placed = await page.evaluate(() => window.__boondee.game.value.house.placed.some((p) => p.id === 'plant_monstera'))
   if (!placed) throw new Error('loaner plant was not placed')

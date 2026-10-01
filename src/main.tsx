@@ -40,8 +40,10 @@ setTimeout(() => {
 }, 4000)
 if (import.meta.env.DEV) {
   // Handy hooks for smoke tests and debugging in the browser console.
-  Promise.all([import('./ui/store'), import('./ui/TempleView')]).then(([m, tv]) => {
-    ;(window as unknown as Record<string, unknown>).__boondee = { ...m, game, travelTo: tv.travelTo, worldScene: tv.worldScene }
+  // (Scripts reach scenes through these hooks rather than importing /src modules
+  // themselves: after a hot update a fresh import would be a second module copy.)
+  Promise.all([import('./ui/store'), import('./ui/TempleView'), import('./ui/views/HouseView')]).then(([m, tv, hv]) => {
+    ;(window as unknown as Record<string, unknown>).__boondee = { ...m, game, travelTo: tv.travelTo, worldScene: tv.worldScene, houseScene: hv.currentHouseScene }
   })
   const q = new URLSearchParams(location.search)
   const act = q.get('act')
