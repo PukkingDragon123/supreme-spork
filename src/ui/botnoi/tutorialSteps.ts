@@ -43,6 +43,8 @@ export interface StepUi {
   fallback?: () => { text: string; label: string } | null
   /** Said by Bot Noi when the step is done. */
   praise?: string
+  /** Step aside (no bubble, no dim) while this is true, e.g. while placing furniture. */
+  aside?: () => boolean
 }
 
 /** Close windows, sheets and screens so the hotbar is reachable. */
@@ -87,7 +89,7 @@ export const STEP_UI: Record<TutStepId, StepUi> = {
     lines: [
       L('happy', 'สวัสดีครับ! ผมชื่อ “บอทน้อย” หุ่นยนต์ผู้ช่วยสายบุญรุ่นจิ๋ว ปิ๊บ ๆ!'),
       L('normal', 'ผมจะพาทัวร์วัด สอนทำบุญทีละขั้น ลงมือทำจริงทุกขั้นเลยนะครับ'),
-      L('love', 'เรียนจบมีรางวัลด้วย! เหรียญ แถมที่คาดผมเสาอากาศแบบผมอีกหนึ่งอัน ^^'),
+      L('love', 'ระหว่างเรียนผมให้ยืมของไปก่อน เรียนจบมีของขวัญชิ้นใหญ่! เหรียญ ชุดเริ่มต้น แถมที่คาดผมเสาอากาศแบบผม ^^'),
     ],
     targets: () => [],
   },
@@ -101,9 +103,9 @@ export const STEP_UI: Record<TutStepId, StepUi> = {
   },
   incense: {
     arm: 'point',
-    lines: [L('normal', 'นี่คือกระถางธูปหน้าโบสถ์ครับ แตะที่กระถางธูปเพื่อเดินไปจุดธูปขอพรกัน')],
+    lines: [L('normal', 'นี่คือกระถางธูปหน้าโบสถ์ครับ แตะที่กระถางธูปเพื่อเดินไปจุดธูปขอพรกัน'), L('wink', 'ยังไม่มีธูปใช่ไหมครับ? ไม่เป็นไร ธูปหน้าโบสถ์ผมให้ยืมจุดฟรีก่อนนะ!')],
     targets: () => (arrivedAt('incense') ? [actionBtn] : inWorld() && mapId.value === 'wat' ? [{ kind: 'hotspot', id: 'incense' }] : []),
-    mini: () => (activity.value?.id === 'wish' ? 'จุดธูป 3 ดอก เลือกของถวาย แล้วกดค้างส่งคำอธิษฐานนะครับ' : null),
+    mini: () => (activity.value?.id === 'wish' ? 'ธูปนี้บอทน้อยให้ยืมจุดฟรีนะครับ จุด 3 ดอก แล้วกดค้างอธิษฐานเลย (ของถวายข้ามไปก่อนได้)' : null),
     nav: () => goToSpot('wat', 'incense'),
     lost: 'กระถางธูปอยู่หน้าโบสถ์วัดของเราครับ กด “นำทาง” ได้เลย',
     praise: 'สาธุ~ คำอธิษฐานลอยไปแล้วครับ',
@@ -116,16 +118,16 @@ export const STEP_UI: Record<TutStepId, StepUi> = {
   },
   bag_look: {
     arm: 'wave',
-    lines: [L('love', 'นี่ไงครับ ข้าว แกง ธูป ของถวายพระอยู่ในนี้หมด เอาไปทำบุญได้เลย'), L('normal', 'ดูเสร็จแล้วปิดกระเป๋าได้เลยครับ')],
+    lines: [L('think', 'ตอนนี้กระเป๋ายังว่างอยู่ครับ ของที่ได้จากภารกิจ ร้านค้า และของขวัญจะมาอยู่ในนี้'), L('love', 'เรียนจบเมื่อไหร่ ผมมีของขวัญใส่ให้เต็มกระเป๋าเลย! ปิดกระเป๋าได้เลยครับ')],
     targets: () => (panel.value === 'bag' ? [{ kind: 'ui', sel: '.win-backdrop .win', pad: 4 }] : []),
     next: 'เข้าใจแล้ว',
   },
   merit: {
     arm: 'point',
-    lines: [L('happy', 'ทีนี้ทำบุญจริงกันครับ! แตะบ่อปลาคาร์ฟเพื่อไปให้อาหารปลา (หรือจะไปตักบาตรก็ได้นะ)')],
+    lines: [L('happy', 'ทีนี้ทำบุญจริงกันครับ! แตะบ่อปลาคาร์ฟเพื่อไปให้อาหารปลา (หรือจะไปตักบาตรก็ได้นะ)'), L('wink', 'อาหารปลากับของใส่บาตร บอทน้อยให้ยืมก่อนนะ ใช้เสร็จผมเก็บคืน ^^')],
     targets: () =>
       arrivedAt('pond') || arrivedAt('alms') ? [actionBtn] : inWorld() && mapId.value === 'wat' ? [{ kind: 'hotspot', id: 'pond' }] : [],
-    mini: () => (activity.value?.id === 'koi' ? 'แตะที่น้ำเพื่อโปรยอาหารครับ ปลาอ้วน เราอิ่มบุญ!' : activity.value?.id === 'alms' ? 'ใส่ของลงบาตรทีละอย่างนะครับ ตั้งใจทำ ได้บุญเต็ม ๆ' : null),
+    mini: () => (activity.value?.id === 'koi' ? 'อาหารปลาบอทน้อยให้ยืมก่อนนะ แตะที่น้ำเพื่อโปรยอาหารครับ!' : activity.value?.id === 'alms' ? 'ของใส่บาตรบอทน้อยให้ยืมก่อนนะ ใส่ลงบาตรทีละอย่างได้เลยครับ' : null),
     nav: () => goToSpot('wat', 'pond'),
     lost: 'บ่อปลาคาร์ฟอยู่ในวัดของเราครับ กด “นำทาง” เลย',
     praise: 'ปลายิ้มแล้ว! (แปลได้ 3%)',
@@ -222,16 +224,24 @@ export const STEP_UI: Record<TutStepId, StepUi> = {
   },
   decorate: {
     arm: 'point',
-    lines: [L('normal', 'ยินดีต้อนรับสู่บ้านครับ! แตะปุ่มดินสอเพื่อ “จัดห้อง” กัน')],
+    lines: [L('normal', 'ยินดีต้อนรับสู่บ้านครับ! แตะปุ่มดินสอเพื่อ “จัดห้อง” กัน'), L('wink', 'ต้นไม้ในกล่องเก็บของ บอทน้อยให้ยืมก่อนนะ ลองวางดู เรียนจบแล้วยกให้เลย!')],
     targets: () => (mode.value === 'house' ? [{ kind: 'ui', sel: '.house-tools button[aria-label="จัดห้อง"]', pad: 3 }] : []),
     nav: () => (closeAll(), goHome()),
     lost: 'ขั้นนี้ทำที่บ้านครับ กด “นำทาง” กลับบ้านกัน',
   },
   decorate_done: {
     arm: 'wave',
-    lines: [L('love', 'ลากของจากคลังไปวางตรงไหนก็ได้ แตะของในห้องเพื่อย้ายครับ'), L('happy', 'พอใจแล้วกด “เสร็จ” เลย!')],
-    targets: () => (mode.value === 'house' ? [{ kind: 'ui', sel: '.house-edit-top .btn.green', pad: 3 }] : []),
+    lines: [L('love', 'แตะต้นไม้ที่ผมให้ยืมในคลัง ลากไปวางตรงไหนก็ได้ แล้วกด ✓ เลยครับ'), L('happy', 'พอใจแล้วกด “เสร็จ” เลย!')],
+    // Plant in the tray → "วาง" while placing → "เสร็จ".
+    targets: () =>
+      mode.value !== 'house'
+        ? []
+        : [
+            ...((game.value.house.storage.plant_monstera ?? 0) > 0 ? [{ kind: 'ui', sel: '.edit-tray .tray-row .slot', pad: 3 } as Target] : []),
+            { kind: 'ui', sel: '.house-edit-top .btn.green', pad: 3 },
+          ],
     next: 'เข้าใจแล้ว',
+    aside: () => !!document.querySelector('.edit-bar'),
   },
   finish: {
     card: 'finish',

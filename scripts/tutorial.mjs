@@ -48,17 +48,13 @@ const readBubble = async () => {
     await page.waitForTimeout(120)
   }
 }
-/** Accept Bot Noi's gift card ("บอทน้อยให้ของขวัญ!") if one is up. */
-let gifts = 0
+/** Bot Noi only gives at the end: a gift card mid-tutorial is a failure. */
 const acceptGift = async () => {
-  if (!(await page.locator('.bn-gift').count())) return
-  const btn = page.getByRole('button', { name: 'ขอบใจนะบอทน้อย!' })
-  await btn.waitFor({ timeout: 4000 })
-  await page.waitForTimeout(300)
-  if (!gifts++) await shot('gift')
-  await btn.click()
-  await page.waitForTimeout(250)
+  if (await page.locator('.bn-gift').count()) throw new Error(`gift reveal during the tutorial (step ${await tutStep()})`)
 }
+/** Nothing of Bot Noi's may stay in the bag before the finale (loans are taken back). */
+const BOT_KIT = ['incense', 'garland', 'rice', 'curry', 'banana', 'water']
+const bagHasKit = () => page.evaluate((ids) => ids.filter((id) => (window.__boondee.game.value.inventory[id] ?? 0) > 0), BOT_KIT)
 /** Wait for the coach mark, accepting any gift card on the way. */
 const waitHole = async (timeout = 10000) => {
   const t0 = Date.now()
@@ -129,9 +125,8 @@ await step('1 greeting card', async () => {
 })
 
 await step('2 walk to the ring', async () => {
-  await page.waitForSelector('.bn-gift', { timeout: 5000 })
+  await page.waitForTimeout(800)
   await acceptGift()
-  if ((await page.evaluate(() => window.__boondee.game.value.coins)) < 50) throw new Error('welcome coins missing')
   await waitHole()
   await page.waitForTimeout(700)
   await shot('walk')
@@ -309,23 +304,44 @@ await step('11 go home and decorate', async () => {
   await waitStep('decorate_done')
   await page.waitForTimeout(600)
   await shot('decorate-done')
+  await tapHole() // the loaner plant in the tray
+  await page.waitForTimeout(500)
+  await shot('decorate-place')
+  // Bot Noi steps aside while placing; confirm with the in-room ✓ (the scene's confirm).
+  await page.waitForSelector('.edit-bar')
+  await page.evaluate(async () => (await import('/src/ui/views/HouseView.tsx')).currentHouseScene()?.confirmGhost())
+  await page.waitForTimeout(500)
+  const placed = await page.evaluate(() => window.__boondee.game.value.house.placed.some((p) => p.id === 'plant_monstera'))
+  if (!placed) throw new Error('loaner plant was not placed')
   await tapHole() // เสร็จ
   await waitStep('finish')
 })
 
 await step('12 finale and reward', async () => {
   await page.waitForSelector('.bn-card.finish', { timeout: 10000 })
+  const early = await bagHasKit()
+  if (early.length) throw new Error(`items in the bag before the finale: ${early}`)
+  const storageBefore = await page.evaluate(() => ({ ...window.__boondee.game.value.house.storage }))
+  if (Object.keys(storageBefore).length) throw new Error(`loaner furniture left in storage: ${JSON.stringify(storageBefore)}`)
   await readBubble()
   await page.waitForTimeout(400)
   await shot('finish')
   const before = await page.evaluate(() => window.__boondee.game.value.coins)
   await click('รับรางวัล!')
+  await page.waitForSelector('.bn-gift', { timeout: 5000 })
+  await page.getByRole('button', { name: 'ขอบใจนะบอทน้อย!' }).waitFor({ timeout: 5000 })
   await page.waitForTimeout(900)
   await shot('reward')
-  const s = await page.evaluate(() => ({ coins: window.__boondee.game.value.coins, outfits: window.__boondee.game.value.outfits, tut: window.__boondee.game.value.botnoi.tut }))
+  const s = await page.evaluate(() => {
+    const g = window.__boondee.game.value
+    return { coins: g.coins, outfits: g.outfits, tut: g.botnoi.tut, inv: g.inventory, storage: g.house.storage, placed: g.house.placed.map((p) => p.id) }
+  })
   if (s.tut !== 'done') throw new Error(`tutorial not done: ${s.tut}`)
   if (s.coins < before + 300) throw new Error(`reward coins missing ${before} -> ${s.coins}`)
   if (!s.outfits.includes('head_botnoi_antenna')) throw new Error('antenna headband not granted')
+  for (const id of ['incense', 'garland', 'rice', 'fish_food']) if (!(s.inv[id] > 0)) throw new Error(`starter kit missing ${id}`)
+  if (!(s.storage.rug_mat > 0)) throw new Error('mat missing')
+  if (!(s.storage.plant_monstera > 0) && !s.placed.includes('plant_monstera')) throw new Error('plant missing')
   await click('ใส่เลย!')
   await page.waitForTimeout(600)
   await dismissModals()

@@ -6,8 +6,8 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { game } from '../../game/state'
-import { tutProgress, type TutStepId } from '../../game/botnoiTutorial'
-import { finishTutorial, skipTutorial, tutorialInput, type TutPayout } from '../../game/botnoi'
+import { tutProgress, tutReward, type TutStepId } from '../../game/botnoiTutorial'
+import { finishTutorial, skipTutorial, tutorialInput } from '../../game/botnoi'
 import { questMarkerFor } from '../../game/npcQuests'
 import { OUTFIT_BY_ID } from '../../game/data/outfits'
 import { activity, mode, prayStage } from '../store'
@@ -22,9 +22,8 @@ import { STEP_UI, type Target } from './tutorialSteps'
 import { ensureWalkSpot, tutStep } from './tutorialCtl'
 import { botFocus, botMenu } from './botStore'
 import { botSfx } from './botSfx'
-import { botGift } from './GiftReveal'
+import { tutCelebrate } from './GiftReveal'
 import type { Line } from './botLines'
-import { signal } from '@preact/signals'
 
 interface Box {
   x: number
@@ -151,8 +150,9 @@ function resolve(t: Target, pr: DOMRect, step: string): Box | null {
 }
 
 function where(id: TutStepId): Place {
-  if (covered() || botMenu.value || (botGift.value && !activity.value && !prayStage.value)) return { kind: 'hidden' }
+  if (covered() || botMenu.value) return { kind: 'hidden' }
   const ui = STEP_UI[id]
+  if (ui.aside?.()) return { kind: 'hidden' }
   if (activity.value || prayStage.value) {
     const m = ui.mini?.()
     return m ? { kind: 'mini', text: m } : { kind: 'hidden' }
@@ -176,8 +176,6 @@ const same = (a: Place, b: Place) => {
 
 // ---------------------------------------------------------------------------
 
-/** Shown after the finale: the reward burst (outlives the tutorial state). */
-export const tutCelebrate = signal<TutPayout | null>(null)
 
 export function Coach() {
   const st = tutStep.value
@@ -425,8 +423,9 @@ function TutCard({ id }: { id: TutStepId }) {
     if (!typed.done) return typed.finish()
     if (!last) (sfx.tap(), setI(i + 1))
   }
-  const reward = id === 'finish' ? (game.value.botnoi.rewarded ? { coins: 30, merit: 0, outfit: null } : { coins: 300, merit: 30, outfit: 'head_botnoi_antenna' }) : null
+  const reward = id === 'finish' ? tutReward(game.value.botnoi) : null
   const out = reward?.outfit ? OUTFIT_BY_ID[reward.outfit] : null
+  const kitCount = reward ? Object.values(reward.items).reduce((a, b) => a + b, 0) + Object.values(reward.furniture).reduce((a, b) => a + b, 0) : 0
   return (
     <div class="bn-root">
       <div class="bn-card-back">
@@ -455,6 +454,11 @@ function TutCard({ id }: { id: TutStepId }) {
               {!!reward.merit && (
                 <span class="bn-chip pink">
                   <Icon name="merit" size={18} /> <b class="num">+{reward.merit}</b>
+                </span>
+              )}
+              {kitCount > 0 && (
+                <span class="bn-chip">
+                  <Icon name="gift" size={18} /> ชุดเริ่มต้น <b class="num">{kitCount}</b> ชิ้น
                 </span>
               )}
               {out && (
@@ -488,9 +492,6 @@ function TutCard({ id }: { id: TutStepId }) {
                     onClick={() => {
                       const got = finishTutorial()
                       if (!got) return
-                      sfx.coins(8)
-                      setTimeout(() => sfx.levelUp(), 250)
-                      haptic(40)
                       tutCelebrate.value = got
                     }}
                   >

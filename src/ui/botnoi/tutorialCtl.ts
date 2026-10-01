@@ -7,9 +7,9 @@ import { computed, effect } from '@preact/signals'
 import { game } from '../../game/state'
 import { onTrack } from '../../game/actions'
 import { dayKey } from '../../game/time'
-import { currentStep, type TutUi } from '../../game/botnoiTutorial'
-import { giveTutorialGift, onTutorialStep, startTutorial, tutorialInput } from '../../game/botnoi'
-import { botGift } from './GiftReveal'
+import { currentStep, loanStillNeeded, type TutUi } from '../../game/botnoiTutorial'
+import { lendFor, loanStep, onTutorialStep, reclaimLoan, startTutorial, tutorialInput } from '../../game/botnoi'
+import { activity } from '../store'
 import { houseEditing, mapId, mapOpen, mode, panel, prayStage, tab } from '../store'
 import { worldScene } from '../TempleView'
 import { botFocus, botSay, popupsAllowed } from './botStore'
@@ -146,9 +146,8 @@ export function installTutorial() {
   onTutorialStep((from, to) => {
     botFocus.value = null
     if (to === 'walk') walkSpot = null
-    // Bot Noi hands out what the next step needs (a new save's bag is empty).
-    const gift = giveTutorialGift(to)
-    if (gift) botGift.value = gift
+    // A new save's bag is empty: Bot Noi lends what this step needs (and takes it back after).
+    lendFor(to)
     if (!from || !to) return
     const praise = STEP_UI[from]?.praise
     if (praise) {
@@ -157,6 +156,13 @@ export function installTutorial() {
     }
     botSfx.done()
   })
+
+  // Take back a loan once its step is over and no mini-game is using it.
+  setInterval(() => {
+    const ls = loanStep()
+    if (!ls || ls === 'kept' || activity.value) return
+    if (game.value.botnoi.tut !== 'active' || !loanStillNeeded(ls, tutStep.value?.id ?? null)) reclaimLoan()
+  }, 500)
 
   // Walk step: done once the player reaches the ring.
   setInterval(() => {

@@ -32,12 +32,22 @@ export interface BotnoiState {
   tip: number
   /** Times the player tapped Bot Noi (for a few easter-egg lines). */
   pokes: number
-  /** Tutorial gifts already handed out (ids of TUT_GIFTS; never twice). */
-  gifts: string[]
+  /**
+   * Things Bot Noi lent for one tutorial step (บอทน้อยให้ยืมก่อนนะ): taken
+   * back when the step is over, so nothing lands in the bag before the
+   * finale. Furniture that was placed stays and counts toward the reward.
+   */
+  loan: Loan | null
+}
+
+export interface Loan {
+  step: string
+  items: Record<string, number>
+  furniture: Record<string, number>
 }
 
 export function defaultBotnoi(): BotnoiState {
-  return { tut: 'new', step: null, steps: [], finished: 0, rewarded: false, replay: false, seen: [], hidden: false, joke: 0, tip: 0, pokes: 0, gifts: [] }
+  return { tut: 'new', step: null, steps: [], finished: 0, rewarded: false, replay: false, seen: [], hidden: false, joke: 0, tip: 0, pokes: 0, loan: null }
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
@@ -68,7 +78,10 @@ export function normalizeBotnoi(raw: unknown, ctx: { onboarded?: boolean } = {})
   b.joke = nat(raw.joke)
   b.tip = nat(raw.tip)
   b.pokes = nat(raw.pokes)
-  b.gifts = strs(raw.gifts)
+  if (isObj(raw.loan) && typeof raw.loan.step === 'string') {
+    const nums = (v: unknown) => (isObj(v) ? Object.fromEntries(Object.entries(v).filter(([, n]) => typeof n === 'number' && n > 0).map(([k, n]) => [k, Math.floor(n as number)])) : {})
+    b.loan = { step: raw.loan.step, items: nums(raw.loan.items), furniture: nums(raw.loan.furniture) }
+  }
   if (b.tut !== 'active') b.step = null
   return b
 }
