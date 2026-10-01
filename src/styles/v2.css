@@ -1579,3 +1579,16 @@ body,
   background: #e6cc98;
   flex-shrink: 0;
 }
+
+/* Keep the edit bar's buttons on screen on narrow phones. */
+.edit-bar {
+  box-sizing: border-box;
+  max-width: calc(100vw - 12px);
+}
+.edit-bar .row {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+.edit-bar .row > .grow {
+  min-width: 0;
+}
