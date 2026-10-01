@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { DOLL_H, DOLL_W } from '../../doll'
 import { T_POSE_NAMES, isTPose, tPoseViews, tWrist, tp } from '../../poses/temple'
 
 describe('temple action poses', () => {
@@ -18,9 +19,9 @@ describe('temple action poses', () => {
             const w = tWrist(n, v, side, g)
             if (!w) continue
             expect(w[0]).toBeGreaterThanOrEqual(1)
-            expect(w[0]).toBeLessThanOrEqual(33)
+            expect(w[0]).toBeLessThanOrEqual(DOLL_W)
             expect(w[1]).toBeGreaterThanOrEqual(1)
-            expect(w[1]).toBeLessThanOrEqual(51)
+            expect(w[1]).toBeLessThanOrEqual(DOLL_H - 1)
           }
     }
   })
@@ -28,7 +29,7 @@ describe('temple action poses', () => {
   it('mirrors wrists when the doll is flipped', () => {
     const a = tWrist('toss_throw', 'back', -1, 'm')!
     const b = tWrist('toss_throw', 'back', -1, 'm', true)!
-    expect(a[0] + b[0]).toBeCloseTo(34)
+    expect(a[0] + b[0]).toBeCloseTo(DOLL_W)
     expect(a[1]).toBe(b[1])
   })
 })

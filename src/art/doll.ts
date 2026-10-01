@@ -27,10 +27,19 @@ export type DollView = 'front' | 'back'
 
 const IW = 32
 const IH = 50
+/**
+ * The v5 proportions: art is authored in the 32×50 compose space, then the
+ * torso and legs are lengthened (rows doubled at these points) for a taller,
+ * ~2.5-head figure. Joint coordinates in pose files stay in compose space;
+ * map them to sprite pixels with `dollPoint`.
+ */
+const STRETCH_TORSO = [27, 31]
+const STRETCH_LEGS = [38, 42, 45]
+const STRETCH = STRETCH_TORSO.length + STRETCH_LEGS.length
 /** Frame width including the 1px outline. */
 export const DOLL_W = IW + 2
 /** Frame height including the 1px outline. Feet/knees rest on the bottom row. */
-export const DOLL_H = IH + 2
+export const DOLL_H = IH + STRETCH + 2
 
 /** Eye styles, indexed by AvatarLook.face. */
 export const FACE_STYLES = [
@@ -473,10 +482,23 @@ const setCh = (row: string, i: number, ch: string) => row.slice(0, i) + ch + row
 function buildEye(r: Res): EyeMap {
   const f = r.body
   const base = EYES[r.face] ?? EYES[0]
-  if (base.arc) return r.g === 'm' ? { ...base, oy: (base.oy ?? 0) + 1 } : base
+  if (base.arc) return { ...base, oy: (base.oy ?? 0) + 1 }
   let rows = base.rows.slice()
   let ox = base.ox ?? 0
   let oy = base.oy ?? 0
+  // v5 face: set wider apart with bigger irises (one column wider), a row
+  // shorter, and every eye resting on the same baseline low on the face
+  if (rows[0].length === 4) {
+    rows = rows.map((row) => row.slice(0, 2) + row[2] + row.slice(2))
+    ox -= 1
+  }
+  if (rows.length >= 6) {
+    const t0 = rows.findIndex((row) => /[kp]/.test(row))
+    let j = rows.findIndex((row, i) => i > t0 + 1 && i < rows.length - 1 && row === rows[i - 1])
+    if (j < 0) j = rows.length - 3
+    rows.splice(j, 1)
+  }
+  oy += 20 - (15 + oy + rows.length - 1)
   const w0 = rows[0].length
   // span of the first solid row below the top (where the lid sits)
   const extent = (j: number) => {
@@ -497,7 +519,6 @@ function buildEye(r: Res): EyeMap {
   if (r.g === 'm') {
     // flat, defined upper lid instead of the rounded top
     if (/^\.k+\.$/.test(rows[top])) fillRow(top, 'k')
-    oy += 1
   }
   // eyelid style
   if (f.eyelid === 1) {
@@ -836,7 +857,7 @@ function drawFace(b: Buf, r: Res, dy: number, expr: Expr, blink: boolean) {
   drawBrowsUnder(b, r, dy, expr)
   let e: EyeMap = buildEye(r)
   let lash = true
-  const low = r.g === 'm' ? 1 : 0
+  const low = 1
   if (expr === 'happy') {
     e = { ...EYE_HAPPY, oy: (EYE_HAPPY.oy ?? 0) + low }
     lash = false
@@ -934,10 +955,9 @@ function drawFace(b: Buf, r: Res, dy: number, expr: Expr, blink: boolean) {
           m(16, 23, WHITE)
           break
         default:
-          m(14, 21, soft)
+          // v5: a small, soft smile
           m(15, 22)
           m(16, 22)
-          m(17, 21, soft)
       }
       // coloured lips get a tiny gloss
       if (f.lips && f.mouth !== 2) m(15, 22, mix(lip, WHITE, 0.35))
@@ -1867,6 +1887,13 @@ function hairColour(r: Res, def: HairDef, ch: string, x: number, t: number, y: n
   if (t === 4 && x >= 9 && x <= 13) return mix(h.l, h.b, 0.55)
   if (t <= 1 && x <= 14) return mix(h.l, h.b, 0.5)
   if (x >= 23 && t >= 3) return h.s
+  // v5 chunky clumps: every few columns a shaded parting with a lit edge
+  // beside it, slanting a little so the clumps fan out from the crown
+  if (t >= 6 && (kind !== 'back' || y >= 16)) {
+    const k = (((x + Math.floor((t - 6) / 3) * (x < 16 ? -1 : 1)) % 5) + 5) % 5
+    if (k === 0) return mix(h.b, h.s, 0.75)
+    if (k === 1 && x < 22) return mix(h.b, h.l, 0.35)
+  }
   if (kind === 'back' && y >= 17) return x >= 20 ? h.s : h.b
   if (kind === 'front' && y >= 17) return h.s
   return h.b
@@ -1938,7 +1965,10 @@ export interface PoseDef {
 
 const armStand = (dy: number, side: 1 | -1, z: ArmDef['z'] = 'back', hand: Hand = 'rest'): ArmDef => {
   const cx = side === 1 ? 8.5 : 23.5
-  return { s: [cx, 25 + dy], e: [cx - 0.2 * side, 29.5 + dy], w: [cx - 0.4 * side, 32 + dy], hand, z }
+  // v5 relaxed stance: arms hang a little away from the body (a clear
+  // silhouette), the screen-right arm a touch looser — a hint of contrapposto
+  const out = side === 1 ? [0.7, 1.2] : [0.9, 1.6]
+  return { s: [cx, 25 + dy], e: [cx - out[0] * side, 29.5 + dy], w: [cx - out[1] * side, 32 + dy], hand, z }
 }
 
 /**
@@ -2124,10 +2154,11 @@ function segInfo(px: number, py: number, a: Pt, c: Pt) {
 }
 
 const HANDS: Record<Exclude<Hand, 'none'>, { rows: string[]; ax: number; ay: number }> = {
-  rest: { rows: ['HHh', 'HHh', '.h.'], ax: -1, ay: 0 },
-  open: { rows: ['H.H.', 'HHHH', 'HHHh', 'HHHh', '.HH.'], ax: -2, ay: -4 },
-  fist: { rows: ['HHh', 'HHh'], ax: -1, ay: -1 },
-  chin: { rows: ['H..', 'HHh', 'HHh', '.h.'], ax: -1, ay: -2 },
+  // v5 mitten hands with a thumb (drawn for the screen-left arm; mirrored for the right)
+  rest: { rows: ['HHh.', 'HHHh', 'HHh.', '.hh.'], ax: -1, ay: 0 },
+  open: { rows: ['HHH.', 'HHH.', 'HHHH', 'HHHh', '.hh.'], ax: -2, ay: -4 },
+  fist: { rows: ['.HH.', 'HHHh', '.hh.'], ax: -1, ay: -1 },
+  chin: { rows: ['H...', 'HHh.', 'HHHh', '.hh.'], ax: -1, ay: -2 },
 }
 
 function shiftArm(a0: ArmDef, r: Res, side: 1 | -1): ArmDef {
@@ -2173,7 +2204,8 @@ function drawArm(b: Buf, r: Res, arm: ArmDef, side: 1 | -1) {
       const useU = u.d <= f.d
       const s = useU ? u : f
       const tt = useU ? u.t : 1 + f.t
-      const rr = useU ? rad : rad - 0.05
+      // tapered: full at the shoulder, slimmer at the wrist
+      const rr = rad + 0.22 - 0.24 * tt
       if (s.d > rr) continue
       const dot = s.ox * 0.8 + s.oy * 0.6
       const shade = dot > 0.55
@@ -2393,11 +2425,18 @@ function drawLegsStand(b: Buf, r: Res, view: DollView) {
   // bare legs
   const skin = new Layer()
   for (let y = 34; y <= 46; y++) {
+    // v5 legs: full thighs and calves, a lit knee, slim ankles
+    const ankle = y >= 45
     for (const [a, z] of [
-      [11, 14],
-      [17, 20],
+      [ankle ? 12 : 11, 14],
+      [17, ankle ? 19 : 20],
     ]) {
-      for (let x = a; x <= z; x++) skin.put(x, y, x === z ? r.sk.s : r.sk.b)
+      for (let x = a; x <= z; x++) {
+        let c = x === z ? r.sk.s : r.sk.b
+        if (x === a && y >= 38 && y <= 43 && view === 'front') c = mix(r.sk.b, r.sk.l, 0.45)
+        if (y === 40 && x === a + 1) c = mix(r.sk.b, r.sk.l, 0.6)
+        skin.put(x, y, c)
+      }
     }
     if (y <= 37) for (let x = 10; x <= 21; x++) skin.put(x, y, r.sk.b)
   }
@@ -2646,6 +2685,30 @@ function drawTorso(b: Buf, r: Res, dy: number, view: DollView) {
       const light = view === 'front' && x === x0 + 1 && y >= 25 && y <= 27
       L.put(x, y + dy, clothCol(body, t.pattern, t.patternColor, t.patternColor2, x, y, shade, light))
     }
+  }
+  // v5 fold shading: armpit creases and a soft drape toward the hem, with
+  // a lit ridge beside each fold (light from the top-left)
+  const hem = hemRow(t)
+  const fold = (x: number, y: number, dark: boolean) => {
+    if (!L.has(x, y + dy) || y >= hem) return
+    L.put(x, y + dy, dark ? mix(body.b, body.s, 0.7) : mix(body.b, body.l, 0.5))
+  }
+  const sp = torsoSpan(r, 27)
+  if (sp && !r.suit && view === 'front') {
+    const [x0, x1] = sp
+    for (const [x, y, dark] of [
+      [x0 + 1, 26, true],
+      [x0 + 2, 27, true],
+      [x0 + 2, 26, false],
+      [x1 - 2, 26, true],
+      [x1 - 3, 27, true],
+      [x0 + 3, 31, true],
+      [x0 + 4, 32, true],
+      [x0 + 4, 31, false],
+      [x1 - 3, 30, true],
+      [x1 - 4, 31, true],
+    ] as [number, number, boolean][])
+      fold(x, y, dark)
   }
   commit(b, L, body.d, TAG.cloth)
 }
@@ -6699,16 +6762,26 @@ function bodyPlan(r: Res, dy: number, legs: LegsKind): ReshapePlan {
   const legY = bow ? 30 : stand ? Math.max(hemRow(r.top), 34) + 1 : 42
   r.bw = bow ? 0 : wT
   r.bwY = torsoY
-  const rows: { at: number; n: number }[] = []
-  if (!bow && d) {
-    const half = d / 2
-    if (stand) rows.push({ at: 29 + dy, n: half }, { at: 41, n: half })
-    else rows.push({ at: 29 + dy, n: d })
+  const ops = new Map<number, number>()
+  const add = (at: number, n: number) => ops.set(at, (ops.get(at) ?? 0) + n)
+  if (!bow) {
+    // the v5 proportions: a longer torso always, longer legs when standing
+    for (const y of STRETCH_TORSO) add(y + dy, 1)
+    if (stand) for (const y of STRETCH_LEGS) add(y, 1)
+    if (d) {
+      const half = d / 2
+      if (stand) {
+        add(29 + dy, half)
+        add(40, half)
+      } else add(29 + dy, d)
+    }
   }
+  // a removal must not swallow a doubled row: keep ops on distinct rows
+  const rows = [...ops].map(([at, n]) => ({ at, n }))
   return {
     w: IW,
     h: IH,
-    outH: IH + Math.max(0, d),
+    outH: IH + STRETCH + Math.max(0, d),
     widen: (y) => (y >= legY ? wL : y >= torsoY ? wT : 0),
     xl: 12,
     xr: 19,
@@ -6716,6 +6789,68 @@ function bodyPlan(r: Res, dy: number, legs: LegsKind): ReshapePlan {
     right: true,
     rows,
   }
+}
+
+/**
+ * Map a compose-space point (the coordinates pose files use for joints) to
+ * pixels in the outlined doll sprite of this look and pose: accounts for the
+ * v5 torso/leg stretch, the height option and build widening. Pass at least
+ * `{ gender }`; other missing fields use the preset defaults.
+ */
+export function dollPoint(look: Partial<AvatarLook>, pose: DollPose, view: DollView, x: number, y: number): [number, number] {
+  const r = resolve({ gender: 'f', skin: 1, face: 0, hairColor: 0, hair: 'hair_bob', top: 'top_white', bottom: 'bot_khaki', ...look } as AvatarLook, false)
+  const pd = pose === 'bow' ? { dy: 0, legs: 'bow' as LegsKind } : poseDef(pose, view)
+  const plan = bodyPlan(r, pd.dy, pd.legs)
+  let total = 0
+  for (const o of plan.rows) total += o.n
+  // discrete row shift at a whole row, then linear between body landmarks
+  // (shoulders, hips, soles) so straight props held in both hands stay straight
+  const at = (yy: number) => {
+    let s = 0
+    for (const o of plan.rows) if (o.n > 0 ? yy >= o.at + 1 : yy >= o.at - o.n) s += o.n
+    return s
+  }
+  const marks = [0, 24 + pd.dy, 36 + (pd.legs === 'stand' ? 0 : pd.dy), IH].sort((a, b) => a - b)
+  let shift = at(y)
+  for (let i = 0; i < marks.length - 1; i++) {
+    const a = marks[i]
+    const b = marks[i + 1]
+    if (y >= a && y <= b && b > a) {
+      const t = (y - a) / (b - a)
+      shift = at(a) + (at(b) - at(a)) * t
+      break
+    }
+  }
+  const top = plan.outH - (IH + total)
+  const n = plan.widen(Math.floor(y))
+  // columns outside the seams move out by n; between them, blend smoothly
+  const xs = n ? (x <= plan.xl ? -n : x >= plan.xr ? n : -n + (2 * n * (x - plan.xl)) / (plan.xr - plan.xl)) : 0
+  return [x + xs + 1, y + shift + top + 1]
+}
+
+/**
+ * Sprite-pixel position of an arm's wrist (the centre of the hand) for a
+ * pose authored in compose space — applies the girls' narrower shoulders,
+ * the build widening and the v5 proportions. `side` 1 = screen-left arm.
+ * Use this for held props instead of adding offsets by hand.
+ */
+export function dollJoint(look: Partial<AvatarLook>, pose: DollPose, view: DollView, side: 1 | -1, arm: { w: Pt; k?: [number, number] }): [number, number] {
+  let [x, y] = arm.w
+  if (look.gender === 'f') {
+    const kw = arm.k?.[1] ?? 1
+    x += side * kw
+    y += 0.5 * kw
+  }
+  const r = resolve({ gender: 'f', skin: 1, face: 0, hairColor: 0, hair: 'hair_bob', top: 'top_white', bottom: 'bot_khaki', ...look } as AvatarLook, false)
+  const pd = poseDef(pose, view)
+  bodyPlan(r, pd.dy, pd.legs)
+  if (r.bw && y < r.bwY) x -= side * r.bw
+  return dollPoint(look, pose, view, x, y)
+}
+
+/** The resting (hanging) arm of the built-in stand pose, for helpers. */
+export function restWrist(side: 1 | -1, dy = 0): Pt {
+  return armStand(dy, side).w
 }
 
 function compose(look: AvatarLook, pose: DollPose, view: DollView, blink: boolean, bare: boolean): Buf {
@@ -6735,7 +6870,8 @@ function compose(look: AvatarLook, pose: DollPose, view: DollView, blink: boolea
   b.plan = bodyPlan(r, dy, pd.legs)
   const hair = HAIR[r.hair] ?? HAIR.bob
   const handFree = view === 'front' && pd.R?.hand === 'rest' && pd.legs === 'stand'
-  const handPos: [number, number] = [r.g === 'f' ? 22 : 23, 33]
+  const restR = armStand(0, -1).w[0]
+  const handPos: [number, number] = [Math.round(restR - 1 - (r.g === 'f' ? 1 : 0)), 33]
 
   if (view === 'front') {
     // hair & hood behind the body

@@ -6,7 +6,7 @@
 
 import { createCanvas, mix, Surface } from '../engine/pixel'
 import { cached, flipSprite, type Sprite } from '../engine/sprite'
-import { DOLL_H, DOLL_W, dollSprite, type DollPose, type DollView } from './doll'
+import { DOLL_H, DOLL_W, dollJoint, dollPoint, dollSprite, restWrist, type DollPose, type DollView } from './doll'
 import { lookKey, type AvatarLook } from './avatar'
 import { P, SKIN_TONES } from './palette'
 import { OUTFIT_BY_ID } from '../game/data/outfits'
@@ -58,10 +58,16 @@ function apronSprite(look: AvatarLook, pose: DollPose, view: DollView, blink: bo
     ctx.drawImage(bare.canvas, 0, 0)
     if (view === 'front') {
       const solid = ctx.getImageData(0, 0, c.width, c.height).data
-      const on = (x: number, y: number) => solid[(y * c.width + x) * 4 + 3] > 20
+      // The apron is authored in classic sprite rows (doll + 1); map each row
+      // through the v5 body proportions so it stretches with the torso and legs.
+      const M = (y: number) => Math.round(dollPoint(look, pose, view, 16, y - 1)[1])
+      const onRaw = (x: number, y: number) => solid[(y * c.width + x) * 4 + 3] > 20
+      const on = (x: number, y: number) => onRaw(x, M(y))
       const put = (x: number, y: number, col: string) => {
         ctx.fillStyle = col
-        ctx.fillRect(x, y, 1, 1)
+        const y0 = M(y)
+        const y1 = Math.max(y0 + 1, M(y + 1))
+        ctx.fillRect(x, y0, 1, y1 - y0)
       }
       // Sprite space = doll + 1.
       const f = look.gender === 'f'
@@ -145,7 +151,7 @@ export function workerOrigin(x: number, feetY: number): [number, number] {
 /** World position of a pose's wrist. */
 export function wristAt(pose: string, side: Side, x: number, feetY: number, flip = false): [number, number] {
   const [ox, oy] = workerOrigin(x, feetY)
-  const w = wristOf(pose, flip ? (side === 'L' ? 'R' : 'L') : side) ?? [side === 'L' ? 9 : 24, 33]
+  const w = wristOf(pose, flip ? (side === 'L' ? 'R' : 'L') : side) ?? dollJoint({ gender: 'm' }, 'stand', 'front', side === 'L' ? 1 : -1, { w: restWrist(side === 'L' ? 1 : -1) })
   return [ox + (flip ? DOLL_W - w[0] : w[0]), oy + w[1]]
 }
 

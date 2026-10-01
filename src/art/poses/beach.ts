@@ -6,7 +6,7 @@
 // Doll space: 32 × 50, shoulders at (8.5, 25) and (23.5, 25), feet at y≈49.
 // Sprites carry a 1 px outline, so sprite = doll + 1.
 
-import { registerDollPose, restingArm, type ArmDef, type DollView, type Expr, type Hand, type LegsKind, type PoseDef, type Pt } from '../doll'
+import { dollJoint, registerDollPose, restingArm, type ArmDef, type DollPose, type DollView, type Expr, type Hand, type LegsKind, type PoseDef, type Pt } from '../doll'
 
 type Side = 'L' | 'R'
 
@@ -71,13 +71,15 @@ export function beachPose(p: BeachPoseSpec): BeachPoseSpec['name'] {
 }
 
 /** Wrist of a beach pose in sprite space (un-flipped), or null. */
-export function beachWrist(name: string, side: Side): Pt | null {
+export function beachWrist(name: string, side: Side, gender: 'm' | 'f' = 'm'): Pt | null {
   const p = SPECS.get(name)
   const a = p?.[side]
   if (!p || !a) return null
   const dy = p.kneel ? 9 : p.sit ? 10 : 0
-  if (a === 'rest') return side === 'L' ? [9.1, 33 + dy] : [22.9, 33 + dy]
-  return [a.w[0] + 1, a.w[1] + dy + 1]
+  const sd = side === 'L' ? 1 : -1
+  // compose space → sprite pixels (v5 proportions, build, outline)
+  if (a === 'rest') return dollJoint({ gender }, name as DollPose, p.view, sd, restingArm(dy, sd))
+  return dollJoint({ gender }, name as DollPose, p.view, sd, { w: [a.w[0], a.w[1] + dy], k: [1, 0] })
 }
 
 // ---------------------------------------------------------------------------

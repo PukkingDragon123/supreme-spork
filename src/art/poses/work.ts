@@ -9,7 +9,7 @@
 // Doll space: 32 × 50, shoulders at (8.5, 25) and (23.5, 25), feet at y≈49.
 // Sprites carry a 1 px outline, so sprite = doll + 1.
 
-import { registerDollPose, restingArm, type ArmDef, type DollView, type Expr, type Hand, type PoseDef, type Pt } from '../doll'
+import { dollJoint, dollPoint, registerDollPose, restingArm, type ArmDef, type DollPose, type DollView, type Expr, type Hand, type PoseDef, type Pt } from '../doll'
 
 export type Side = 'L' | 'R'
 
@@ -95,15 +95,14 @@ export function poseInfo(name: string): WorkPose | undefined {
 }
 
 /** Wrist of a registered work pose in sprite space (0..DOLL_W, un-flipped). */
-export function wristOf(name: string, side: Side): Pt | null {
+export function wristOf(name: string, side: Side, gender: 'm' | 'f' = 'm'): Pt | null {
   const p = POSES.get(name)
   const a = p?.[side]
-  if (!a || a === 'rest') {
-    // Resting hands hang by the hips.
-    if (a === 'rest') return side === 'L' ? [9.1, 33] : [22.9, 33]
-    return null
-  }
-  return [a.w[0] + 1, a.w[1] + 1]
+  if (!p || !a) return null
+  const sd = side === 'L' ? 1 : -1
+  // compose space → sprite pixels (v5 proportions, build, outline)
+  if (a === 'rest') return dollJoint({ gender }, name as DollPose, p.view, sd, restingArm(0, sd))
+  return dollJoint({ gender }, name as DollPose, p.view, sd, { w: a.w, k: [1, 0] })
 }
 
 // ---------------------------------------------------------------------------
@@ -133,7 +132,8 @@ export function gripPose(lean: number, frame = 0, expr: Expr = 'smile'): { name:
   const arms = upper === 'R' ? { R: { w: up }, L: { w: lo } } : { L: { w: up }, R: { w: lo } }
   const name = workPose({ name: `act_w_grip_${i}_${frame}_${expr}`, view: 'front', ...arms, expr })
   void lower
-  return { name, lean: a, c: [cx0 + 1, cy0 + 1] }
+  // the hold point in sprite pixels (v5 proportions), like the wrists
+  return { name, lean: a, c: dollPoint({ gender: 'm' }, name, 'front', cx0, cy0) }
 }
 
 /**

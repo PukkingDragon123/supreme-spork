@@ -6,7 +6,7 @@ import { signal } from '@preact/signals'
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import type { Stage } from '../engine/stage'
 import { spriteDataUrl } from '../engine/sprite'
-import { dollSprite, type BaseDollPose, type DollView } from '../art/doll'
+import { DOLL_H, DOLL_W, dollSprite, type BaseDollPose, type DollView } from '../art/doll'
 import { tp, isTPose, type TPose } from '../art/poses/temple'
 import { STAR_WORDS, type Stars } from '../art/minigames/rules'
 import { tsfx } from '../art/minigames/sfx'
@@ -205,7 +205,7 @@ export function TempleResult({ r, onDone, again }: { r: TempleResultData; onDone
       <div class="panel modal center tg-result">
         <div class="tg-hero">
           <span class="tg-burst" />
-          <img class="tg-doll" src={doll} width={34 * 3} height={52 * 3} alt="" draggable={false} />
+          <img class="tg-doll" src={doll} width={DOLL_W * 3} height={DOLL_H * 3} alt="" draggable={false} />
           <span class="tg-badge">
             <Icon name={r.icon ?? 'lotus'} size={28} />
           </span>

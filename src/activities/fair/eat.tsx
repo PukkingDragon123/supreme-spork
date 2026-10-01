@@ -15,7 +15,7 @@ import { PLACE_SHOPS, SNACK_BY_ID, type Snack } from '../../game/data/placeShops
 import { buySnack } from '../../game/stalls'
 import { toast } from '../../game/events'
 import { activeBuffs } from '../../game/actions'
-import { dollSprite, type DollPose } from '../../art/doll'
+import { DOLL_H, dollSprite, type DollPose } from '../../art/doll'
 import { avatarSprite, type AvatarLook } from '../../art/avatar'
 import { randomVisitorLook } from '../../scenes/world'
 import { fairCart, type CartKind } from '../../art/places/fair'
@@ -171,7 +171,7 @@ class EatScene implements Scene {
     return Math.round(this.w * 0.32)
   }
   private mouth() {
-    return { x: this.dollX() + 2, y: this.feet() - 52 + 19 }
+    return { x: this.dollX() + 2, y: this.feet() - DOLL_H + 19 }
   }
   render(g: Surface) {
     const { w, h, t } = this
