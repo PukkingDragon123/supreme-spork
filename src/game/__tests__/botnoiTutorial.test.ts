@@ -165,10 +165,10 @@ describe('tutorial step machine', () => {
 
   it('pays the full reward once and a small one on replays', () => {
     const first = run(started(), ...HAPPY_PATH)
-    expect(tutReward(first)).toEqual({ coins: TUT_REWARD.coins, merit: TUT_REWARD.merit, outfit: TUT_REWARD.outfit })
+    expect(tutReward(first)).toEqual({ coins: TUT_REWARD.coins, merit: TUT_REWARD.merit, outfit: TUT_REWARD.outfit, items: TUT_REWARD.items, furniture: TUT_REWARD.furniture })
     const done = tutReduce(first, { kind: 'finish' })
     const replay = run(tutReduce(done, { kind: 'start', replay: true }), ...HAPPY_PATH)
-    expect(tutReward(replay)).toEqual({ coins: TUT_REPLAY_REWARD.coins, merit: 0, outfit: null })
+    expect(tutReward(replay)).toEqual({ coins: TUT_REPLAY_REWARD.coins, merit: 0, outfit: null, items: {}, furniture: {} })
     expect(tutReduce(replay, { kind: 'finish' }).finished).toBe(2)
   })
 

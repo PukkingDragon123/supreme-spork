@@ -91,35 +91,59 @@ export const TUT_FIRST: TutStepId = 'hello'
 export const TUT_LAST: TutStepId = 'finish'
 
 /** First-finish reward and the small "thanks for revising" reward on replays. */
-export const TUT_REWARD = { coins: 300, merit: 30, outfit: 'head_botnoi_antenna' } as const
+export const TUT_REWARD = {
+  coins: 300,
+  merit: 30,
+  outfit: 'head_botnoi_antenna',
+  /** The starter kit: everything a new save didn't start with. */
+  items: { incense: 6, garland: 1, rice: 3, curry: 1, banana: 2, water: 2, fish_food: 12 } as Record<string, number>,
+  furniture: { plant_monstera: 1, rug_mat: 1 } as Record<string, number>,
+} as const
 export const TUT_REPLAY_REWARD = { coins: 30 } as const
 
 /**
- * What Bot Noi hands out as the tutorial goes (a new save starts with an
- * empty bag): each gift pops up when its step begins, once per save.
+ * Steps that need something a brand-new (empty) save doesn't have: Bot Noi
+ * lends it for that one action ("บอทน้อยให้ยืมก่อนนะ") and takes back what
+ * is left afterwards. Lighting incense needs nothing (Bot Noi's free stick).
  */
-export interface TutGift {
-  id: string
-  /** Given when this step starts. */
+export interface TutLoanDef {
   step: TutStepId
-  coins?: number
+  /** Later steps the loan is still needed for. */
+  keep?: TutStepId[]
   items?: Record<string, number>
-  /** Furniture put into the house storage. */
   furniture?: Record<string, number>
-  /** What Bot Noi says on the reveal card. */
-  line: string
 }
 
-export const TUT_GIFTS: TutGift[] = [
-  { id: 'welcome', step: 'walk', coins: 50, line: 'กระเป๋ายังว่างอยู่ใช่ไหมครับ? ผมให้ค่าขนมไว้ใช้ก่อนนะ!' },
-  { id: 'incense', step: 'incense', items: { incense: 3, garland: 1 }, line: 'ธูป 3 ดอกกับพวงมาลัย เอาไว้จุดธูปขอพรกันครับ' },
-  { id: 'alms', step: 'bag', items: { rice: 2, curry: 1, banana: 1, water: 1, fish_food: 12 }, line: 'ชุดใส่บาตรกับอาหารปลา ใส่กระเป๋าให้แล้วครับ!' },
-  { id: 'furniture', step: 'decorate', furniture: { plant_monstera: 1, rug_mat: 1 }, line: 'ต้นไม้กับเสื่อผืนแรก เอาไปแต่งห้องกันครับ ^^' },
+export const TUT_LOANS: TutLoanDef[] = [
+  { step: 'merit', items: { fish_food: 12, rice: 1, banana: 1, water: 1 } },
+  { step: 'decorate', keep: ['decorate_done'], furniture: { plant_monstera: 1 } },
 ]
 
-/** The gift to hand out as `step` begins (null if none or already given). */
-export function giftFor(step: TutStepId | null, given: string[]): TutGift | null {
-  return TUT_GIFTS.find((g) => g.step === step && !given.includes(g.id)) ?? null
+/** What to lend as `step` begins: only what the player is missing. */
+export function loanFor(step: TutStepId | null, have: { items: Record<string, number>; furniture: Record<string, number> }): { items: Record<string, number>; furniture: Record<string, number> } | null {
+  const def = TUT_LOANS.find((l) => l.step === step)
+  if (!def) return null
+  const items = Object.fromEntries(Object.entries(def.items ?? {}).filter(([id]) => (have.items[id] ?? 0) <= 0))
+  const furniture = Object.fromEntries(Object.entries(def.furniture ?? {}).filter(([id]) => (have.furniture[id] ?? 0) <= 0))
+  if (!Object.keys(items).length && !Object.keys(furniture).length) return null
+  return { items, furniture }
+}
+
+/** Is a loan made at `loanStep` still needed while the tutorial is at `now`? */
+export function loanStillNeeded(loanStep: string, now: string | null): boolean {
+  if (!now) return false
+  if (loanStep === now) return true
+  return !!TUT_LOANS.find((l) => l.step === loanStep)?.keep?.includes(now as TutStepId)
+}
+
+/** How much of a loan to take back: what is still in the bag / storage, never more than lent. */
+export function reclaimAmounts(lent: Record<string, number>, have: Record<string, number>): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const [id, n] of Object.entries(lent)) {
+    const k = Math.min(n, Math.max(0, have[id] ?? 0))
+    if (k > 0) out[id] = k
+  }
+  return out
 }
 
 export type TutInput =
@@ -209,9 +233,24 @@ export function tutReduce(st: BotnoiState, input: TutInput): BotnoiState {
 }
 
 /** What finishing the tutorial pays: the full reward once, a small one on replays. */
-export function tutReward(st: BotnoiState): { coins: number; merit: number; outfit: string | null } {
-  if (st.rewarded) return { coins: TUT_REPLAY_REWARD.coins, merit: 0, outfit: null }
-  return { coins: TUT_REWARD.coins, merit: TUT_REWARD.merit, outfit: TUT_REWARD.outfit }
+export interface TutRewardDef {
+  coins: number
+  merit: number
+  outfit: string | null
+  items: Record<string, number>
+  furniture: Record<string, number>
+}
+
+/**
+ * What finishing pays: the whole starter kit once (one big reveal), a small
+ * thank-you on replays. `kept` is loaned furniture the player placed during
+ * the tutorial: it is already theirs, so the kit gives that much less.
+ */
+export function tutReward(st: BotnoiState, kept: Record<string, number> = {}): TutRewardDef {
+  if (st.rewarded) return { coins: TUT_REPLAY_REWARD.coins, merit: 0, outfit: null, items: {}, furniture: {} }
+  const furniture: Record<string, number> = {}
+  for (const [id, n] of Object.entries(TUT_REWARD.furniture)) if (n - (kept[id] ?? 0) > 0) furniture[id] = n - (kept[id] ?? 0)
+  return { coins: TUT_REWARD.coins, merit: TUT_REWARD.merit, outfit: TUT_REWARD.outfit, items: { ...TUT_REWARD.items }, furniture }
 }
 
 /** Should the tutorial greet the player automatically on reaching the temple? */

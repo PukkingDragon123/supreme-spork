@@ -6,7 +6,7 @@ import { game, mutate } from './state'
 import { addCoins, addItems, addMerit, grantOutfit } from './actions'
 import { addToStorage } from './house'
 import { defaultBotnoi, type BotnoiState } from './botnoiState'
-import { currentStep, giftFor, tutReduce, tutReward, type TutGift, type TutInput, type TutStepId } from './botnoiTutorial'
+import { currentStep, loanFor, reclaimAmounts, tutReduce, tutReward, type TutInput, type TutStepId } from './botnoiTutorial'
 
 const bn = (s = game.value): BotnoiState => s.botnoi ?? defaultBotnoi()
 
@@ -40,25 +40,45 @@ export function startTutorial(replay = false) {
 }
 
 export function skipTutorial() {
+  reclaimLoan()
   tutorialInput({ kind: 'skip' })
+  // Skipped: placed loaner furniture stays as a little keepsake.
+  mutate((d) => {
+    d.botnoi = { ...bn(d), loan: null }
+  })
 }
 
 export interface TutPayout {
   coins: number
   merit: number
   outfit: string | null
+  items: Record<string, number>
+  furniture: Record<string, number>
 }
 
-/** Finish the last step and pay the reward (full once, small on replays). */
+/**
+ * Finish the last step and pay the one big reward: the whole starter kit
+ * once (coins, incense, alms set, fish food, furniture, the antenna
+ * headband), a small thank-you on replays.
+ */
 export function finishTutorial(): TutPayout | null {
   const st = bn()
   if (currentStep(st)?.id !== 'finish') return null
-  const r = tutReward(st)
+  const kept = reclaimLoan()
+  const r = tutReward(bn(), kept)
   tutorialInput({ kind: 'finish' })
+  mutate((d) => {
+    d.botnoi = { ...bn(d), loan: null }
+  })
   const coins = addCoins(r.coins)
   const merit = r.merit ? addMerit(r.merit) : 0
   const outfit = r.outfit && grantOutfit(r.outfit) ? r.outfit : null
-  return { coins, merit, outfit }
+  if (Object.keys(r.items).length) addItems(r.items)
+  if (Object.keys(r.furniture).length)
+    mutate((d) => {
+      for (const [id, n] of Object.entries(r.furniture)) d.house = addToStorage(d.house, id, n)
+    })
+  return { coins, merit, outfit, items: r.items, furniture: { ...r.furniture, ...kept } }
 }
 
 /** Existing players: dismiss the "Bot Noi has arrived!" offer (tutorial stays replayable). */
@@ -68,18 +88,52 @@ export function declineTutorial() {
   })
 }
 
-/** Hand out the tutorial gift for a step (once per save). Returns what was given. */
-export function giveTutorialGift(step: TutStepId | null): TutGift | null {
-  const g = giftFor(step, bn().gifts)
-  if (!g) return null
+/**
+ * Lend what `step` needs when the player doesn't have it (an empty new
+ * save): บอทน้อยให้ยืมก่อนนะ. Returns true when something was lent.
+ */
+export function lendFor(step: TutStepId | null): boolean {
+  const s = game.value
+  if (bn(s).loan) return false
+  const l = loanFor(step, { items: s.inventory, furniture: s.house.storage })
+  if (!l || !step) return false
   mutate((d) => {
-    const b = bn(d)
-    d.botnoi = { ...b, gifts: [...b.gifts, g.id] }
-    for (const [id, n] of Object.entries(g.furniture ?? {})) d.house = addToStorage(d.house, id, n)
+    d.botnoi = { ...bn(d), loan: { step, items: l.items, furniture: l.furniture } }
+    for (const [id, n] of Object.entries(l.items)) d.inventory[id] = (d.inventory[id] ?? 0) + n
+    for (const [id, n] of Object.entries(l.furniture)) d.house = addToStorage(d.house, id, n)
   })
-  if (g.coins) addCoins(g.coins)
-  if (g.items) addItems(g.items)
-  return g
+  return true
+}
+
+/**
+ * Take back whatever is left of a loan (unused items, unplaced furniture).
+ * Returns loaned furniture the player placed: it stays, as part of the reward.
+ */
+export function reclaimLoan(): Record<string, number> {
+  const s = game.value
+  const loan = bn(s).loan
+  if (!loan) return {}
+  const items = reclaimAmounts(loan.items, s.inventory)
+  const furn = reclaimAmounts(loan.furniture, s.house.storage)
+  const kept: Record<string, number> = {}
+  for (const [id, n] of Object.entries(loan.furniture)) if (n - (furn[id] ?? 0) > 0) kept[id] = n - (furn[id] ?? 0)
+  mutate((d) => {
+    for (const [id, n] of Object.entries(items)) {
+      d.inventory[id] = (d.inventory[id] ?? 0) - n
+      if (d.inventory[id] <= 0) delete d.inventory[id]
+    }
+    for (const [id, n] of Object.entries(furn)) {
+      d.house.storage[id] = (d.house.storage[id] ?? 0) - n
+      if (d.house.storage[id] <= 0) delete d.house.storage[id]
+    }
+    d.botnoi = { ...bn(d), loan: kept && Object.keys(kept).length && bn(d).tut === 'active' ? { step: 'kept', items: {}, furniture: kept } : null }
+  })
+  return kept
+}
+
+/** The step a loan belongs to (null when nothing is lent). */
+export function loanStep(): string | null {
+  return bn().loan?.step ?? null
 }
 
 export function tipSeen(id: string, s = game.value): boolean {

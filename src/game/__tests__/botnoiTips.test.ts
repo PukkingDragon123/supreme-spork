@@ -3,7 +3,10 @@ import { TIPS, TIP_BY_ID, pickTip, tipLine } from '../botnoiTips'
 import { NPC_QUESTS } from '../data/npcQuests'
 import { BOTNOI_GIVER } from '../data/npcQuests/botnoi'
 import { OUTFIT_BY_ID } from '../data/outfits'
-import { TUT_REWARD, TUT_GIFTS, giftFor } from '../botnoiTutorial'
+import { TUT_REWARD, TUT_LOANS, TUT_STEPS, loanFor, loanStillNeeded, reclaimAmounts, tutReward, type TutInput } from '../botnoiTutorial'
+import { game } from '../state'
+import { finishTutorial, lendFor, reclaimLoan, startTutorial, tutorialInput } from '../botnoi'
+import { defaultBotnoi } from '../botnoiState'
 import { defaultState, migrate } from '../state'
 import { ITEM_BY_ID } from '../data/items'
 import { FURNITURE_BY_ID } from '../data/furniture'
@@ -56,7 +59,7 @@ describe('bot noi quests and reward', () => {
   })
 })
 
-describe('empty start and Bot Noi gifts', () => {
+describe('empty start, loans and the finale gift', () => {
   it('a new save starts with nothing extra', () => {
     const s = defaultState()
     expect(s.inventory).toEqual({})
@@ -77,20 +80,77 @@ describe('empty start and Bot Noi gifts', () => {
     expect(old.coins).toBe(77)
   })
 
-  it('gifts real things, each once, before the step that needs them', () => {
-    for (const g of TUT_GIFTS) {
-      for (const id of Object.keys(g.items ?? {})) expect(ITEM_BY_ID[id], `${g.id} ${id}`).toBeTruthy()
-      for (const id of Object.keys(g.furniture ?? {})) expect(FURNITURE_BY_ID[id], `${g.id} ${id}`).toBeTruthy()
+  it('lends only what is missing, and takes back only what is left', () => {
+    for (const l of TUT_LOANS) {
+      for (const id of Object.keys(l.items ?? {})) expect(ITEM_BY_ID[id], id).toBeTruthy()
+      for (const id of Object.keys(l.furniture ?? {})) expect(FURNITURE_BY_ID[id], id).toBeTruthy()
     }
-    expect(giftFor('incense', [])?.items?.incense).toBeGreaterThan(0)
-    expect(giftFor('bag', [])?.items?.fish_food).toBeGreaterThan(0)
-    expect(giftFor('decorate', [])?.furniture).toBeTruthy()
-    expect(giftFor('incense', ['incense'])).toBeNull()
-    expect(giftFor('npc', [])).toBeNull()
-    expect(normalizeBotnoi({ gifts: ['alms', 3, 'alms'] }).gifts).toEqual(['alms'])
+    const empty = { items: {}, furniture: {} }
+    expect(loanFor('merit', empty)?.items.fish_food).toBeGreaterThan(0)
+    expect(loanFor('merit', { items: { fish_food: 3, rice: 1, banana: 1, water: 1 }, furniture: {} })).toBeNull()
+    expect(loanFor('decorate', empty)?.furniture.plant_monstera).toBe(1)
+    // No mid-tutorial loans for steps that need nothing (incense is lit for free).
+    for (const step of ['walk', 'incense', 'bag', 'npc', 'shop'] as const) expect(loanFor(step, empty)).toBeNull()
+    expect(loanStillNeeded('decorate', 'decorate_done')).toBe(true)
+    expect(loanStillNeeded('decorate', 'finish')).toBe(false)
+    expect(loanStillNeeded('merit', 'pray')).toBe(false)
+    expect(reclaimAmounts({ fish_food: 12 }, { fish_food: 5 })).toEqual({ fish_food: 5 })
+    expect(reclaimAmounts({ fish_food: 12 }, { fish_food: 30 })).toEqual({ fish_food: 12 })
+    expect(reclaimAmounts({ fish_food: 12 }, {})).toEqual({})
   })
 
-  it('Bot Noi quests are an early source of items', () => {
+  it('pays the whole starter kit once at the end (minus loaned furniture already placed)', () => {
+    const full = tutReward(defaultBotnoi())
+    expect(full.coins).toBe(TUT_REWARD.coins)
+    expect(full.items.incense).toBeGreaterThan(0)
+    expect(full.items.fish_food).toBeGreaterThan(0)
+    expect(full.furniture).toEqual({ plant_monstera: 1, rug_mat: 1 })
+    expect(tutReward(defaultBotnoi(), { plant_monstera: 1 }).furniture).toEqual({ rug_mat: 1 })
+    const again = tutReward({ ...defaultBotnoi(), rewarded: true })
+    expect(again.items).toEqual({})
+    expect(again.furniture).toEqual({})
+    expect(again.outfit).toBeNull()
+  })
+
+  it('plays an empty save through: nothing in the bag until the finale, then one big reward', () => {
+    game.value = { ...defaultState(), onboarded: true }
+    startTutorial(false)
+    const go = (id: string) => {
+      for (let k = 0; k < 40 && game.value.botnoi.step !== id; k++) tutorialInput({ kind: 'skipStep' } as TutInput)
+      expect(game.value.botnoi.step).toBe(id)
+    }
+    go('merit')
+    expect(lendFor('merit')).toBe(true)
+    expect(game.value.inventory.fish_food).toBe(12)
+    // Fed 5 pellets, then the step ends: the rest goes back to Bot Noi.
+    game.value = { ...game.value, inventory: { ...game.value.inventory, fish_food: 7 } }
+    tutorialInput({ kind: 'event', event: 'koi_fed' })
+    reclaimLoan()
+    expect(game.value.inventory).toEqual({})
+    go('decorate')
+    expect(lendFor('decorate')).toBe(true)
+    expect(game.value.house.storage.plant_monstera).toBe(1)
+    // Placed the loaner plant: it stays, as part of the reward.
+    game.value = { ...game.value, house: { ...game.value.house, storage: {} } }
+    expect(reclaimLoan()).toEqual({ plant_monstera: 1 })
+    go('finish')
+    expect(game.value.inventory).toEqual({})
+    expect(game.value.coins).toBe(0)
+    const got = finishTutorial()!
+    expect(got.coins).toBe(TUT_REWARD.coins)
+    expect(game.value.inventory.incense).toBe(TUT_REWARD.items.incense)
+    expect(game.value.house.storage).toEqual({ rug_mat: 1 })
+    expect(game.value.outfits).toContain(TUT_REWARD.outfit)
+    expect(game.value.botnoi.loan).toBeNull()
+    expect(TUT_STEPS.length).toBeGreaterThan(10)
+  })
+
+  it('normalises a saved loan', () => {
+    expect(normalizeBotnoi({ loan: { step: 'merit', items: { fish_food: 12, x: -1 }, furniture: 'no' } }).loan).toEqual({ step: 'merit', items: { fish_food: 12 }, furniture: {} })
+    expect(normalizeBotnoi({ loan: 5 }).loan).toBeNull()
+  })
+
+  it('Bot Noi quests pay items when turned in', () => {
     const first = NPC_QUESTS.find((q) => q.id === 'bn_1')!
     expect(Object.keys(first.reward.items ?? {}).length).toBeGreaterThan(0)
     const daily = NPC_QUESTS.find((q) => q.id === 'bn_daily')!
