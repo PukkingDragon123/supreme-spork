@@ -16,10 +16,10 @@ import { PBtn } from '../components/kit'
 import { Icon } from '../components/common'
 import { PT, TONE_TEXT } from '../pixeltext'
 import { thumbFor } from '../DressUp'
-import { sfx, haptic } from '../../engine/audio'
+import { sfx } from '../../engine/audio'
 import { BotFace, BotMini, useTyped } from './BotBubble'
 import { STEP_UI, type Target } from './tutorialSteps'
-import { ensureWalkSpot, tutStep } from './tutorialCtl'
+import { tutStep } from './tutorialCtl'
 import { botFocus, botMenu } from './botStore'
 import { botSfx } from './botSfx'
 import { tutCelebrate } from './GiftReveal'
@@ -53,8 +53,8 @@ function labelOf(el: Element): string {
 }
 
 function onTop(el: Element, cx: number, cy: number): boolean {
-  const hit = document.elementFromPoint(cx, cy)
-  return !!hit && (el === hit || el.contains(hit) || !!hit.closest('.bn-root'))
+  const hit = document.elementsFromPoint(cx, cy).find((h) => !h.closest('.bn-root'))
+  return !!hit && (el === hit || el.contains(hit))
 }
 
 const scrolled = new WeakSet<Element>()
@@ -106,7 +106,7 @@ function resolve(t: Target, pr: DOMRect, step: string): Box | null {
   let focus: { x: number; y: number } | null = null
   let act: Box['act'] = undefined
   if (t.kind === 'spot') {
-    const sp = ensureWalkSpot()
+    const sp = null as { x: number; y: number } | null
     if (!sp) return null
     ;[wx, wy, ww, wh] = [sp.x - 9, sp.y - 6, 18, 12]
     focus = { x: sp.x, y: sp.y - 4 }
@@ -130,8 +130,8 @@ function resolve(t: Target, pr: DOMRect, step: string): Box | null {
   if (!b) return null
   b.act = act
   // A window or sheet in front of the map hides world targets.
-  const hit = document.elementFromPoint(pr.left + b.x + b.w / 2, pr.top + b.y + b.h / 2)
-  if (hit && !hit.closest('.bn-root') && !(hit instanceof HTMLCanvasElement && hit.parentElement?.parentElement?.classList.contains('phone'))) return null
+  const hit = document.elementsFromPoint(pr.left + b.x + b.w / 2, pr.top + b.y + b.h / 2).find((el) => !el.closest('.bn-root'))
+  if (hit && !(hit instanceof HTMLCanvasElement && hit.parentElement?.parentElement?.classList.contains('phone'))) return null
   if (!inView(b, pr)) {
     // Off screen on this map: pan the camera to it once.
     const key = `${step}:${wx},${wy}`
@@ -223,13 +223,14 @@ function Speech({ lines, override, onLastShown }: { lines: Line[]; override?: st
   )
 }
 
+/** The bubble folded into a small chip (one tap): stays folded until the next step. */
+let foldedAt: string | null = null
+
 function CoachMark({ id }: { id: TutStepId }) {
   const ui = STEP_UI[id]
   const [place, setPlace] = useState<Place>({ kind: 'hidden' })
-  const [strays, setStrays] = useState(0)
-  const [redirect, setRedirect] = useState<string | null>(null)
   const [confirm, setConfirm] = useState(false)
-  const [wiggle, setWiggle] = useState(0)
+  const [folded, setFolded] = useState(foldedAt === id)
   const ref = useRef(place)
   useEffect(() => {
     let raf = 0
@@ -252,13 +253,10 @@ function CoachMark({ id }: { id: TutStepId }) {
     }
   }, [id])
   const prog = tutProgress(game.value.botnoi)
-  const relaxed = strays >= 2 || !!ui.next
-  const stray = () => {
-    botSfx.boop()
-    haptic(15)
-    setWiggle((w) => w + 1)
-    setStrays((n) => n + 1)
-    setRedirect(strays >= 1 ? 'ถ้าติดตรงไหน กด “ข้ามขั้นนี้” ได้เลยนะครับ ผมไม่งอน ^^' : 'อ๊ะ! แตะตรงที่เรืองแสงนะครับ ✨')
+  const fold = (v: boolean) => {
+    sfx.tap()
+    foldedAt = v ? id : null
+    setFolded(v)
   }
   const fb = ui.fallback?.() ?? null
 
@@ -278,77 +276,77 @@ function CoachMark({ id }: { id: TutStepId }) {
   const H = pr?.height ?? 844
   const W = pr?.width ?? 390
   const bubbleTop = box ? box.y + box.h / 2 > H * 0.5 : false
-  const lostText = place.kind === 'lost' && !ui.next ? (fb ? fb.text : (ui.lost ?? 'อ๊ะ หลงทางแล้วครับ! กด “นำทาง” เดี๋ยวผมพากลับเอง')) : null
+  const lostText = place.kind === 'lost' ? (fb ? fb.text : (ui.lost ?? 'อยากลองไหมครับ? กด “พาไป” แล้วผมนำทางให้ หรือจะเดินเล่นก่อนก็ได้นะ')) : null
 
   return (
-    <div class="bn-root">
+    <div class="bn-root soft">
       {box && (
         <>
-          <Dim box={box} soft={relaxed} W={W} H={H} />
+          {/* Soft hint: a gentle ring around the real thing, no dimming, nothing blocked. */}
           <div class={`bn-hole ${box.world ? 'round' : ''}`} style={{ left: `${box.x}px`, top: `${box.y}px`, width: `${box.w}px`, height: `${box.h}px` }}>
             <i class="bn-ring" />
             <i class="bn-ring r2" />
             {box.act && <button class="bn-catch" aria-label="แตะตรงนี้" onClick={() => worldTap(box.act!)} />}
           </div>
-          {!relaxed && (
-            <>
-              <div class="bn-block" style={{ left: 0, top: 0, width: '100%', height: `${Math.max(0, box.y)}px` }} onPointerDown={stray} />
-              <div class="bn-block" style={{ left: 0, top: `${box.y + box.h}px`, width: '100%', bottom: 0 }} onPointerDown={stray} />
-              <div class="bn-block" style={{ left: 0, top: `${box.y}px`, width: `${Math.max(0, box.x)}px`, height: `${box.h}px` }} onPointerDown={stray} />
-              <div class="bn-block" style={{ left: `${box.x + box.w}px`, top: `${box.y}px`, right: 0, height: `${box.h}px` }} onPointerDown={stray} />
-            </>
-          )}
-          <Pointer box={box} up={!bubbleTop} W={W} />
+          {!folded && <Pointer box={box} up={!bubbleTop} W={W} />}
         </>
       )}
-      <div class={`bn-bubble ${bubbleTop ? 'top' : 'bottom'} ${!box ? 'lost' : ''} ${wiggle % 2 ? 'wig' : ''}`} key={`w${wiggle}`}>
-        <div class="bn-bubble-face">
-          <BotFace expr={redirect ? 'surprised' : lostText ? 'think' : 'happy'} arm={box ? (ui.arm ?? 'point') : 'wave'} talking scale={2} />
-        </div>
-        <div class="bn-bubble-body">
-          <div class="bn-bubble-head">
-            <PT text="บอทน้อย" size={12} weight={600} {...TONE_TEXT.ink} />
-            {prog.n > 0 && (
+      {folded || (place.kind === 'lost' && document.querySelector('.win-backdrop, .thaimap, .screen-win, .ol-chat')) ? (
+        <button class={`bn-chipbot ${bubbleTop ? 'top' : 'bottom'}`} onClick={() => fold(false)} aria-label="บอทน้อย: เปิดคำแนะนำ">
+          <BotFace expr="wink" arm="wave" scale={1} />
+          <span class="num">
+            {prog.n}/{prog.total}
+          </span>
+        </button>
+      ) : (
+        <div class={`bn-bubble ${bubbleTop ? 'top' : 'bottom'} ${!box ? 'lost' : ''}`}>
+          <div class="bn-bubble-face">
+            <BotFace expr={lostText ? 'think' : 'happy'} arm={box ? (ui.arm ?? 'point') : 'wave'} talking scale={2} />
+          </div>
+          <div class="bn-bubble-body">
+            <div class="bn-bubble-head">
+              <PT text="บอทน้อย" size={12} weight={600} {...TONE_TEXT.ink} />
               <span class="bn-step num">
                 {prog.n}/{prog.total}
               </span>
+              <span class="grow" />
+              <button class="bn-fold" onClick={() => fold(true)} aria-label="ซ่อนคำแนะนำ">
+                <Icon name="close" size={12} />
+              </button>
+            </div>
+            {confirm ? (
+              <SkipConfirm onNo={() => setConfirm(false)} />
+            ) : (
+              <>
+                <Speech key={`${place.kind}:${lostText ?? ''}`} lines={ui.lines} override={lostText} />
+                <div class="bn-actions">
+                  {place.kind === 'lost' && fb && (
+                    <PBtn tone="green" size="small" icon="check" onClick={() => tutorialInput({ kind: 'skipStep' })}>
+                      {fb.label}
+                    </PBtn>
+                  )}
+                  {place.kind === 'lost' && !fb && ui.nav && (
+                    <PBtn tone="green" size="small" icon="map" onClick={() => (sfx.whoosh(), ui.nav!())}>
+                      พาไป
+                    </PBtn>
+                  )}
+                  {ui.next && (
+                    <PBtn tone="green" size="small" icon="check" onClick={() => tutorialInput({ kind: 'next' })}>
+                      {ui.next}
+                    </PBtn>
+                  )}
+                  <button class="bn-skip" onClick={() => (sfx.tap(), tutorialInput({ kind: 'skipStep' }))}>
+                    ข้ามข้อนี้
+                  </button>
+                  <button class="bn-skip" onClick={() => (sfx.tap(), botSfx.boop(), tutorialInput({ kind: 'pause' }))}>
+                    ไว้ทีหลัง
+                  </button>
+                </div>
+              </>
             )}
-            <span class="grow" />
-            <button class="bn-skip" onClick={() => (sfx.tap(), setConfirm(true))}>
-              ข้ามบทเรียน
-            </button>
           </div>
-          {confirm ? (
-            <SkipConfirm onNo={() => setConfirm(false)} />
-          ) : (
-            <>
-              <Speech key={`${place.kind}:${redirect ?? ''}:${lostText ?? ''}`} lines={ui.lines} override={redirect ?? lostText} />
-              <div class="bn-actions">
-                {place.kind === 'lost' && fb && (
-                  <PBtn tone="green" size="small" icon="check" onClick={() => tutorialInput({ kind: 'skipStep' })}>
-                    {fb.label}
-                  </PBtn>
-                )}
-                {place.kind === 'lost' && !fb && ui.nav && (
-                  <PBtn tone="green" size="small" icon="map" onClick={() => (sfx.whoosh(), ui.nav!())}>
-                    นำทาง
-                  </PBtn>
-                )}
-                {ui.next && (
-                  <PBtn tone="green" size="small" icon="check" onClick={() => tutorialInput({ kind: 'next' })}>
-                    {ui.next}
-                  </PBtn>
-                )}
-                {(strays >= 2 || (place.kind === 'lost' && !fb)) && !ui.next && (
-                  <PBtn tone="paper" size="small" onClick={() => tutorialInput({ kind: 'skipStep' })}>
-                    ข้ามขั้นนี้
-                  </PBtn>
-                )}
-              </div>
-            </>
-          )}
         </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -360,18 +358,6 @@ function worldTap(act: NonNullable<Box['act']>) {
   sfx.tap()
   if (act.hotspot) sc.goTo(act.hotspot)
   else if (act.x !== undefined && act.y !== undefined) sc.walkTo(act.x, act.y)
-}
-
-/** The dim layer: a full-screen veil with a hole cut around the target. */
-function Dim({ box, soft, W, H }: { box: Box; soft: boolean; W: number; H: number }) {
-  const r = box.world ? Math.min(box.w, box.h) / 2 : 12
-  const { x, y, w, h } = box
-  const hole = `M${x + r},${y} H${x + w - r} A${r},${r} 0 0 1 ${x + w},${y + r} V${y + h - r} A${r},${r} 0 0 1 ${x + w - r},${y + h} H${x + r} A${r},${r} 0 0 1 ${x},${y + h - r} V${y + r} A${r},${r} 0 0 1 ${x + r},${y} Z`
-  return (
-    <svg class={`bn-dim ${soft ? 'soft' : ''}`} width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
-      <path fill-rule="evenodd" fill={soft ? 'rgba(24, 14, 34, 0.3)' : 'rgba(24, 14, 34, 0.58)'} d={`M0,0 H${W} V${H} H0 Z ${hole}`} />
-    </svg>
-  )
 }
 
 /** Bouncing arrow + a little pointing Bot Noi next to the highlight. */

@@ -9,7 +9,7 @@
  * - `active`: running (resumable after a reload).
  * - `done` / `skipped`: finished or skipped (replayable from the menu).
  */
-export type TutStatus = 'new' | 'offer' | 'active' | 'done' | 'skipped'
+export type TutStatus = 'new' | 'offer' | 'active' | 'paused' | 'done' | 'skipped'
 
 export interface BotnoiState {
   tut: TutStatus
@@ -51,7 +51,7 @@ export function defaultBotnoi(): BotnoiState {
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
-const STATUSES: TutStatus[] = ['new', 'offer', 'active', 'done', 'skipped']
+const STATUSES: TutStatus[] = ['new', 'offer', 'active', 'paused', 'done', 'skipped']
 const nat = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0)
 const strs = (v: unknown) => (Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === 'string'))] : [])
 
@@ -82,6 +82,6 @@ export function normalizeBotnoi(raw: unknown, ctx: { onboarded?: boolean } = {})
     const nums = (v: unknown) => (isObj(v) ? Object.fromEntries(Object.entries(v).filter(([, n]) => typeof n === 'number' && n > 0).map(([k, n]) => [k, Math.floor(n as number)])) : {})
     b.loan = { step: raw.loan.step, items: nums(raw.loan.items), furniture: nums(raw.loan.furniture) }
   }
-  if (b.tut !== 'active') b.step = null
+  if (b.tut !== 'active' && b.tut !== 'paused') b.step = null
   return b
 }

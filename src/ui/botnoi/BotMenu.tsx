@@ -11,7 +11,8 @@ import { acceptQuest, actionableQuests, focusQuest, progressOf, stepIndex, turnI
 import { BOTNOI_GIVER } from '../../game/data/npcQuests/botnoi'
 import { NPC_QUESTS } from '../../game/data/npcQuests'
 import type { NpcQuestDef } from '../../game/data/npcQuestTypes'
-import { declineTutorial, nextRotating, pokeBot, setBotHidden, startTutorial } from '../../game/botnoi'
+import { declineTutorial, nextRotating, pokeBot, setBotHidden, startTutorial, tutorialInput } from '../../game/botnoi'
+import { openShopPopup } from '../popups/popupStore'
 import { level } from '../../game/state'
 import { PBtn, Stars } from '../components/kit'
 import { Icon } from '../components/common'
@@ -122,8 +123,17 @@ function Sheet({ view: first }: { view: BotMenuView }) {
                 <PBtn tone="gold" icon="scroll" onClick={() => go('quests')}>
                   {`มีภารกิจอะไรไหม?${qn ? ` (${qn})` : ''}`}
                 </PBtn>
-                <PBtn tone="green" size="small" icon="book" onClick={() => go('replay')}>
-                  สอนเล่นอีกครั้ง
+                {s.botnoi.tut === 'paused' ? (
+                  <PBtn tone="green" size="small" icon="book" onClick={() => (closeBotMenu(), tutorialInput({ kind: 'resume' }))}>
+                    สอนต่อ
+                  </PBtn>
+                ) : (
+                  <PBtn tone="green" size="small" icon="book" onClick={() => go('replay')}>
+                    สอนเล่นอีกครั้ง
+                  </PBtn>
+                )}
+                <PBtn tone="gold" size="small" icon="shop" onClick={() => (closeBotMenu(), openShopPopup())}>
+                  ร้านค้าด่วน
                 </PBtn>
                 <PBtn tone="blue" size="small" icon="sparkle" onClick={() => go('tip')}>
                   เคล็ดลับวันนี้

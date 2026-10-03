@@ -2,6 +2,7 @@
 // search, sort and category filters, rarity borders and count badges, and a
 // detail side-sheet with Use / Wear / Walk / Place / Sell-in-market actions.
 
+import { QuickSell } from '../popups/QuickSell'
 import { effect } from '@preact/signals'
 import { useMemo, useState } from 'preact/hooks'
 import { game, level, mutate } from '../../game/state'
@@ -384,6 +385,7 @@ function DetailSheet({ e, onClose, onLeave }: { e: InvEntry; onClose: () => void
           ))}
         </div>
         {acts.find((a) => a.note) && <div class="small muted">{acts.find((a) => a.note)!.note}</div>}
+        <QuickSell key={`q${e.key}`} kind={tradeKindOf(e)} id={e.id} name={e.name} />
         <SellForm key={e.key} e={e} />
       </aside>
     </div>

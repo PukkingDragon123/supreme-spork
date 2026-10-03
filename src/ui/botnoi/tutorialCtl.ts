@@ -70,7 +70,8 @@ export function installTutorial() {
   installed = true
 
   onTrack((event) => {
-    if (game.value.botnoi?.tut === 'active') tutorialInput({ kind: 'event', event })
+    const t = game.value.botnoi?.tut
+    if (t === 'active' || t === 'paused') tutorialInput({ kind: 'event', event })
   })
 
   // Transitions of the navigation signals → UI signals.
@@ -145,7 +146,6 @@ export function installTutorial() {
   // Step changes: praise, sound, reset per-step helpers.
   onTutorialStep((from, to) => {
     botFocus.value = null
-    if (to === 'walk') walkSpot = null
     // A new save's bag is empty: Bot Noi lends what this step needs (and takes it back after).
     lendFor(to)
     if (!from || !to) return
@@ -163,14 +163,4 @@ export function installTutorial() {
     if (!ls || ls === 'kept' || activity.value) return
     if (game.value.botnoi.tut !== 'active' || !loanStillNeeded(ls, tutStep.value?.id ?? null)) reclaimLoan()
   }, 500)
-
-  // Walk step: done once the player reaches the ring.
-  setInterval(() => {
-    const st = tutStep.value
-    if (st?.id !== 'walk' || mode.value !== 'world') return
-    const sp = ensureWalkSpot()
-    const sc = worldScene()
-    if (!sp || !sc) return
-    if (Math.hypot(sc.player.x - sp.x, sc.player.y - sp.y) < 9) ui('walked')
-  }, 150)
 }

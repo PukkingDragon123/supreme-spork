@@ -27,6 +27,13 @@ const step = async (name, fn) => {
   if (shots) await page.screenshot({ path: `${shots}/smoke-${name.replace(/\W+/g, '_')}.png` })
 }
 const click = (text) => page.getByRole('button', { name: text }).first().click()
+/** The menu keeps six big buttons; the rest are under "เพิ่มเติม". */
+const openMore = async (text) => {
+  await page.waitForSelector('.menu-grid')
+  const win = page.locator('.win-backdrop').last()
+  if (!(await win.getByRole('button', { name: text }).count())) await win.getByRole('button', { name: '▼ เพิ่มเติม' }).click()
+  return win
+}
 
 await page.goto(base, { waitUntil: 'networkidle' })
 await page.evaluate(() => localStorage.clear())
@@ -120,13 +127,15 @@ await step('home and crafting', async () => {
 await step('menu screens', async () => {
   for (const t of ['ภารกิจ', 'ร้านค้า', 'เพื่อน']) {
     await page.getByRole('button', { name: 'เมนู' }).click()
-    await click(new RegExp(t))
+    const menu = await openMore(t)
+    await menu.getByRole('button', { name: new RegExp(t) }).first().click()
     await page.waitForTimeout(400)
     await page.locator('.win-x').last().click()
   }
   for (const t of ['บทสวด', 'ลูกประคำ', 'เตือนสวด']) {
     await page.getByRole('button', { name: 'เมนู' }).click()
-    await click(t)
+    const menu = await openMore(t)
+    await menu.getByRole('button', { name: t }).first().click()
     await page.waitForTimeout(300)
     await page.locator('.win-x').last().click()
   }

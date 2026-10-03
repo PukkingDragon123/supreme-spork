@@ -90,8 +90,8 @@ describe('empty start, loans and the finale gift', () => {
     expect(loanFor('merit', { items: { fish_food: 3, rice: 1, banana: 1, water: 1 }, furniture: {} })).toBeNull()
     expect(loanFor('decorate', empty)?.furniture.plant_monstera).toBe(1)
     // No mid-tutorial loans for steps that need nothing (incense is lit for free).
-    for (const step of ['walk', 'incense', 'bag', 'npc', 'shop'] as const) expect(loanFor(step, empty)).toBeNull()
-    expect(loanStillNeeded('decorate', 'decorate_done')).toBe(true)
+    for (const step of ['hello', 'incense', 'pray', 'npc', 'shop'] as const) expect(loanFor(step, empty)).toBeNull()
+    expect(loanStillNeeded('decorate', 'decorate')).toBe(true)
     expect(loanStillNeeded('decorate', 'finish')).toBe(false)
     expect(loanStillNeeded('merit', 'pray')).toBe(false)
     expect(reclaimAmounts({ fish_food: 12 }, { fish_food: 5 })).toEqual({ fish_food: 5 })
@@ -142,7 +142,7 @@ describe('empty start, loans and the finale gift', () => {
     expect(game.value.house.storage).toEqual({ rug_mat: 1 })
     expect(game.value.outfits).toContain(TUT_REWARD.outfit)
     expect(game.value.botnoi.loan).toBeNull()
-    expect(TUT_STEPS.length).toBeGreaterThan(10)
+    expect(TUT_STEPS.length).toBeGreaterThan(5)
   })
 
   it('normalises a saved loan', () => {

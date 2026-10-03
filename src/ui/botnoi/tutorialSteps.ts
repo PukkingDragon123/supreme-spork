@@ -89,17 +89,9 @@ export const STEP_UI: Record<TutStepId, StepUi> = {
     lines: [
       L('happy', 'สวัสดีครับ! ผมชื่อ “บอทน้อย” หุ่นยนต์ผู้ช่วยสายบุญรุ่นจิ๋ว ปิ๊บ ๆ!'),
       L('normal', 'ผมจะพาทัวร์วัด สอนทำบุญทีละขั้น ลงมือทำจริงทุกขั้นเลยนะครับ'),
-      L('love', 'ระหว่างเรียนผมให้ยืมของไปก่อน เรียนจบมีของขวัญชิ้นใหญ่! เหรียญ ชุดเริ่มต้น แถมที่คาดผมเสาอากาศแบบผม ^^'),
+      L('love', 'ผมจะคอยบอกเคล็ดลับเล็ก ๆ ทำตามลำดับไหนก็ได้ จะเดินเล่นก่อนก็ได้นะ ครบแล้วมีของขวัญชิ้นใหญ่! ^^'),
     ],
     targets: () => [],
-  },
-  walk: {
-    arm: 'point',
-    lines: [L('happy', 'เริ่มจากเดินก่อนครับ! แตะที่พื้นเพื่อเดิน ลองเดินไปที่วงแหวนเรืองแสงดูสิ')],
-    targets: () => (inWorld() ? [{ kind: 'spot' }] : []),
-    nav: () => (closeAll(), goToSpot('wat', null)),
-    lost: 'ขั้นนี้ต้องเดินในวัดครับ กด “นำทาง” เดี๋ยวผมพาไป',
-    praise: 'เดินเก่งมาก! ไม่สะดุดเหมือนผมเลย',
   },
   incense: {
     arm: 'point',
@@ -109,18 +101,6 @@ export const STEP_UI: Record<TutStepId, StepUi> = {
     nav: () => goToSpot('wat', 'incense'),
     lost: 'กระถางธูปอยู่หน้าโบสถ์วัดของเราครับ กด “นำทาง” ได้เลย',
     praise: 'สาธุ~ คำอธิษฐานลอยไปแล้วครับ',
-  },
-  bag: {
-    arm: 'point',
-    lines: [L('happy', 'ของที่ได้มาจะเก็บไว้ในกระเป๋าครับ แตะ “กระเป๋า” ข้างล่างดูสิ!')],
-    targets: () => [hot('กระเป๋า')],
-    nav: closeAll,
-  },
-  bag_look: {
-    arm: 'wave',
-    lines: [L('think', 'ตอนนี้กระเป๋ายังว่างอยู่ครับ ของที่ได้จากภารกิจ ร้านค้า และของขวัญจะมาอยู่ในนี้'), L('love', 'เรียนจบเมื่อไหร่ ผมมีของขวัญใส่ให้เต็มกระเป๋าเลย! ปิดกระเป๋าได้เลยครับ')],
-    targets: () => (panel.value === 'bag' ? [{ kind: 'ui', sel: '.win-backdrop .win', pad: 4 }] : []),
-    next: 'เข้าใจแล้ว',
   },
   merit: {
     arm: 'point',
@@ -134,34 +114,16 @@ export const STEP_UI: Record<TutStepId, StepUi> = {
   },
   pray: {
     arm: 'point',
-    lines: [L('normal', 'สวดมนต์ได้บุญเยอะที่สุดครับ แตะปุ่ม “สวดมนต์” ตรงกลางเลย')],
-    targets: () => [{ kind: 'ui', sel: '.hotbar .hot.big', pad: 2 }],
-    nav: closeAll,
-  },
-  pray_stage: {
-    arm: 'point',
-    lines: [
-      L('surprised', 'นี่คือแผนที่ด่านสวดมนต์ครับ! ผ่านด่านไหน ด่านถัดไปก็จะปลดล็อก'),
-      L('happy', 'เก็บดาวให้เยอะ ๆ ดาวใช้ปลดล็อกวัดดังบนแผนที่ด้วย เริ่มด่าน 1 กด “เริ่มสวดมนต์” เลยครับ'),
-    ],
+    lines: [L('normal', 'สวดมนต์ได้บุญเยอะที่สุดครับ ลองสวดด่าน 1 ดูไหม? ผ่านด่านไหน ด่านถัดไปก็เปิด')],
     targets: () =>
       panel.value === 'pray'
         ? [
-            // Buddha-journey stage map (bj-*), with the older list layout as a fallback.
             { kind: 'ui', sel: '.bj-card-actions .btn:not([disabled])', pad: 3 },
             { kind: 'ui', sel: '.ch-stage-card .btn.big', pad: 3 },
           ]
-        : [],
-    nav: () => (closeAll(), (panel.value = 'pray')),
-    lost: 'กด “เริ่มสวดมนต์” ที่การ์ดด่านได้เลยครับ ถ้าหาไม่เจอกด “ข้ามขั้นนี้” ก็ได้นะ',
-  },
-  pray_do: {
-    arm: 'cheer',
-    lines: [L('happy', 'สวดตามคำที่เรืองแสงครับ หรือเลือก “แตะตามจังหวะ” ก็ได้ ผมเชียร์อยู่!')],
-    targets: () => [],
+        : [{ kind: 'ui', sel: '.hotbar .hot.big', pad: 2 }],
     mini: () => (prayStage.value ? 'สวดตามคำที่เรืองแสง หรือแตะตามจังหวะก็ได้ครับ สู้ ๆ!' : null),
     nav: () => (closeAll(), (panel.value = 'pray')),
-    lost: 'กลับไปสวดให้จบด่านกันครับ กด “นำทาง” เพื่อเปิดด่านสวดมนต์',
     praise: 'เสียงสวดเพราะมากครับ!',
   },
   quests: {
@@ -192,18 +154,9 @@ export const STEP_UI: Record<TutStepId, StepUi> = {
   },
   map: {
     arm: 'point',
-    lines: [L('normal', 'อยากไปทำบุญที่อื่นบ้างไหมครับ? แตะ “แผนที่” ดูสิ')],
+    lines: [L('normal', 'อยากไปทำบุญที่อื่นบ้างไหมครับ? แตะ “แผนที่” ดูวัดดัง ตลาด และงานวัดทั่วไทยสิ')],
     targets: () => [hot('แผนที่')],
     nav: closeAll,
-  },
-  map_look: {
-    arm: 'wave',
-    lines: [
-      L('love', 'นี่คือแผนที่ทำบุญทั่วไทยครับ! มีวัดดังทุกภาค ตลาดย่านเก่า และงานวัดสุดม่วน'),
-      L('happy', 'เก็บดาวจากการสวดมนต์เพื่อปลดล็อกที่ใหม่ ๆ แล้วแตะหมุดเพื่อเดินทางได้เลยครับ'),
-    ],
-    targets: () => (mapOpen.value ? [{ kind: 'ui', sel: '.thaimap .thaimap-stats', pad: 4 }] : []),
-    next: 'ต่อไป',
   },
   shop: {
     arm: 'point',
@@ -216,32 +169,22 @@ export const STEP_UI: Record<TutStepId, StepUi> = {
     fallback: () => (tab.value === 'shop' && !giftReady(game.value, dayKey()) ? { text: 'วันนี้รับของขวัญไปแล้วครับ พรุ่งนี้มาใหม่นะ!', label: 'ต่อไป' } : null),
     praise: 'ของขวัญฟรี! พรุ่งนี้มาใหม่นะ',
   },
-  home: {
-    arm: 'point',
-    lines: [L('happy', 'กลับบ้านกันครับ! บ้านเราแต่งได้ตามใจเลย แตะ “บ้าน” ข้างล่าง')],
-    targets: () => (mode.value === 'world' ? [hot('บ้าน')] : []),
-    nav: () => (closeAll(), goHome()),
-  },
   decorate: {
     arm: 'point',
-    lines: [L('normal', 'ยินดีต้อนรับสู่บ้านครับ! แตะปุ่มดินสอเพื่อ “จัดห้อง” กัน'), L('wink', 'ต้นไม้ในกล่องเก็บของ บอทน้อยให้ยืมก่อนนะ ลองวางดู เรียนจบแล้วยกให้เลย!')],
-    targets: () => (mode.value === 'house' ? [{ kind: 'ui', sel: '.house-tools button[aria-label="จัดห้อง"]', pad: 3 }] : []),
-    nav: () => (closeAll(), goHome()),
-    lost: 'ขั้นนี้ทำที่บ้านครับ กด “นำทาง” กลับบ้านกัน',
-  },
-  decorate_done: {
-    arm: 'wave',
-    lines: [L('love', 'แตะต้นไม้ที่ผมให้ยืมในคลัง ลากไปวางตรงไหนก็ได้ แล้วกด ✓ เลยครับ'), L('happy', 'พอใจแล้วกด “เสร็จ” เลย!')],
-    // Plant in the tray → "วาง" while placing → "เสร็จ".
-    targets: () =>
-      mode.value !== 'house'
-        ? []
-        : [
-            ...((game.value.house.storage.plant_monstera ?? 0) > 0 ? [{ kind: 'ui', sel: '.edit-tray .tray-row .slot', pad: 3 } as Target] : []),
-            { kind: 'ui', sel: '.house-edit-top .btn.green', pad: 3 },
-          ],
-    next: 'เข้าใจแล้ว',
+    lines: [L('happy', 'บ้านเราแต่งได้ตามใจนะครับ! ต้นไม้ในคลัง บอทน้อยให้ยืมก่อนนะ ลองวางดู แล้วกด “เสร็จ”')],
+    // บ้าน → ดินสอ "จัดห้อง" → the loaner plant in the tray → "เสร็จ".
+    targets: () => {
+      if (mode.value === 'world') return [hot('บ้าน')]
+      if (mode.value !== 'house') return []
+      if (!document.querySelector('.house-edit-top')) return [{ kind: 'ui', sel: '.house-tools button[aria-label="จัดห้อง"]', pad: 3 }]
+      return [
+        ...((game.value.house.storage.plant_monstera ?? 0) > 0 ? [{ kind: 'ui', sel: '.edit-tray .tray-row .slot', pad: 3 } as Target] : []),
+        { kind: 'ui', sel: '.house-edit-top .btn.green', pad: 3 },
+      ]
+    },
     aside: () => !!document.querySelector('.edit-bar'),
+    nav: () => (closeAll(), goHome()),
+    praise: 'ห้องสวยขึ้นเยอะเลยครับ!',
   },
   finish: {
     card: 'finish',

@@ -1,0 +1,320 @@
+/* Quick shop sheet, "ได้รับของใหม่!" / level-up cards, bag quick-sell. Prefix: pp- */
+
+.pp-card {
+  position: absolute;
+  z-index: 91;
+  top: calc(var(--safe-top, 0px) + 150px);
+  left: 50%;
+  translate: -50% 0;
+  width: min(330px, calc(100% - 32px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 3px solid #3a2838;
+  border-radius: 14px;
+  background: linear-gradient(#fffaf0, #fff1d6);
+  box-shadow:
+    0 4px 0 rgba(58, 40, 56, 0.35),
+    0 0 18px rgba(255, 216, 74, 0.55);
+  font-family: inherit;
+  color: #3b2616;
+  text-align: left;
+  cursor: pointer;
+  animation: pp-in 380ms cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+.pp-card.out {
+  animation: pp-out 220ms ease-in forwards;
+}
+.pp-card.level {
+  background: linear-gradient(#fff6c2, #ffe27a);
+}
+@keyframes pp-in {
+  from {
+    transform: translateY(-24px) scale(0.85);
+    opacity: 0;
+  }
+}
+@keyframes pp-out {
+  to {
+    transform: translateY(-16px) scale(0.9);
+    opacity: 0;
+  }
+}
+.pp-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pp-sub {
+  font-size: 12px;
+  color: #6e4a35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pp-icons {
+  display: flex;
+  flex: none;
+}
+.pp-ico {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin-right: -8px;
+  border: 2px solid #3a2838;
+  border-radius: 10px;
+  background: #fff;
+  image-rendering: pixelated;
+  animation: pp-bounce 600ms cubic-bezier(0.2, 0.9, 0.3, 1.6) both;
+}
+@keyframes pp-bounce {
+  from {
+    transform: translateY(14px) scale(0.4) rotate(-12deg);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(-6px) scale(1.15) rotate(4deg);
+  }
+}
+.pp-n {
+  position: absolute;
+  right: -4px;
+  bottom: -6px;
+  padding: 0 3px;
+  border-radius: 6px;
+  background: #3a2838;
+  color: #ffe27a;
+  font-size: 10px;
+}
+.pp-burst {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: 50%;
+  background: radial-gradient(#fffbe0, #ffd84a);
+  animation: pp-spin 2.6s linear infinite;
+}
+@keyframes pp-spin {
+  50% {
+    transform: rotate(10deg) scale(1.08);
+  }
+}
+
+/* ---------- quick shop sheet ---------- */
+
+.pp-sheet-back {
+  position: absolute;
+  inset: 0;
+  z-index: 82;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(24, 14, 34, 0.4);
+  animation: pp-fade 200ms ease-out;
+}
+@keyframes pp-fade {
+  from {
+    opacity: 0;
+  }
+}
+.pp-sheet {
+  width: min(420px, 100%);
+  max-height: calc(100% - 60px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 6px 10px;
+  margin-bottom: calc(var(--safe-bottom, 0px) + 6px);
+  border-style: solid;
+  border-width: 16px;
+  border-image: var(--sk-panel) 8 fill / 16px repeat;
+  image-rendering: pixelated;
+  animation: pp-up 260ms cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+@keyframes pp-up {
+  from {
+    transform: translateY(60px);
+    opacity: 0;
+  }
+}
+.pp-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pp-coins {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #3a2838;
+  color: #ffe27a;
+  font-size: 13px;
+}
+.pp-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6e4a35;
+}
+.pp-deals {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.pp-deal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border: 2px solid #3a2838;
+  border-radius: 10px;
+  background: #fff6de;
+}
+.pp-deal.sold {
+  opacity: 0.55;
+}
+.pp-off {
+  position: absolute;
+  top: -6px;
+  left: -4px;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: #e8514a;
+  color: #fff;
+  font-size: 11px;
+}
+.pp-quick {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.pp-q {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 2px;
+  border: 2px solid #3a2838;
+  border-radius: 10px;
+  background: #fffaf0;
+  font-family: inherit;
+  color: #3b2616;
+  cursor: pointer;
+}
+.pp-q:active {
+  transform: scale(0.95);
+}
+.pp-qname {
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: center;
+}
+.pp-qhave {
+  font-size: 10px;
+  color: #8a6a55;
+}
+
+/* ---------- bag: sell to the shop ---------- */
+
+.pp-sell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 2px dashed #c9a46a;
+  border-radius: 10px;
+  background: #fffaf0;
+}
+.pp-sell-head,
+.pp-sell-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.pp-sell-n {
+  min-width: 22px;
+  text-align: center;
+}
+.pp-max {
+  padding: 2px 6px;
+  border: 2px solid #c9a46a;
+  border-radius: 8px;
+  background: #fff6de;
+  font-family: inherit;
+  font-size: 11px;
+  color: #6e4a35;
+  cursor: pointer;
+}
+.reduce-motion .pp-card,
+.reduce-motion .pp-ico,
+.reduce-motion .pp-burst {
+  animation: none;
+}
+
+/* HUD: quick-shop button under the coins */
+.hud2-shop {
+  position: absolute;
+  right: 72px;
+  top: calc(var(--safe-top, 0px) + 58px);
+  z-index: 21;
+  pointer-events: auto;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-style: solid;
+  border-width: 6px;
+  border-image: var(--sk-card-wood) 3 fill / 6px repeat;
+  background: none;
+  cursor: pointer;
+  image-rendering: pixelated;
+}
+
+/* Menu: six big buttons + a small "เพิ่มเติม" list */
+.menu-big .btn {
+  min-height: 56px;
+}
+.menu-more-toggle {
+  display: block;
+  margin: 8px auto 0;
+  padding: 4px 14px;
+  border: 2px solid #3a2838;
+  border-radius: 12px;
+  background: #fff6de;
+  font-family: inherit;
+  font-size: 13px;
+  color: #3b2616;
+  cursor: pointer;
+}
+.menu-more {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 6px;
+  animation: pp-fade 160ms ease-out;
+}
+.menu-more button {
+  padding: 7px 8px;
+  border: 2px solid #d8c3a0;
+  border-radius: 9px;
+  background: #fffaf0;
+  font-family: inherit;
+  font-size: 13px;
+  color: #3b2616;
+  text-align: left;
+  cursor: pointer;
+}
+.menu-more button.danger {
+  color: #b8343f;
+}

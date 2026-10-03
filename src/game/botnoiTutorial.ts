@@ -30,25 +30,7 @@ export type TutUi =
   | 'edit_on'
   | 'edit_off'
 
-export type TutStepId =
-  | 'hello'
-  | 'walk'
-  | 'incense'
-  | 'bag'
-  | 'bag_look'
-  | 'merit'
-  | 'pray'
-  | 'pray_stage'
-  | 'pray_do'
-  | 'quests'
-  | 'npc'
-  | 'map'
-  | 'map_look'
-  | 'shop'
-  | 'home'
-  | 'decorate'
-  | 'decorate_done'
-  | 'finish'
+export type TutStepId = 'hello' | 'incense' | 'merit' | 'pray' | 'quests' | 'npc' | 'map' | 'shop' | 'decorate' | 'finish'
 
 export interface TutStepDef {
   id: TutStepId
@@ -64,24 +46,21 @@ export interface TutStepDef {
   counted?: boolean
 }
 
+/**
+ * A short, relaxed tour: steps can be done in any order (each completes
+ * whenever it happens, even while the tutorial is paused); Bot Noi just
+ * suggests the next unfinished one.
+ */
 export const TUT_STEPS: TutStepDef[] = [
   { id: 'hello', next: true },
-  { id: 'walk', ui: ['walked'], counted: true },
   { id: 'incense', events: ['wish'], counted: true },
-  { id: 'bag', ui: ['bag_open'], counted: true },
-  { id: 'bag_look', ui: ['bag_close'], next: true },
   { id: 'merit', events: ['koi_fed', 'catfish_fed', 'alms', 'alms_item', 'dish_alms'], counted: true },
-  { id: 'pray', ui: ['pray_open', 'pray_start'], counted: true },
-  { id: 'pray_stage', ui: ['pray_start'], back: { pray_close: 'pray' } },
-  { id: 'pray_do', events: ['chant'], back: { pray_quit: 'pray' } },
+  { id: 'pray', events: ['chant'], counted: true },
   { id: 'quests', ui: ['claimed'], counted: true },
   { id: 'npc', events: ['npc_talk'], counted: true },
   { id: 'map', ui: ['map_open'], counted: true },
-  { id: 'map_look', ui: ['map_close'], next: true },
   { id: 'shop', ui: ['gift'], counted: true },
-  { id: 'home', ui: ['house'], counted: true },
-  { id: 'decorate', ui: ['edit_on'], counted: true },
-  { id: 'decorate_done', ui: ['edit_off'], next: true },
+  { id: 'decorate', ui: ['edit_off'], counted: true },
   { id: 'finish' },
 ]
 
@@ -116,7 +95,7 @@ export interface TutLoanDef {
 
 export const TUT_LOANS: TutLoanDef[] = [
   { step: 'merit', items: { fish_food: 12, rice: 1, banana: 1, water: 1 } },
-  { step: 'decorate', keep: ['decorate_done'], furniture: { plant_monstera: 1 } },
+  { step: 'decorate', furniture: { plant_monstera: 1 } },
 ]
 
 /** What to lend as `step` begins: only what the player is missing. */
@@ -154,28 +133,34 @@ export type TutInput =
   | { kind: 'skipStep' }
   | { kind: 'skip' }
   | { kind: 'finish' }
+  /** "ไว้ทีหลัง": hide Bot Noi's hints (steps still complete in the background). */
+  | { kind: 'pause' }
+  | { kind: 'resume' }
 
 export function stepIndexOf(id: string | null): number {
   return TUT_STEPS.findIndex((s) => s.id === id)
 }
 
-/** The running step (null unless the tutorial is active). Unknown ids resolve to the first unfinished step. */
-export function currentStep(st: BotnoiState): TutStepDef | null {
-  if (st.tut !== 'active') return null
-  const i = stepIndexOf(st.step)
-  if (i >= 0) return TUT_STEPS[i]
-  return TUT_STEPS.find((s) => !st.steps.includes(s.id)) ?? TUT_STEPS[TUT_STEPS.length - 1]
+const MIDDLE = () => TUT_STEPS.filter((s) => s.id !== TUT_FIRST && s.id !== TUT_LAST)
+
+/** First unfinished step in order (the greeting first, the finale once the rest are done). */
+function firstOpen(done: string[]): TutStepDef {
+  if (!done.includes(TUT_FIRST)) return TUT_STEPS[0]
+  return MIDDLE().find((s) => !done.includes(s.id)) ?? TUT_STEPS[TUT_STEPS.length - 1]
 }
 
-/** "ขั้นที่ x/y" for the bubble (x is 1-based; 0 on the greeting). */
+/** The suggested step (null unless the tutorial is active, i.e. not paused). */
+export function currentStep(st: BotnoiState): TutStepDef | null {
+  if (st.tut !== 'active') return null
+  return firstOpen(st.steps)
+}
+
+/** "x/y" steps done for the bubble. */
 export function tutProgress(st: BotnoiState): { n: number; total: number } {
-  const counted = TUT_STEPS.filter((s) => s.counted)
-  const total = counted.length
-  const cur = currentStep(st)
-  if (!cur) return { n: st.tut === 'done' ? total : 0, total }
-  const i = stepIndexOf(cur.id)
-  const n = TUT_STEPS.slice(0, i + 1).filter((s) => s.counted).length
-  return { n, total }
+  const mids = MIDDLE()
+  const total = mids.length
+  if (st.tut === 'done') return { n: total, total }
+  return { n: mids.filter((s) => st.steps.includes(s.id)).length, total }
 }
 
 /** Does this input complete the given step? */
@@ -194,42 +179,33 @@ export function completes(step: TutStepDef, input: TutInput): boolean {
   }
 }
 
-function advance(st: BotnoiState, from: TutStepDef): BotnoiState {
-  const i = stepIndexOf(from.id)
-  const next = TUT_STEPS[i + 1]
-  const steps = st.steps.includes(from.id) ? st.steps : [...st.steps, from.id]
-  return { ...st, steps, step: next ? next.id : TUT_LAST }
-}
+const withSteps = (st: BotnoiState, steps: string[]): BotnoiState => ({ ...st, steps, step: firstOpen(steps).id })
 
 /**
  * Apply one input. Pure: returns the same object when nothing changes, so
- * callers can skip a save. Finishing the last step is `{ kind: 'finish' }`
- * (the UI grants the reward, see tutReward()).
+ * callers can skip a save. Events and UI signals complete ANY unfinished
+ * step (any order, also while paused); "ต่อไป" / "ข้าม" act on the suggested
+ * one. Finishing is `{ kind: 'finish' }` (the UI grants the reward).
  */
 export function tutReduce(st: BotnoiState, input: TutInput): BotnoiState {
-  if (input.kind === 'start') {
-    return { ...st, tut: 'active', step: TUT_FIRST, steps: [], replay: !!input.replay }
+  if (input.kind === 'start') return { ...st, tut: 'active', step: TUT_FIRST, steps: [], replay: !!input.replay }
+  const live = st.tut === 'active' || st.tut === 'paused'
+  if (!live) return st
+  if (input.kind === 'skip') return { ...st, tut: 'skipped', step: null, replay: false }
+  if (input.kind === 'pause') return st.tut === 'active' ? { ...st, tut: 'paused' } : st
+  if (input.kind === 'resume') return st.tut === 'paused' ? { ...st, tut: 'active', step: firstOpen(st.steps).id } : st
+  if (input.kind === 'event' || input.kind === 'ui') {
+    const hit = MIDDLE().filter((s) => !st.steps.includes(s.id) && completes(s, input)).map((s) => s.id)
+    return hit.length ? withSteps(st, [...st.steps, ...hit]) : st
   }
   if (st.tut !== 'active') return st
-  if (input.kind === 'skip') return { ...st, tut: 'skipped', step: null, replay: false }
-  const cur = currentStep(st)
-  if (!cur) return st
+  const cur = firstOpen(st.steps)
   if (input.kind === 'finish') {
     if (cur.id !== TUT_LAST) return st
     return { ...st, tut: 'done', step: null, steps: [...new Set([...st.steps, TUT_LAST])], finished: st.finished + 1, rewarded: true, replay: false }
   }
-  if (input.kind === 'ui' && cur.back?.[input.id]) {
-    const to = cur.back[input.id]!
-    if (stepIndexOf(to) < stepIndexOf(cur.id)) return { ...st, step: to }
-  }
   if (!completes(cur, input)) return st
-  // Normalise a stale id (data changed between versions) before advancing.
-  const base = st.step === cur.id ? st : { ...st, step: cur.id }
-  let out = advance(base, cur)
-  // A UI signal can finish the following steps too (e.g. a prayer started
-  // from the hall skips the stage-map explanation).
-  for (let nxt = currentStep(out); input.kind === 'ui' && nxt && nxt.id !== TUT_LAST && nxt.ui?.includes(input.id); nxt = currentStep(out)) out = advance(out, nxt)
-  return out
+  return withSteps(st, [...st.steps, cur.id])
 }
 
 /** What finishing the tutorial pays: the full reward once, a small one on replays. */
@@ -266,4 +242,9 @@ export function shouldOffer(st: BotnoiState): boolean {
 /** Should the running tutorial resume (with a "มาเรียนต่อกัน" line)? */
 export function shouldResume(st: BotnoiState): boolean {
   return st.tut === 'active' && !!currentStep(st)
+}
+
+/** Paused with "ไว้ทีหลัง" (Bot Noi's menu offers "สอนต่อ"). */
+export function isPaused(st: BotnoiState): boolean {
+  return st.tut === 'paused'
 }

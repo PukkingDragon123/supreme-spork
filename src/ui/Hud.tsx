@@ -14,6 +14,7 @@ import { DAILY_PRAYER_GOAL, prayersToday } from '../game/prayer'
 import { EventBadge } from './views/EventBadge'
 import { HomeTag } from './homeland/ProvincePicker'
 import { OnlinePill } from './online/OnlinePill'
+import { openShopPopup } from './popups/popupStore'
 
 export function PortraitRing({ size = 72 }: { size?: number }) {
   const look = game.value.player.look
@@ -51,6 +52,9 @@ export function Hud() {
         <span class="hud2-plus">
           <Icon name="plus" size={14} />
         </span>
+      </button>
+      <button class="hud2-shop" onClick={() => (sfx.open(), openShopPopup())} aria-label="ร้านค้าด่วน">
+        <Icon name="shop" size={22} />
       </button>
       <EventBadge />
       <OnlinePill />

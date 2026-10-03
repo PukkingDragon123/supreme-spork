@@ -28,6 +28,7 @@ import { QuestHost } from './quest/QuestDialog'
 import { QuestTracker } from './quest/QuestTracker'
 import { OnlineChat, OnlineHost } from './online/OnlineHost'
 import { BotnoiHost } from './botnoi/BotnoiHost'
+import { PopupHost } from './popups/PopupHost'
 
 const SCREEN: Partial<Record<Tab, { title: string; icon: string }>> = {
   quests: { title: 'ภารกิจ', icon: 'scroll' },
@@ -105,6 +106,7 @@ export function App() {
             <OnlineHost />
             <QuestHost />
             <BotnoiHost />
+            <PopupHost />
           </>
         )}
         <Overlays />

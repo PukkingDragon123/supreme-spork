@@ -30,6 +30,14 @@ const step = async (name, fn) => {
 }
 const click = (text) => page.getByRole('button', { name: text }).first().click()
 const tutStep = () => page.evaluate(() => window.__boondee?.game.value.botnoi?.step ?? null)
+const waitDone = async (id, timeout = 15000) => {
+  const t0 = Date.now()
+  while (Date.now() - t0 < timeout) {
+    if (await page.evaluate((x) => window.__boondee?.game.value.botnoi?.steps.includes(x), id)) return
+    await page.waitForTimeout(150)
+  }
+  throw new Error(`step ${id} not done (at ${await tutStep()})`)
+}
 const tutStatus = () => page.evaluate(() => window.__boondee?.game.value.botnoi?.tut ?? null)
 const waitStep = async (id, timeout = 15000) => {
   const t0 = Date.now()
@@ -121,202 +129,200 @@ await step('1 greeting card', async () => {
   await shot('hello')
   await readBubble()
   await click('ไปกันเลย!')
-  await waitStep('walk')
-})
-
-await step('2 walk to the ring', async () => {
-  await page.waitForTimeout(800)
-  await acceptGift()
-  await waitHole()
-  await page.waitForTimeout(700)
-  await shot('walk')
-  await tapHole()
   await waitStep('incense')
 })
 
-await step('3 light incense', async () => {
-  await page.waitForTimeout(600)
-  await shot('incense')
-  await tapHole()
-  // Walked up: the ring moves to the action card button.
-  await page.waitForSelector('.prompt', { timeout: 10000 })
-  await page.waitForTimeout(500)
-  await shot('incense-action')
-  await tapHole()
-  await page.waitForSelector('.activity')
-  await page.waitForTimeout(500)
-  await shot('incense-activity')
-  await click('เริ่มเลย')
-  for (let i = 0; i < 3; i++) {
-    await click('จุดธูป')
-    await page.waitForTimeout(250)
-  }
-  await click('ข้ามไปก่อน')
-  await click('ตั้งจิตอธิษฐาน')
-  const hold = page.locator('.hold-btn')
-  const b = await hold.boundingBox()
-  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2)
-  await page.mouse.down()
-  await page.waitForTimeout(2600)
-  await page.mouse.up()
-  await waitStep('bag')
-  await page.getByRole('button', { name: 'สาธุ ๆ ๆ' }).click({ timeout: 6000 })
-})
-
-await step('4 open the bag', async () => {
-  await waitHole()
-  await page.waitForTimeout(500)
-  await shot('bag')
-  await tapHole()
-  await waitStep('bag_look')
-  await page.waitForTimeout(600)
-  await shot('bag-look')
-  await readBubble()
-  await click('เข้าใจแล้ว')
-  await waitStep('merit')
-  await page.locator('.win-x').last().click()
-})
-
-await step('5 feed the koi', async () => {
-  await waitHole(10000)
-  await page.waitForTimeout(600)
-  await shot('merit')
-  await tapHole()
-  await page.waitForSelector('.prompt', { timeout: 12000 })
-  await page.waitForTimeout(400)
-  await tapHole()
-  await page.waitForSelector('.activity')
-  await click('เริ่มเลย')
-  await page.waitForTimeout(400)
-  await shot('merit-koi')
-  const canvas = page.locator('.activity canvas')
-  const box = await canvas.boundingBox()
-  for (let i = 0; i < 6; i++) {
-    await page.mouse.click(box.x + box.width * (0.3 + (i % 3) * 0.2), box.y + box.height * (0.3 + Math.floor(i / 3) * 0.2))
-    await page.waitForTimeout(250)
-  }
-  await waitStep('pray')
-  await page.waitForTimeout(2500)
-  await click('กลับ').catch(() => {})
-  await page.waitForTimeout(300)
-  const done = page.getByRole('button', { name: 'สาธุ ๆ ๆ' })
-  if (await done.count()) await done.click()
-  await page.evaluate(() => window.__boondee.closeActivity())
-})
-
-await step('6 pray stage 1', async () => {
-  await waitHole(10000)
-  await page.waitForTimeout(400)
-  await shot('pray')
-  await tapHole()
-  await waitStep('pray_stage')
-  await page.waitForTimeout(700)
-  await shot('pray-stage')
-  await readBubble()
-  await tapHole()
-  await waitStep('pray_do')
-  await page.waitForSelector('.pray')
-  await click(/แตะตามจังหวะ/)
-  const tapBtn = page.locator('.kara-tap')
-  await tapBtn.waitFor()
-  await shot('pray-session')
-  for (let i = 0; i < 40; i++) {
-    if (await page.locator('.bows').count()) break
-    await tapBtn.dispatchEvent('pointerdown').catch(() => {})
-    await page.waitForTimeout(350)
-  }
-  await page.waitForSelector('.bows', { timeout: 20000 })
-  await click('กราบพระ')
-  await page.waitForSelector('.result-win', { timeout: 8000 })
-  await click('กลับ')
-  await waitStep('quests')
-  await dismissModals()
-})
-
-await step('7 quests and a daily reward', async () => {
-  await waitHole(10000)
-  await page.waitForTimeout(500)
-  await shot('quests-menu')
-  await tapHole() // เมนู
-  await page.waitForTimeout(600)
-  await shot('quests-menu-open')
-  await tapHole() // ภารกิจ
+await step('2 soft hints: nothing is blocked, Bot Noi can wait', async () => {
   await page.waitForTimeout(800)
-  await shot('quests-claim')
-  if (await page.locator('.bn-hole').count()) await tapHole()
-  else await click(/เข้าใจแล้ว/)
-  await waitStep('npc')
-  await dismissModals()
-  await page.locator('.win-x').last().click()
-})
-
-await step('8 talk to a quest NPC', async () => {
-  await waitHole(10000)
-  await page.waitForTimeout(700)
-  await shot('npc')
-  await tapHole()
-  await page.waitForSelector('.qd-sheet', { timeout: 15000 })
-  await waitStep('map')
-  await page.waitForTimeout(500)
-  await shot('npc-dialog')
-  await page.locator('.qd-x').click()
-})
-
-await step('9 Thailand map', async () => {
-  await waitHole(10000)
-  await page.waitForTimeout(400)
-  await shot('map')
-  await tapHole()
-  await waitStep('map_look')
-  await page.waitForTimeout(1200)
-  await shot('map-look')
-  await readBubble()
-  await click('ต่อไป')
-  await waitStep('shop')
-  await page.locator('.thaimap .win-x').click()
-})
-
-await step('10 shop free gift', async () => {
-  await waitHole(10000)
-  await page.waitForTimeout(400)
-  await shot('shop')
-  await tapHole() // เมนู
-  await page.waitForTimeout(500)
-  await tapHole() // ร้านค้า
-  await page.waitForTimeout(900)
-  await shot('shop-gift')
-  await tapHole() // รับฟรี
-  await waitStep('home')
-  await dismissModals()
-  await page.locator('.win-x').last().click()
-})
-
-await step('11 go home and decorate', async () => {
-  await waitHole(10000)
-  await page.waitForTimeout(400)
-  await shot('home')
-  await tapHole()
-  await page.waitForSelector('.house')
-  await waitStep('decorate')
-  await page.waitForTimeout(900)
-  await shot('decorate')
-  await tapHole()
-  await waitStep('decorate_done')
+  await acceptGift()
+  await waitHole()
+  await shot('soft-hint')
+  if (await page.locator('.bn-dim, .bn-block').count()) throw new Error('the screen is dimmed / blocked')
+  // The player can wander: the map opens even though Bot Noi suggests incense (and it counts).
+  await page.getByRole('button', { name: 'แผนที่' }).click()
+  await page.waitForSelector('.thaimap')
+  await waitDone('map')
   await page.waitForTimeout(600)
-  await shot('decorate-done')
-  await tapHole() // the loaner plant in the tray
-  await page.waitForTimeout(500)
-  await shot('decorate-place')
-  // Bot Noi steps aside while placing; confirm with the in-room ✓ (the scene's confirm).
-  await page.waitForSelector('.edit-bar')
-  // via the dev hook: importing /src/ui/views/HouseView.tsx here would load a second
-  // copy of the module (with no scene) whenever the dev server has hot-updated it
-  await page.evaluate(async () => (window.__boondee.houseScene ?? (await import('/src/ui/views/HouseView.tsx')).currentHouseScene)()?.confirmGhost())
-  await page.waitForTimeout(500)
-  const placed = await page.evaluate(() => window.__boondee.game.value.house.placed.some((p) => p.id === 'plant_monstera'))
-  if (!placed) throw new Error('loaner plant was not placed')
-  await tapHole() // เสร็จ
-  await waitStep('finish')
+  await shot('map-any-order')
+  await page.locator('.thaimap .win-x').click()
+  // One tap folds the bubble into a chip; another brings it back.
+  await waitHole()
+  await page.locator('.bn-fold').click()
+  await page.waitForSelector('.bn-chipbot')
+  await shot('folded')
+  await page.locator('.bn-chipbot').click()
+  await page.waitForSelector('.bn-bubble')
+  // "ไว้ทีหลัง" pauses; Bot Noi's menu resumes.
+  await page.getByRole('button', { name: 'ไว้ทีหลัง' }).click()
+  await page.waitForTimeout(300)
+  if ((await tutStatus()) !== 'paused') throw new Error('not paused')
+  if (await page.locator('.bn-bubble').count()) throw new Error('bubble still shown while paused')
+  await page.getByRole('button', { name: 'เมนู' }).click()
+  await click('บอทน้อย')
+  await page.waitForSelector('.bn-sheet')
+  await readBubble()
+  await click('สอนต่อ')
+  await page.waitForTimeout(300)
+  if ((await tutStatus()) !== 'active') throw new Error('not resumed')
+})
+
+/** Close whatever is open (dialogs, windows, results) so Bot Noi's next hint shows. */
+const tidy = async () => {
+  await dismissModals()
+  for (let i = 0; i < 3; i++) {
+    const sel = ['.qd-x', '.thaimap .win-x', '.win-x']
+    let closed = false
+    for (const x of sel) {
+      const el = page.locator(x).last()
+      if (await el.count()) {
+        await el.click().catch(() => {})
+        closed = true
+        await page.waitForTimeout(300)
+        break
+      }
+    }
+    if (!closed) break
+  }
+}
+
+/** Do one suggested step for real, via Bot Noi's rings. */
+const HANDLERS = {
+  incense: async () => {
+    await tapHole()
+    await page.waitForSelector('.prompt', { timeout: 10000 })
+    await page.waitForTimeout(500)
+    await tapHole()
+    await page.waitForSelector('.activity')
+    await page.waitForTimeout(500)
+    await shot('incense-activity')
+    await click('เริ่มเลย')
+    for (let i = 0; i < 3; i++) {
+      await click('จุดธูป')
+      await page.waitForTimeout(250)
+    }
+    await click('ข้ามไปก่อน')
+    await click('ตั้งจิตอธิษฐาน')
+    const hold = page.locator('.hold-btn')
+    const b = await hold.boundingBox()
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2)
+    await page.mouse.down()
+    await page.waitForTimeout(2600)
+    await page.mouse.up()
+    await waitDone('incense')
+    await page.getByRole('button', { name: 'สาธุ ๆ ๆ' }).click({ timeout: 6000 })
+  },
+  merit: async () => {
+    await tapHole()
+    await page.waitForSelector('.prompt', { timeout: 12000 })
+    await page.waitForTimeout(400)
+    await tapHole()
+    await page.waitForSelector('.activity')
+    await click('เริ่มเลย')
+    await page.waitForTimeout(400)
+    await shot('merit-koi')
+    const canvas = page.locator('.activity canvas')
+    const box = await canvas.boundingBox()
+    for (let i = 0; i < 6; i++) {
+      await page.mouse.click(box.x + box.width * (0.3 + (i % 3) * 0.2), box.y + box.height * (0.3 + Math.floor(i / 3) * 0.2))
+      await page.waitForTimeout(250)
+    }
+    await waitDone('merit')
+    await page.waitForTimeout(2500)
+    await click('กลับ').catch(() => {})
+    await page.waitForTimeout(300)
+    const done = page.getByRole('button', { name: 'สาธุ ๆ ๆ' })
+    if (await done.count()) await done.click()
+    await page.evaluate(() => window.__boondee.closeActivity())
+  },
+  pray: async () => {
+    await tapHole() // สวดมนต์
+    await page.waitForTimeout(900)
+    await shot('pray-stage')
+    await tapHole() // เริ่มสวดมนต์
+    await page.waitForSelector('.pray')
+    await click(/แตะตามจังหวะ/)
+    const tapBtn = page.locator('.kara-tap')
+    await tapBtn.waitFor()
+    for (let i = 0; i < 40; i++) {
+      if (await page.locator('.bows').count()) break
+      await tapBtn.dispatchEvent('pointerdown').catch(() => {})
+      await page.waitForTimeout(350)
+    }
+    await page.waitForSelector('.bows', { timeout: 20000 })
+    await click('กราบพระ')
+    await page.waitForSelector('.result-win', { timeout: 8000 })
+    await click('กลับ')
+    await waitDone('pray')
+    await page.waitForTimeout(400)
+    await shot('levelup-popup')
+  },
+  quests: async () => {
+    await tapHole() // เมนู
+    await page.waitForTimeout(600)
+    await shot('quests-menu-open')
+    await tapHole() // ภารกิจ
+    await page.waitForTimeout(800)
+    await shot('quests-claim')
+    if (await page.locator('.bn-hole').count()) await tapHole()
+    else await click(/เข้าใจแล้ว/)
+    await waitDone('quests')
+  },
+  npc: async () => {
+    await tapHole()
+    await page.waitForSelector('.qd-sheet', { timeout: 15000 })
+    await waitDone('npc')
+  },
+  map: async () => {
+    await tapHole()
+    await waitDone('map')
+  },
+  shop: async () => {
+    await tapHole() // เมนู
+    await page.waitForTimeout(500)
+    await tapHole() // ร้านค้า
+    await page.waitForTimeout(900)
+    await shot('shop-gift')
+    if (await page.locator('.bn-hole').count()) await tapHole() // รับฟรี
+    else await click(/ต่อไป/)
+    await waitDone('shop')
+    await page.waitForTimeout(400)
+    await shot('new-item-popup')
+  },
+  decorate: async () => {
+    await tapHole() // บ้าน
+    await page.waitForSelector('.house')
+    await page.waitForTimeout(900)
+    await shot('decorate')
+    await tapHole() // จัดห้อง
+    await page.waitForSelector('.house-edit-top')
+    await page.waitForTimeout(600)
+    await shot('decorate-tray')
+    await tapHole() // the loaner plant in the tray
+    await page.waitForSelector('.edit-bar')
+    await page.evaluate(async () => (window.__boondee.houseScene ?? (await import('/src/ui/views/HouseView.tsx')).currentHouseScene)()?.confirmGhost())
+    await page.waitForTimeout(500)
+    const placed = await page.evaluate(() => window.__boondee.game.value.house.placed.some((p) => p.id === 'plant_monstera'))
+    if (!placed) throw new Error('loaner plant was not placed')
+    await tapHole() // เสร็จ
+    await waitDone('decorate')
+  },
+}
+
+await step('3 every step, in whatever order Bot Noi suggests', async () => {
+  const seen = []
+  for (let guard = 0; guard < 14; guard++) {
+    await tidy()
+    const id = await tutStep()
+    if (id === 'finish' || id === null) break
+    if (seen.filter((x) => x === id).length > 1) throw new Error(`stuck on ${id}`)
+    seen.push(id)
+    await waitHole(10000)
+    await page.waitForTimeout(400)
+    await shot(id)
+    await HANDLERS[id]()
+    console.log('   · done', id)
+  }
+  if ((await tutStep()) !== 'finish') throw new Error(`not at the finale: ${await tutStep()}`)
 })
 
 await step('12 finale and reward', async () => {
@@ -377,8 +383,38 @@ await step('13 Bot Noi menu, quests, joke', async () => {
   await shot('tracker-bot-quest')
 })
 
+await step('13b quick shop, new-item popup, sell from the bag', async () => {
+  await page.locator('.hud2-shop').click()
+  await page.waitForSelector('.pp-sheet')
+  await page.waitForTimeout(400)
+  await shot('shop-popup')
+  const inc0 = await page.evaluate(() => window.__boondee.game.value.inventory.incense ?? 0)
+  await page.getByRole('button', { name: 'ซื้อธูปเทียนแพ' }).click()
+  const inc1 = await page.evaluate(() => window.__boondee.game.value.inventory.incense ?? 0)
+  if (inc1 <= inc0) throw new Error('quick buy failed')
+  await page.waitForSelector('.pp-card.got', { timeout: 3000 })
+  await shot('got-popup')
+  await click('ดูร้านทั้งหมด')
+  await page.waitForTimeout(500)
+  await page.locator('.win-x').last().click()
+  // Bag → tap an item → sell to the shop.
+  await page.getByRole('button', { name: 'กระเป๋า' }).click()
+  await page.locator('.inv-slot').first().click()
+  await page.waitForSelector('.pp-sell')
+  await page.waitForTimeout(300)
+  await shot('sell-popup')
+  const c0 = await page.evaluate(() => window.__boondee.game.value.coins)
+  await page.locator('.pp-sell .btn.green').click()
+  const c1 = await page.evaluate(() => window.__boondee.game.value.coins)
+  if (c1 <= c0) throw new Error('quick sell paid nothing')
+  await page.waitForTimeout(300)
+  if (await page.locator('.inv-sheet-x').count()) await page.locator('.inv-sheet-x').click()
+  await tidy()
+})
+
 await step('14 replay from the menu, then skip', async () => {
   await page.getByRole('button', { name: 'เมนู' }).click()
+  if (!(await page.getByRole('button', { name: 'เล่นบทเรียนอีกครั้ง' }).count())) await click('▼ เพิ่มเติม')
   await click('เล่นบทเรียนอีกครั้ง')
   await page.waitForSelector('.bn-card.hello')
   await readBubble()
